@@ -8,6 +8,11 @@ api = require("./apiHandle.js");
 fs = require('fs');
 const prompt = require("prompt-async");
 
+async function onNewSymbol(symbolDetails)
+{
+    console.log("New instrument received: ", JSON.stringify(symbolDetails))
+}
+
 async function performNextAction()
 {
     prompt.start()
@@ -16,15 +21,32 @@ async function performNextAction()
     {
         if(0 == action.localeCompare("subscribe"))
         {
-            api.subscribePrice(symbol, onPrice)
+            try
+            {
+                api.subscribePrice(symbol, onPrice)
+            }
+            catch(err)
+            {
+                console.log(err)
+            }
         }
         else
-            api.unsubscribePrice(symbol, onPrice)
+        {
+            try
+            {
+                api.unsubscribePrice(symbol, onPrice)
+            }
+            catch(err)
+            {
+                console.log(err)
+            }
+        }
     }
 }
 
 async function mainLoop()
 {
+    api.downloadAllSymbols(onNewSymbol, ()=>{})
     while(true)
         await performNextAction()    
 }

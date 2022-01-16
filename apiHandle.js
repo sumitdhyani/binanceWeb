@@ -4,6 +4,11 @@ const { Console } = require('winston/lib/winston/transports')
 
 subscriptionBook = {}
 producer = null
+symbolDict = { "BTCUSDT" : {"symbol" : "BTCUSDT", "description" : "Bitcoin vs USD"}, 
+                "ADAUSDT" : {"symbol" : "ADAUSDT", "description" : "Cardano vs USD"},
+                "XRPUSDT" : {"symbol" : "XRPUSDT", "description" : "Ripple vs USD"},
+                "DOTUSDT" : {"symbol" : "DOTUSDT", "description" : "Polkadot vs USD"}
+              }
 
 const toWinstonLogLevel = level => {switch(level) {
     case Kafka.ERROR:
@@ -67,8 +72,19 @@ function unsubscribeVirtualPrice(bridge, source, dest, callback)
 
 
 module.exports = {
+    downloadAllSymbols : async function(symbolCallback, downloadEndCallback)
+    {
+        for (const [key, value] of Object.entries(symbolDict)) {
+            symbolCallback(value)
+          }
+
+        downloadEndCallback()
+    },
+
     subscribePrice : function(symbol, callback)
     {
+        if(!(symbol in symbolDict))
+            throw "Invalid symbol"
         if (!(symbol in subscriptionBook))
             subscriptionBook[symbol] = new Set()
         subscriptionBook[symbol].add(callback)
@@ -87,6 +103,9 @@ module.exports = {
             msg = JSON.stringify({"symbol" : symbol, "action" : "unsubscribe" })
             producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}],}).then(()=>{}).catch( ex => console.error(`[example/producer] ${ex.message}`, ex))
         }
+        else
+            throw "Symbol not subscribed"
+
     },
 
     start: async function(apiHandleId, clientEntryPointFunction, hosts)
