@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "kafkajs": "^1.15.0",
+    "prompt-async": "^0.9.9",
+    "readline-async": "^0.1.0",
+    "winston": "^3.4.0"
+  }
+}
