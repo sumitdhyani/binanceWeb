@@ -16,11 +16,19 @@ now = datetime.now()
 FILENAME= "TestLog_" + str(now.date()) + ".log"
 logging.basicConfig(format=FORMAT, filename=FILENAME)
 
-async def onPrice(depth):
-    bids = depth.get_bids()
-    asks = depth.get_asks()
-    logger.debug("%s : %s, %s", depth.symbol, str(bids[0][0]), str(asks[1][0]))
+class PriceHandler:
+    def __init__(self, producer):
+        self.producer = producer
 
+    async def onPrice(self, depth):
+        bids = depth.get_bids()
+        asks = depth.get_asks()
+        bidLen = min(5, len(bids))
+        askLen = min(5, len(asks))
+        logger.debug("%s : %s, %s", depth.symbol, str(bids[0][0]), str(asks[1][0]))
+        msgDict = {"symbol" : depth.symbol, "bids" : bids[0:bidLen], "asks" : asks[0:askLen]}
+        await self.producer.send_and_wait("prices", bytes(json.dumps(msgDict), 'utf-8'))
+    
 
 async def run():
     client = await binance.AsyncClient.create(api_key=Keys.PUBLIC, api_secret=Keys.SECRET)
@@ -29,7 +37,10 @@ async def run():
     consumer = aiokafka.AIOKafkaConsumer("price_subscriptions",
                                          bootstrap_servers='127.0.0.1:9092'
                                         )
+    producer = aiokafka.AIOKafkaProducer(bootstrap_servers='127.0.0.1:9092')
+    await producer.start()
     await consumer.start()
+    priceHandler = PriceHandler(producer)
     try:
         async for kafkaMsg in consumer:
 
@@ -38,9 +49,9 @@ async def run():
             msgDict = json.loads(msg)
             action = msgDict["action"]
             if("subscribe" == action):
-                await ddp.subscribe(msgDict["symbol"], onPrice)
+                await ddp.subscribe(msgDict["symbol"], priceHandler.onPrice)
             else:
-                await ddp.unsubscribe(msgDict["symbol"], onPrice)
+                ddp.unsubscribe(msgDict["symbol"], priceHandler.onPrice)
 
     finally:
         await consumer.stop()
