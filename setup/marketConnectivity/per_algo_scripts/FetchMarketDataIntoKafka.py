@@ -16,6 +16,8 @@ now = datetime.now()
 FILENAME= "TestLog_" + str(now.date()) + ".log"
 logging.basicConfig(format=FORMAT, filename=FILENAME)
 
+broker = 'kafka:9092'
+
 class PriceHandler:
     def __init__(self, producer):
         self.producer = producer
@@ -35,9 +37,9 @@ async def run():
     networkComplaintHandler = NetworkComplaintHandler("https://www.binance.com/")
     ddp = DepthDataProvider(client, networkComplaintHandler.registerComplaint, logger)
     consumer = aiokafka.AIOKafkaConsumer("price_subscriptions",
-                                         bootstrap_servers='127.0.0.1:9092'
+                                         bootstrap_servers=broker
                                         )
-    producer = aiokafka.AIOKafkaProducer(bootstrap_servers='127.0.0.1:9092')
+    producer = aiokafka.AIOKafkaProducer(bootstrap_servers=broker)
     await producer.start()
     await consumer.start()
     priceHandler = PriceHandler(producer)
