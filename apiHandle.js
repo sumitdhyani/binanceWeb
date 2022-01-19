@@ -3,6 +3,7 @@ const winston = require('winston')
 const { Console } = require('winston/lib/winston/transports')
 
 subscriptionBook = {}
+virtualSubscriptionBook = {}
 producer = null
 symbolDict = { "BTCUSDT" : {"symbol" : "BTCUSDT", "description" : "Bitcoin vs USD"}, 
                 "ADAUSDT" : {"symbol" : "ADAUSDT", "description" : "Cardano vs USD"},
@@ -45,33 +46,50 @@ const WinstonLogCreator = logLevel => {
 
 function onPriceData(prices)
 {
+    localSymbol = null
+    localSubscriptionBook = null
     dict = JSON.parse(prices)
-    symbol = dict["symbol"]
-    if(symbol in subscriptionBook)
+    if("symbol" in dict)
     {
-        callbacks = subscriptionBook[symbol]
+        localSubscriptionBook = subscriptionBook
+        localSymbol = dict["symbol"]
+    }
+    else
+    {
+        localSubscriptionBook = virtualSubscriptionBook
+        localSymbol = createVirtualTradingPairName(dict["asset"], dict["currency"], dict["bridge"])
+    }
+
+    if(localSymbol in localSubscriptionBook)
+    {
+        callbacks = localSubscriptionBook[localSymbol]
         for(let callback of callbacks)
             callback(dict)
     }
 }
 
-function onStaticData(staticData)
+function createTradingPairName(asset, currency)
 {
-    
+    return asset.concat(currency)
 }
 
-function subscribeVirtualPrice(bridge, source, dest, callback)
+function createVirtualTradingPairName(asset, currency, bridge)
 {
-
-}
-
-function unsubscribeVirtualPrice(bridge, source, dest, callback)
-{
-
+    return asset.concat(currency, bridge)
 }
 
 
 module.exports = {
+    downloadAllSymbolsInLump : async function(symbolCallback)
+    {
+        lump = []
+        for (const [key, value] of Object.entries(symbolDict)) {
+            lump.push(value)
+          }
+        
+        symbolCallback(lump)
+    },
+
     downloadAllSymbols : async function(symbolCallback, downloadEndCallback)
     {
         for (const [key, value] of Object.entries(symbolDict)) {
@@ -92,6 +110,23 @@ module.exports = {
         producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}],}).then(()=>{}).catch( ex => console.error(`[example/producer] ${ex.message}`, ex))
     },
 
+    subscribeVirtualPrice : function(asset, currency, bridge, callback)
+    {
+        symbol1 = createTradingPairName(asset, bridge)
+        symbol2 = createTradingPairName(currency, bridge)
+        if( symbol1 in symbolDict && symbol2 in symbolDict)
+        {
+            virtualSymbol = createVirtualTradingPairName(asset, currency, bridge)
+            if (!(virtualSymbol in virtualSubscriptionBook))
+                virtualSubscriptionBook[virtualSymbol] = new Set()
+            virtualSubscriptionBook[virtualSymbol].add(callback)
+            msg = JSON.stringify({"asset" : asset, "currency" : currency, "bridge" : bridge, "action" : "subscribe" })
+            producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}],}).then(()=>{}).catch( ex => console.error(`[example/producer] ${ex.message}`, ex))
+        }
+        else
+            throw "One of the parameters is invalid"
+    },
+
     unsubscribePrice : function(symbol, callback)
     {
         if (symbol in subscriptionBook)
@@ -105,7 +140,22 @@ module.exports = {
         }
         else
             throw "Symbol not subscribed"
+    },
 
+    unsubscribeVirtualPrice : function(asset, currency, bridge, callback)
+    {
+        virtualSymbol = createVirtualTradingPairName(asset, currency, bridge)
+        if (virtualSymbol in virtualSubscriptionBook)
+        {   
+            callbacks = virtualSubscriptionBook[virtualSymbol]
+            callbacks.delete(callback)
+            if(0 == callbacks.size)
+                delete virtualSubscriptionBook[virtualSymbol]
+            msg = JSON.stringify({"asset" : asset, "currency" : currency, "bridge" : bridge, "action" : "unsubscribe" })
+            producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}],}).then(()=>{}).catch( ex => console.error(`[example/producer] ${ex.message}`, ex))
+        }
+        else
+            throw "Virtual symbol not subscribed"
     },
 
     start: async function(apiHandleId, clientEntryPointFunction, hosts)
@@ -122,12 +172,12 @@ module.exports = {
         await consumer.connect()
         await producer.connect()
         await consumer.subscribe({ topic: 'prices', fromBeginning: false})
+        await consumer.subscribe({ topic: 'virtual_prices', fromBeginning: false})
         kafkaReaderLoop = consumer.run(
         {
             eachMessage: async ({ topic, partition, message }) => 
             {
-                if(0 == topic.localeCompare("prices"))
-                    onPriceData(message.value.toString());
+                onPriceData(message.value.toString());
             },
         })
 
