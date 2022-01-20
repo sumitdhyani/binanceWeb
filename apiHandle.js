@@ -1,15 +1,13 @@
 const { Kafka } = require('kafkajs')
 const winston = require('winston')
 const { Console } = require('winston/lib/winston/transports')
+const fs = require('fs');
+const readline = require('readline');
 
 subscriptionBook = {}
 virtualSubscriptionBook = {}
 producer = null
-symbolDict = { "BTCUSDT" : {"symbol" : "BTCUSDT", "description" : "Bitcoin vs USD"}, 
-                "ADAUSDT" : {"symbol" : "ADAUSDT", "description" : "Cardano vs USD"},
-                "XRPUSDT" : {"symbol" : "XRPUSDT", "description" : "Ripple vs USD"},
-                "DOTUSDT" : {"symbol" : "DOTUSDT", "description" : "Polkadot vs USD"}
-              }
+symbolDict = {}
 
 const toWinstonLogLevel = level => {switch(level) {
     case Kafka.ERROR:
@@ -77,6 +75,21 @@ function createVirtualTradingPairName(asset, currency, bridge)
 {
     return asset.concat(currency, bridge)
 }
+
+async function loadSymbols() {
+    const fileStream = fs.createReadStream('symbols.txt');
+  
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    });
+
+    for await (const line of rl)
+    {
+      dict = JSON.parse(line)
+      symbolDict[dict["symbol"]] = dict
+    }
+  }
 
 
 module.exports = {
@@ -160,6 +173,7 @@ module.exports = {
 
     start: async function(apiHandleId, clientEntryPointFunction, hosts)
     {   
+        await loadSymbols()
         kafka = new Kafka({
             clientId: apiHandleId,
             brokers: hosts,
