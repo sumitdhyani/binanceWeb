@@ -87,7 +87,9 @@ async function loadSymbols() {
     for await (const line of rl)
     {
       dict = JSON.parse(line)
-      symbolDict[dict["symbol"]] = dict
+      dict["description"] = dict["baseAsset"] + " vs " + dict["quoteAsset"]
+      symbol = dict["symbol"]
+      symbolDict[symbol] = dict
     }
   }
 
