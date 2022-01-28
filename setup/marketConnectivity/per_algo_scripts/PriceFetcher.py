@@ -28,7 +28,7 @@ class VirtualPriceHandler:
 
     async def onPrice(self, depth):
         #logger.debug("%s : %s, %s", self.symbol, str(depth[0][0]), depth[1][0])
-        msgDict = {"asset" : self.asset, "currency" : self.currency, "bridge" : self.bridge, "bids" : [depth[0]], "asks" : [depth[1]]}
+        msgDict = {"symbol" : self.asset + self.currency, "asset" : self.asset, "currency" : self.currency, "bridge" : self.bridge, "bids" : [depth[0]], "asks" : [depth[1]]}
         await self.producer.send_and_wait("virtual_prices", bytes(json.dumps(msgDict), 'utf-8'))        
 
 class PriceHandler:

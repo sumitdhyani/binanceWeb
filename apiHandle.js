@@ -47,7 +47,7 @@ function onPriceData(prices)
     localSymbol = null
     localSubscriptionBook = null
     dict = JSON.parse(prices)
-    if("symbol" in dict)
+    if(!("bridge" in dict))
     {
         localSubscriptionBook = subscriptionBook
         localSymbol = dict["symbol"]
