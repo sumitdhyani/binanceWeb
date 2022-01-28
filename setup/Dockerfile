@@ -1,5 +1,6 @@
 FROM ubuntu
-RUN apt-get update && apt-get upgrade
+RUN apt-get update
+# && apt-get upgrade
 RUN apt-get install -y software-properties-common
 RUN apt-get install -y openjdk-8-jdk
 RUN apt-get install -y openjdk-8-jre
