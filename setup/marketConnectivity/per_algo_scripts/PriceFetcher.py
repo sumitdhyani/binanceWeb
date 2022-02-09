@@ -54,19 +54,19 @@ async def subscribeNormalPrice(ddp, producer, symbol):
         priceHandler = PriceHandler(producer)
         priceSubscriptionBook[symbol] = [0, priceHandler.onPrice]
     
-    count, callback = priceSubscriptionBook[symbol]
-    count += 1
-    if 1 == count:
-        await ddp.subscribe(symbol, callback)
+    countAndCallback = priceSubscriptionBook[symbol]
+    countAndCallback[0] += 1
+    if 1 == countAndCallback[0]:
+        await ddp.subscribe(symbol, countAndCallback[1])
 
 def unsubscribeNormalPrice(ddp, symbol):
     if symbol in priceSubscriptionBook.keys():
-        count, callback = priceSubscriptionBook[symbol]
-        if 1 == count:
-            ddp.unsubscribe(symbol, callback)
+        countAndCallback = priceSubscriptionBook[symbol]
+        if 1 == countAndCallback[0]:
+            ddp.unsubscribe(symbol, countAndCallback[1])
             priceSubscriptionBook.pop(symbol)
         else:
-            count -= 1
+            countAndCallback[0] -= 1
 
 async def subscribeVirtualPrice(cdp, producer, asset, currency, bridge):
     virtualSymbol = asset + currency
@@ -74,20 +74,20 @@ async def subscribeVirtualPrice(cdp, producer, asset, currency, bridge):
         priceHandler = VirtualPriceHandler(producer, asset, currency, bridge)
         virtualPriceSubscriptionBook[virtualSymbol] = [0, priceHandler.onPrice]
     
-    count, callback = virtualPriceSubscriptionBook[virtualSymbol]
-    count += 1
-    if 1 == count:
-        await cdp.subscribe(bridge, asset, currency, callback)
+    countAndCallback = virtualPriceSubscriptionBook[virtualSymbol]
+    countAndCallback[0] += 1
+    if 1 == countAndCallback[0]:
+        await cdp.subscribe(bridge, asset, currency, countAndCallback[1])
 
 def unsubscribeVirtualPrice(cdp, asset, currency, bridge):
     virtualSymbol = asset + currency
     if virtualSymbol in virtualPriceSubscriptionBook.keys():
-        count, callback = virtualPriceSubscriptionBook[virtualSymbol]
-        if 1 == count:
-            cdp.unsubscribe(bridge, asset, currency, callback)
+        countAndCallback = virtualPriceSubscriptionBook[virtualSymbol]
+        if 1 == countAndCallback[0]:
+            cdp.unsubscribe(bridge, asset, currency, countAndCallback[1])
             virtualPriceSubscriptionBook.pop(virtualSymbol)
         else:
-            count -= 1
+            countAndCallback[0] -= 1
 
 
 async def run():
