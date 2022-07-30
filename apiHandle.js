@@ -3,13 +3,22 @@ const winston = require('winston')
 const { Console } = require('winston/lib/winston/transports')
 const fs = require('fs');
 const readline = require('readline');
+const CommonUtils = require("./CommonUtils")
 
 subscriptionBook = {}
 virtualSubscriptionBook = {}
 producer = null
 symbolDict = {}
+let logger = null
 
-const toWinstonLogLevel = level => {switch(level) {
+const NativeLoglevel = {
+    ERROR : Symbol("ERROR"),
+    WARN : Symbol("WARN"),
+    INFO : Symbol("INFO"),
+    DEBUG : Symbol("DEBUG")
+}
+
+const KafkatoWinstonLogLevel = level => {switch(level) {
     case Kafka.ERROR:
     case Kafka.NOTHING:
         return 'error'
@@ -23,19 +32,34 @@ const toWinstonLogLevel = level => {switch(level) {
         return 'debug'
 }}
 
-const WinstonLogCreator = logLevel => {
+function enumToWinstomLogLevel(level)
+{
+    switch(level) {
+        case NativeLoglevel.ERROR:
+            return 'error'
+        case NativeLoglevel.WARN:
+            return 'warn'
+        case NativeLoglevel.INFO:
+            return 'info'
+        case NativeLoglevel.DEBUG:
+            return 'debug'
+        default:
+            return 'debug'
+    }
+}
+
+const WinstonLogCreator = (logLevel, fileName) => {
     const logger = winston.createLogger({
-        level: toWinstonLogLevel(logLevel),
+        level: KafkatoWinstonLogLevel(logLevel),
         transports: [
-            //new winston.transports.Console(),
-            new winston.transports.File({ filename: 'myapp.log' })
+            new winston.transports.File({ filename : fileName })
         ]
     })
 
     return ({ namespace, level, label, log }) => {
         const { message, ...extra } = log
         logger.log({
-            level: toWinstonLogLevel(level),
+            level: KafkatoWinstonLogLevel(level),
             message,
             extra,
         })
@@ -173,17 +197,19 @@ module.exports = {
             throw "Virtual symbol not subscribed"
     },
 
-    start: async function(apiHandleId, clientEntryPointFunction, hosts)
+    start: async function(apiHandleId, clientEntryPointFunction, hosts, appId, logLevel)
     {   
         await loadSymbols()
         kafka = new Kafka({
             clientId: apiHandleId,
             brokers: hosts,
             logLevel: Kafka.ERROR,
-            logCreator: WinstonLogCreator
+            logCreator: (logLevel) => {
+                return WinstonLogCreator(logLevel, "kafka.log")
+            }
             })
             
-        consumer = kafka.consumer({ groupId: 'test' })
+        consumer = kafka.consumer({ groupId: appId })
         producer = kafka.producer()
         await consumer.connect()
         await producer.connect()
@@ -197,6 +223,9 @@ module.exports = {
             },
         })
 
-        await Promise.all([kafkaReaderLoop, clientEntryPointFunction()])
-    }
+        logger = CommonUtils.createFileLogger(appId + ".log", enumToWinstomLogLevel(logLevel))
+        await Promise.all([kafkaReaderLoop, clientEntryPointFunction(logger)])
+    },
+
+    Loglevel : NativeLoglevel,
 };

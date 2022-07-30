@@ -1,21 +1,15 @@
-// const { Console } = require("console");
-// const { runMain } = require("module");
-// process = require('process')
-// input = process.stdin
-// output = process.stdout
-
 api = require("./apiHandle.js");
-fs = require('fs');
-const prompt = require("prompt-async");
+//THis will be set by the logger given by the API
+let logger = null
 
 async function onNewSymbol(symbolDetails)
 {
-    console.log("New instrument received: ", JSON.stringify(symbolDetails))
+    logger.log('info', `New instrument received: ${JSON.stringify(symbolDetails)}`) 
 }
 
 async function onAllSymbols(lump)
 {
-    console.log("All instruments received: ", JSON.stringify(lump))
+    logger.info(`All instruments received: ${JSON.stringify(lump)}`)
 }
 
 async function actionForVirtualSymbol(action, asset, currency, bridge)
@@ -82,35 +76,25 @@ async function performNextAction()
         actionForVirtualSymbol(action, parts[0], parts[1], parts[2])
 }
 
-async function mainLoop()
+//This is the entry point of the application, this method is passed to the start method as you will see below
+async function mainLoop(apiLogger)
 {
+    logger = apiLogger
     api.downloadAllSymbols(onNewSymbol, ()=>{})
     api.downloadAllSymbolsInLump(onAllSymbols)
     while(true)
-        await performNextAction()    
+        await performNextAction()
 }
 
 function onPrice(price)
 {
-    fs.appendFile("test.log", "Normal price recieved: ".concat(JSON.stringify(price)).concat("\n"), function(err) {
-        if(err) {
-            return console.log(err);
-        }
-    
-        //console.log("The file was saved!");
-    });
+    logger.info(`Normal price recieved: ${JSON.stringify(price)}`)
 }
 
 
 function onVirtualPrice(price)
 {
-    fs.appendFile("test.log", "Virtual price recieved: ".concat(JSON.stringify(price)).concat("\n"), function(err) {
-        if(err) {
-            return console.log(err);
-        }
-    
-        //console.log("The file was saved!");
-    });
+    logger.info(`Virtual price recieved: ${JSON.stringify(price)}`)
 }
-//mainLoop().then(()=>{})
-api.start("test", mainLoop, ['localhost:9092','127.0.0.1:9092']).then(()=>{})
+
+api.start("test", mainLoop, ['localhost:9092','127.0.0.1:9092'], "DemoApp", api.Loglevel.DEBUG).then(()=>{})

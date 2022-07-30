@@ -89,7 +89,7 @@ class PerCurrencyConversiondataProvider:
 
         if dest not in self.converteeDictionary.keys():
             self.converteeDictionary[dest] = {source : 0}
-        elif dest not in self.converteeDictionary[dest].keys():
+        elif source not in self.converteeDictionary[dest].keys():
             self.converteeDictionary[dest][source] = 0
             
         self.convertedDictionary[source][dest] += 1
