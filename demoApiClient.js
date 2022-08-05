@@ -3,17 +3,17 @@ const prompt = require("prompt-async");
 //THis will be set by the logger given by the API
 let logger = null
 
-async function onNewSymbol(symbolDetails)
+function onNewSymbol(symbolDetails)
 {
     logger.log('info', `New instrument received: ${JSON.stringify(symbolDetails)}`) 
 }
 
-async function onAllSymbols(lump)
+function onAllSymbols(lump)
 {
     logger.info(`All instruments received: ${JSON.stringify(lump)}`)
 }
 
-async function actionForVirtualSymbol(action, asset, currency, bridge)
+function actionForVirtualSymbol(action, asset, currency, bridge)
 {
     if(0 == action.localeCompare("subscribe"))
     {

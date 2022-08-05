@@ -6,10 +6,10 @@ const readline = require('readline');
 const CommonUtils = require("./CommonUtils")
 const appSpecificErrors = require('./appSpecificErrors')
 
-subscriptionBook = {}
-virtualSubscriptionBook = {}
+subscriptionBook = new Map()
+virtualSubscriptionBook = new Map()
 producer = null
-symbolDict = {}
+symbolDict = new Map()
 let logger = null
 
 const NativeLoglevel = {
