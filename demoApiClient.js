@@ -1,4 +1,5 @@
 api = require("./apiHandle.js");
+const prompt = require("prompt-async");
 //THis will be set by the logger given by the API
 let logger = null
 
@@ -16,25 +17,23 @@ async function actionForVirtualSymbol(action, asset, currency, bridge)
 {
     if(0 == action.localeCompare("subscribe"))
     {
-        try
-        {
-            api.subscribeVirtualPrice(asset, currency, bridge, onVirtualPrice)
-        }
-        catch(err)
-        {
-            console.log(err)
-        }
+        api.subscribeVirtualPrice(asset, currency, bridge, onVirtualPrice).
+        then(()=>{
+            logger.info(`Subscription successful for ${asset}_${currency}_${bridge}`)
+        }).
+        catch((error)=>{
+                logger.error(`Failed subscription for ${asset}_${currency}_${bridge}, details: ${error.message}`)
+        })
     }
     else
     {
-        try
-        {
-            api.unsubscribeVirtualPrice(asset, currency, bridge, onVirtualPrice)
-        }
-        catch(err)
-        {
-            console.log(err)
-        }
+        api.unsubscribeVirtualPrice(asset, currency, bridge, onVirtualPrice).
+        then(()=>{
+            logger.info(`Unsubscription successful for ${asset}_${currency}_${bridge}`)
+        }).
+        catch((error)=>{
+            logger.error(`Failed unsubscription for ${asset}_${currency}_${bridge}, details: ${error.message}`)
+        })
     }
 }
 
@@ -43,25 +42,23 @@ async function actionForNormalSymbol(action, symbol)
 {
     if(0 == action.localeCompare("subscribe"))
     {
-        try
-        {
-            api.subscribePrice(symbol, onPrice)
-        }
-        catch(err)
-        {
-            console.log(err)
-        }
+        api.subscribePrice(symbol, onPrice).
+        then(()=>{
+            logger.info(`Subscription successful for ${symbol}`)
+        }).
+        catch((error)=>{
+                logger.error(`Failed subscription for ${symbol}, details: ${error.message}`)
+        })
     }
     else
     {
-        try
-        {
-            api.unsubscribePrice(symbol, onPrice)
-        }
-        catch(err)
-        {
-            console.log(err)
-        }
+        api.unsubscribePrice(symbol, onPrice).
+        then(()=>{
+            logger.info(`Unsubscription successful for ${symbol}`)
+        }).
+        catch((error)=>{
+                logger.error(`Failed unsubscription for ${symbol}, details: ${error.message}`)
+        })
     }
 }
 

@@ -1,5 +1,6 @@
 const {createLogger, format, transports} = require('winston')
 const {combine, timestamp, label, printf} = format
+const appSpecificErrors = require('./appSpecificErrors')
 
 const logFormat = printf(({level, message, timestamp}) => {
     return `${timestamp} ${level}: ${message}`
@@ -15,7 +16,7 @@ function createFileLogger(file){
     })
 }
 
-class AsyncEvent
+class Event
 {
     constructor(){
         //Callbacks upto 4 params are supported
@@ -28,19 +29,19 @@ class AsyncEvent
 
     #validateCallbackStructure(callback){
         if(callback.length >= this.evtListeneters.length)
-            throw Error(`The callback should have max ${this.evtListeneters.length - 1} params`)
+            throw new Error(`The callback should have max ${this.evtListeneters.length - 1} params`)
     }
 
     #validateEventArgs(args){
         if(args.length >= this.evtListeneters.length)
-            throw Error(`The event reaise should have max ${this.evtListeneters.length - 1} params`)
+            throw new Error(`The event reaise should have max ${this.evtListeneters.length - 1} params`)
     }
 
     registerCallback(callback)
     {
         this.#validateCallbackStructure(callback)
         if(this.evtListeneters[callback.length].has(callback)){
-            throw Error("This callback is already registered")
+            throw new appSpecificErrors.DuplicateSubscription("This callback is already registered")
         }
         this.evtListeneters[callback.length].add(callback)
     }
@@ -49,19 +50,16 @@ class AsyncEvent
     {
         this.#validateCallbackStructure(callback)
         if(!this.evtListeneters[callback.length].delete(callback)){
-            throw Error("This callback was never registered")
+            throw new appSpecificErrors.SpuriousUnsubscription("This callback was never registered")
         }
     }
 
-    async raise(...args)
+    raise(...args)
     {
         this.#validateEventArgs(args)
-        const coroutines = []
         this.evtListeneters[args.length].forEach(callback => {
-            coroutines.push(callback())
+            callback(...args)
         })
-        
-        await Promise.all(coroutines)
     }
 
     empty(){
@@ -75,4 +73,4 @@ class AsyncEvent
 }
 
 module.exports.createFileLogger = createFileLogger
-module.exports.AsyncEvent = AsyncEvent
+module.exports.Event = Event

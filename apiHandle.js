@@ -4,6 +4,7 @@ const { Console } = require('winston/lib/winston/transports')
 const fs = require('fs');
 const readline = require('readline');
 const CommonUtils = require("./CommonUtils")
+const appSpecificErrors = require('./appSpecificErrors')
 
 subscriptionBook = {}
 virtualSubscriptionBook = {}
@@ -138,18 +139,21 @@ module.exports = {
         downloadEndCallback()
     },
 
-    subscribePrice : function(symbol, callback)
+    subscribePrice : async function(symbol, priceCallback)
     {
         if(!(symbol in symbolDict))
-            throw "Invalid symbol"
-        if (!(symbol in subscriptionBook))
-            subscriptionBook[symbol] = new Set()
-        subscriptionBook[symbol].add(callback)
+            throw new appSpecificErrors.InvalidSymbol(`Invalid symbol: ${symbol}`)
+        else if(symbol in subscriptionBook){
+            throw new appSpecificErrors.DuplicateSubscription()
+        }
+        
+        subscriptionBook[symbol] = new Set()
+        subscriptionBook[symbol].add(priceCallback)
         msg = JSON.stringify({"symbol" : symbol, "action" : "subscribe" })
-        producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}],}).then(()=>{}).catch( ex => console.error(`[example/producer] ${ex.message}`, ex))
+        await producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}]})
     },
 
-    subscribeVirtualPrice : function(asset, currency, bridge, callback)
+    subscribeVirtualPrice : async function(asset, currency, bridge, priceCallback)
     {
         symbol1 = createTradingPairName(asset, bridge)
         symbol2 = createTradingPairName(currency, bridge)
@@ -158,30 +162,32 @@ module.exports = {
             virtualSymbol = createVirtualTradingPairName(asset, currency, bridge)
             if (!(virtualSymbol in virtualSubscriptionBook))
                 virtualSubscriptionBook[virtualSymbol] = new Set()
-            virtualSubscriptionBook[virtualSymbol].add(callback)
+            virtualSubscriptionBook[virtualSymbol].add(priceCallback)
             msg = JSON.stringify({"asset" : asset, "currency" : currency, "bridge" : bridge, "action" : "subscribe" })
-            producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}],}).then(()=>{}).catch( ex => console.error(`[example/producer] ${ex.message}`, ex))
+            await producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}]})
         }
-        else
-            throw "One of the parameters is invalid"
+        else{
+            throw new appSpecificErrors.InvalidSymbol("One of the params is not a proper symbol")
+        }
     },
 
-    unsubscribePrice : function(symbol, callback)
+    unsubscribePrice : async function(symbol, priceCallback, unsubscriptionResultCallback)
     {
         if (symbol in subscriptionBook)
         {   
             callbacks = subscriptionBook[symbol]
-            callbacks.delete(callback)
+            callbacks.delete(priceCallback)
             if(0 == callbacks.size)
                 delete subscriptionBook[symbol]
             msg = JSON.stringify({"symbol" : symbol, "action" : "unsubscribe" })
-            producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}],}).then(()=>{}).catch( ex => console.error(`[example/producer] ${ex.message}`, ex))
+            await producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}]})
         }
-        else
-            throw "Symbol not subscribed"
+        else{
+            throw new appSpecificErrors.SpuriousUnsubscription()
+        }
     },
 
-    unsubscribeVirtualPrice : function(asset, currency, bridge, callback)
+    unsubscribeVirtualPrice : async function(asset, currency, bridge, unsubscriptionResultCallback)
     {
         virtualSymbol = createVirtualTradingPairName(asset, currency, bridge)
         if (virtualSymbol in virtualSubscriptionBook)
@@ -191,10 +197,11 @@ module.exports = {
             if(0 == callbacks.size)
                 delete virtualSubscriptionBook[virtualSymbol]
             msg = JSON.stringify({"asset" : asset, "currency" : currency, "bridge" : bridge, "action" : "unsubscribe" })
-            producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}],}).then(()=>{}).catch( ex => console.error(`[example/producer] ${ex.message}`, ex))
+            await producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}]})
         }
-        else
-            throw "Virtual symbol not subscribed"
+        else{
+            throw new appSpecificErrors.SpuriousUnsubscription()
+        }
     },
 
     start: async function(apiHandleId, clientEntryPointFunction, hosts, appId, logLevel)

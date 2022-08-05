@@ -1,37 +1,22 @@
-module.exports = [
-    class DuplicateSubscription extends Error{
-        constructor(){
-            super("Duplicate subscription received")
-            this.name = DuplicateSubscriptionError
-        }
-
-        constructor(message){
+module.exports = {
+    DuplicateSubscription : class DuplicateSubscription extends Error{
+        constructor(message = "Duplicate subscription received"){
             super(message)
             this.name = "DuplicateSubscription"
         }
     },
 
-    class SpuriousUnsubscription extends Error{
-        constructor(){
-            super("Unsubscription on a non-existent subscription")
-            this.name = DuplicateSubscriptionError
-        }
-
-        constructor(message){
+    SpuriousUnsubscription : class SpuriousUnsubscription extends Error{
+        constructor(message = "Unsubscription on a non-existent subscription"){
             super(message)
             this.name = "SpuriousUnsubscription"
         }
     },
 
-    class InvalidSymbol extends Error{
-        constructor(){
-            super("Invalid symbol")
-            this.name = DuplicateSubscriptionError
-        }
-
-        constructor(message){
+    InvalidSymbol : class InvalidSymbol extends Error{
+        constructor(message = "Invalid symbol"){
             super(message)
             this.name = "InvalidSymbol"
         }
     }
-]
+}
