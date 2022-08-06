@@ -72,5 +72,24 @@ class Event
     }
 }
 
+function createTradingPairName(asset, currency)
+{
+    return asset + currency
+}
+
+function createVirtualTradingPairName(asset, currency, bridge)
+{
+    return asset + "_" + currency + "_" + bridge
+}
+
+function disintegrateVirtualTradingPairName(virtualSymbol)
+{
+    return virtualSymbol.split("_")
+}
+
 module.exports.createFileLogger = createFileLogger
 module.exports.Event = Event
+module.exports.createTradingPairName = createTradingPairName
+module.exports.createVirtualTradingPairName = createVirtualTradingPairName
+module.exports.disintegrateVirtualTradingPairName = disintegrateVirtualTradingPairName
+
