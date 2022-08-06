@@ -11,6 +11,9 @@ virtualSubscriptionBook = new Map()
 producer = null
 symbolDict = new Map()
 let logger = null
+const createTradingPairName = CommonUtils.createTradingPairName
+const createVirtualTradingPairName = CommonUtils.createVirtualTradingPairName
+const disintegrateVirtualTradingPairName = CommonUtils.disintegrateVirtualTradingPairName
 
 const NativeLoglevel = {
     ERROR : Symbol("ERROR"),
@@ -83,23 +86,13 @@ function onPriceData(prices)
         localSymbol = createVirtualTradingPairName(dict["asset"], dict["currency"], dict["bridge"])
     }
 
-    if(localSymbol in localSubscriptionBook)
-    {
-        callbacks = localSubscriptionBook[localSymbol]
-        for(let callback of callbacks)
+    const callback = localSubscriptionBook.get(localSymbol)
+    if(undefined !== callback){
             callback(dict)
     }
 }
 
-function createTradingPairName(asset, currency)
-{
-    return asset.concat(currency)
-}
 
-function createVirtualTradingPairName(asset, currency, bridge)
-{
-    return asset.concat(currency, bridge)
-}
 
 async function loadSymbols() {
     const fileStream = fs.createReadStream('symbols.txt');
@@ -112,12 +105,29 @@ async function loadSymbols() {
     for await (const line of rl)
     {
       dict = JSON.parse(line)
-      dict["description"] = dict["baseAsset"] + " vs " + dict["quoteAsset"]
+      const desc = dict["baseAsset"] + " vs " + dict["quoteAsset"]
+      dict["description"] = desc
       symbol = dict["symbol"]
-      symbolDict[symbol] = dict
+      symbolDict.set(symbol, dict)
     }
   }
 
+
+async function cancelAllSubscriptions(){
+    for(let symbol of subscriptionBook.keys()){
+        msg = JSON.stringify({"symbol" : symbol, "action" : "unsubscribe" })
+        await producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}]})
+    }
+
+    for(let virtualSymbol of virtualSubscriptionBook.keys()){
+        const {asset, currency, bridge} = disintegrateVirtualTradingPairName(virtualSymbol)
+        msg = JSON.stringify({"asset" : asset, "currency" : currency, "bridge" : bridge, "action" : "subscribe" })
+        await producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}]})        
+    }
+
+    subscriptionBook.clear()
+    virtualSubscriptionBook.clear()
+}
 
 module.exports = {
     downloadAllSymbolsInLump : async function(symbolCallback)
@@ -139,68 +149,61 @@ module.exports = {
         downloadEndCallback()
     },
 
-    subscribePrice : async function(symbol, priceCallback)
+    subscribePrice : async function(symbol, callback)
     {
-        if(!(symbol in symbolDict))
+        if(!(symbolDict.has(symbol))){
             throw new appSpecificErrors.InvalidSymbol(`Invalid symbol: ${symbol}`)
-        else if(symbol in subscriptionBook){
+        }
+        else if(subscriptionBook.has(symbol)){
             throw new appSpecificErrors.DuplicateSubscription()
         }
-        
-        subscriptionBook[symbol] = new Set()
-        subscriptionBook[symbol].add(priceCallback)
-        msg = JSON.stringify({"symbol" : symbol, "action" : "subscribe" })
-        await producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}]})
+        else{
+            subscriptionBook.set(symbol, callback)
+            msg = JSON.stringify({"symbol" : symbol, "action" : "subscribe" })
+            await producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}]})
+        }
     },
 
-    subscribeVirtualPrice : async function(asset, currency, bridge, priceCallback)
+    subscribeVirtualPrice : async function(asset, currency, bridge, callback)
     {
         symbol1 = createTradingPairName(asset, bridge)
         symbol2 = createTradingPairName(currency, bridge)
-        if( symbol1 in symbolDict && symbol2 in symbolDict)
-        {
-            virtualSymbol = createVirtualTradingPairName(asset, currency, bridge)
-            if (!(virtualSymbol in virtualSubscriptionBook))
-                virtualSubscriptionBook[virtualSymbol] = new Set()
-            virtualSubscriptionBook[virtualSymbol].add(priceCallback)
-            msg = JSON.stringify({"asset" : asset, "currency" : currency, "bridge" : bridge, "action" : "subscribe" })
-            await producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}]})
+        if(!(symbolDict.has(symbol1) && symbolDict.has(symbol2))){
+            throw new appSpecificErrors.InvalidSymbol("One of the params is not a proper asset")
         }
         else{
-            throw new appSpecificErrors.InvalidSymbol("One of the params is not a proper symbol")
+            virtualSymbol = createVirtualTradingPairName(asset, currency, bridge)
+            if(virtualSubscriptionBook.has(virtualSymbol)){
+                throw new appSpecificErrors.DuplicateSubscription()
+            }
+            else{
+                virtualSubscriptionBook.set(virtualSymbol, callback)
+                msg = JSON.stringify({"asset" : asset, "currency" : currency, "bridge" : bridge, "action" : "subscribe" })
+                await producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}]})
+            }
         }
     },
 
-    unsubscribePrice : async function(symbol, priceCallback, unsubscriptionResultCallback)
+    unsubscribePrice : async function(symbol)
     {
-        if (symbol in subscriptionBook)
-        {   
-            callbacks = subscriptionBook[symbol]
-            callbacks.delete(priceCallback)
-            if(0 == callbacks.size)
-                delete subscriptionBook[symbol]
+        if(!subscriptionBook.delete(symbol)){
+            throw new appSpecificErrors.SpuriousUnsubscription()
+        }
+        else{
             msg = JSON.stringify({"symbol" : symbol, "action" : "unsubscribe" })
             await producer.send({topic: "price_subscriptions", messages: [{key : symbol, value : msg}]})
         }
-        else{
-            throw new appSpecificErrors.SpuriousUnsubscription()
-        }
     },
 
-    unsubscribeVirtualPrice : async function(asset, currency, bridge, unsubscriptionResultCallback)
+    unsubscribeVirtualPrice : async function(asset, currency, bridge)
     {
         virtualSymbol = createVirtualTradingPairName(asset, currency, bridge)
-        if (virtualSymbol in virtualSubscriptionBook)
-        {   
-            callbacks = virtualSubscriptionBook[virtualSymbol]
-            callbacks.delete(callback)
-            if(0 == callbacks.size)
-                delete virtualSubscriptionBook[virtualSymbol]
-            msg = JSON.stringify({"asset" : asset, "currency" : currency, "bridge" : bridge, "action" : "unsubscribe" })
-            await producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}]})
+        if(!virtualSubscriptionBook.delete(virtualSymbol)){
+            throw new appSpecificErrors.SpuriousUnsubscription()
         }
         else{
-            throw new appSpecificErrors.SpuriousUnsubscription()
+            msg = JSON.stringify({"asset" : asset, "currency" : currency, "bridge" : bridge, "action" : "unsubscribe" })
+            await producer.send({topic: "virtual_price_subscriptions", messages: [{key : virtualSymbol, value : msg}]})
         }
     },
 
@@ -222,15 +225,37 @@ module.exports = {
         await producer.connect()
         await consumer.subscribe({ topic: 'prices', fromBeginning: false})
         await consumer.subscribe({ topic: 'virtual_prices', fromBeginning: false})
+        logger = CommonUtils.createFileLogger(appId + ".log", enumToWinstomLogLevel(logLevel))
         kafkaReaderLoop = consumer.run(
         {
             eachMessage: async ({ topic, partition, message }) => 
             {
-                onPriceData(message.value.toString());
+                onPriceData(message.value.toString())
             },
         })
 
-        logger = CommonUtils.createFileLogger(appId + ".log", enumToWinstomLogLevel(logLevel))
+        process.on('SIGKILL', ()=>{
+            logger.warn("SIGINT recieved, cancelling all subscriptions")
+            cancelAllSubscriptions().
+            then(()=>{
+                logger.warn("All subscriptions cancelled")
+            }).
+            catch((err)=>{
+                logger.warn(`Error while cancelling all subscriptions, details: ${err.message} `)
+            })
+        })
+
+        process.on('SIGINT', ()=>{
+            logger.warn("SIGINT recieved, cancelling all subscriptions")
+            cancelAllSubscriptions().
+            then(()=>{
+                logger.warn("All subscriptions cancelled")
+            }).
+            catch((err)=>{
+                logger.warn(`Error while cancelling all subscriptions, details: ${err.message} `)
+            })
+        })
+
         await Promise.all([kafkaReaderLoop, clientEntryPointFunction(logger)])
     },
 

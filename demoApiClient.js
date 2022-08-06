@@ -27,7 +27,7 @@ function actionForVirtualSymbol(action, asset, currency, bridge)
     }
     else
     {
-        api.unsubscribeVirtualPrice(asset, currency, bridge, onVirtualPrice).
+        api.unsubscribeVirtualPrice(asset, currency, bridge).
         then(()=>{
             logger.info(`Unsubscription successful for ${asset}_${currency}_${bridge}`)
         }).
@@ -52,7 +52,7 @@ async function actionForNormalSymbol(action, symbol)
     }
     else
     {
-        api.unsubscribePrice(symbol, onPrice).
+        api.unsubscribePrice(symbol).
         then(()=>{
             logger.info(`Unsubscription successful for ${symbol}`)
         }).
