@@ -10,6 +10,7 @@ const io = new Socket_io.Server(httpServer)
 const appSpecificErrors = require('../appSpecificErrors')
 const SpuriousUnsubscription = appSpecificErrors.SpuriousUnsubscription
 const DuplicateSubscription = appSpecificErrors.DuplicateSubscription
+const InvalidSymbol = appSpecificErrors.InvalidSymbol
 const createVirtualTradingPairName = CommonUtils.createVirtualTradingPairName
 const disintegrateVirtualTradingPairName = CommonUtils.disintegrateVirtualTradingPairName
 
@@ -77,6 +78,9 @@ async function mainLoop(logger){
                     if(err instanceof DuplicateSubscription){
                         socket.emit('subscriptionFailure', symbol, `Duplicate subscription request for symbol: ${symbol}`)
                     }
+                    else if(err instanceof InvalidSymbol){
+                        socket.emit('subscriptionFailure', symbol, `Invalid symbol: ${symbol}`)
+                    }
                     logger.warn(`Error while subscription for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
                 })
         })
@@ -107,6 +111,9 @@ async function mainLoop(logger){
             catch((err)=>{
                 if(err instanceof DuplicateSubscription){
                     socket.emit('virtualSubscriptionFailure', asset, currency, bridge, `Duplicate subscription request for symbol: ${symbol}`)
+                }
+                else if(err instanceof InvalidSymbol){
+                    socket.emit('virtualSubscriptionFailure', asset, currency, bridge, `Invalid symbol: ${symbol}`)
                 }
                 logger.warn(`Error while subscription for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
             })
