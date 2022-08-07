@@ -234,28 +234,6 @@ module.exports = {
             },
         })
 
-        process.on('SIGKILL', ()=>{
-            logger.warn("SIGINT recieved, cancelling all subscriptions")
-            cancelAllSubscriptions().
-            then(()=>{
-                logger.warn("All subscriptions cancelled")
-            }).
-            catch((err)=>{
-                logger.warn(`Error while cancelling all subscriptions, details: ${err.message} `)
-            })
-        })
-
-        process.on('SIGINT', ()=>{
-            logger.warn("SIGINT recieved, cancelling all subscriptions")
-            cancelAllSubscriptions().
-            then(()=>{
-                logger.warn("All subscriptions cancelled")
-            }).
-            catch((err)=>{
-                logger.warn(`Error while cancelling all subscriptions, details: ${err.message} `)
-            })
-        })
-
         await Promise.all([kafkaReaderLoop, clientEntryPointFunction(logger)])
     },
 
