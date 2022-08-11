@@ -3,7 +3,11 @@ const { io } = require('socket.io-client')
 const CommonUils = require("../CommonUtils")
 const logger = CommonUils.createFileLogger("TestClientApp.log") 
 
-const sock = io("http://localhost:30000")
+const serverAddress = `http://${process.argv[2]}`
+console.log(`Connecting to the server ${serverAddress}`)
+
+
+const sock = io(serverAddress)
 sock.on('connect', ()=>{
     logger.info(`Connected by id: ${sock.id}`)
 })

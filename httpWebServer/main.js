@@ -15,8 +15,9 @@ const createVirtualTradingPairName = CommonUtils.createVirtualTradingPairName
 const disintegrateVirtualTradingPairName = CommonUtils.disintegrateVirtualTradingPairName
 
 
-httpServer.listen(30000, () => {
-    console.log("listening on 30000...")
+const listenPort = parseInt(process.argv[3])
+httpServer.listen(listenPort, () => {
+    console.log(`listening on ${listenPort}...`)
 });
 
 async function mainLoop(logger){
@@ -137,4 +138,4 @@ async function mainLoop(logger){
     })
 }
 
-api.start("test", mainLoop, ['localhost:9092','127.0.0.1:9092'], "DemoApp", api.Loglevel.DEBUG).then(()=>{})
+api.start("test", mainLoop, [process.argv[2]], "DemoApp", api.Loglevel.DEBUG).then(()=>{})
