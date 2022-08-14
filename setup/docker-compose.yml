@@ -29,7 +29,7 @@ services:
       - kafka
     depends_on:
       - kafka
-    command: bash -c "sleep 10 && python3 ./marketConnectivity/per_algo_scripts/PriceFetcher.py kafka:9092"
+    command: bash -c "sleep 10 && python3 ./marketConnectivity/per_algo_scripts/PriceFetcher.py kafka:9092 MarketGateway"
   WebServer:
     image: node:16.16-alpine3.15
     volumes:
@@ -39,7 +39,7 @@ services:
       - kafka
     depends_on:
       - mkt_gateway
-    command: node ./httpWebServer/main.js kafka:9092 80
+    command: node ./httpWebServer/main.js kafka:9092 80 WebServer
     ports:
       - "80:80"
   price_dispatcher:

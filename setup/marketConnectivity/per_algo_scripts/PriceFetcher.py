@@ -10,15 +10,20 @@ from ConversionDataProvider import ConversiondataProvider
 from NetworkComplaintHandler import NetworkComplaintHandler
 from enum import Enum
 
+broker = sys.argv[1]
+appId = sys.argv[2]
+
 logger = logging.getLogger('tcpserver')
 #logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.DEBUG)
 FORMAT = '%(asctime)-15s %(message)s'
 now = datetime.now()
-FILENAME= "TestLog_" + str(now.date()) + ".log"
+date = now.date()
+time = now.time()
+filenameSuffix = str(date) + "_" +  str(time.hour) + ":" + str(time.minute) + ":" + str(time.second) + ".log"
+FILENAME= appId + filenameSuffix
 logging.basicConfig(format=FORMAT, filename=FILENAME)
 
-broker = sys.argv[1]
 class VirtualPriceHandler:
     def __init__(self, producer, asset, currency, bridge):
         self.producer = producer

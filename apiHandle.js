@@ -1,11 +1,9 @@
 const { Kafka } = require('kafkajs')
 const winston = require('winston')
-const { Console } = require('winston/lib/winston/transports')
 const fs = require('fs');
 const readline = require('readline');
 const CommonUtils = require("./CommonUtils")
 const appSpecificErrors = require('./appSpecificErrors');
-const { json } = require('express');
 
 subscriptionBook = new Map()
 virtualSubscriptionBook = new Map()
@@ -36,7 +34,7 @@ const KafkatoWinstonLogLevel = level => {
         case Kafka.DEBUG:
             return 'debug'
         default:
-            return 'debug'
+            return 'info'
     }
 }
 
@@ -51,7 +49,22 @@ function enumToWinstomLogLevel(level) {
         case NativeLoglevel.DEBUG:
             return 'debug'
         default:
-            return 'debug'
+            return 'info'
+    }
+}
+
+function enumToKafkaLogLevel(level) {
+    switch (level) {
+        case NativeLoglevel.ERROR:
+            return Kafka.ERROR
+        case NativeLoglevel.WARN:
+            return Kafka.WARN
+        case NativeLoglevel.INFO:
+            return Kafka.INFO
+        case NativeLoglevel.DEBUG:
+            return Kafka.DEBUG
+        default:
+            return Kafka.INFO
     }
 }
 
@@ -205,13 +218,23 @@ module.exports = {
 
     start: async function (apiHandleId, clientEntryPointFunction, hosts, applId, logLevel) {
         appId = applId
+        const date = new Date()
+        const timeSuffix =  date.getFullYear().toString() + "-" +
+                            (date.getMonth() + 1).toString().padStart(2, '0') + "-" +
+                            date.getDate().toString().padStart(2, '0') + "_" +
+                            date.getHours().toString().padStart(2, '0') + ":" +
+                            date.getMinutes().toString().padStart(2, '0') + ":" +
+                            date.getSeconds().toString().padStart(2, '0')
+        const appFileName = applId + "_" + timeSuffix + ".log"
+        const kafkFileName = "Kafka_" + appFileName
+
         await loadSymbols()
         kafka = new Kafka({
             clientId: apiHandleId,
             brokers: hosts,
-            logLevel: Kafka.ERROR,
+            logLevel: enumToKafkaLogLevel(logLevel),
             logCreator: (logLevel) => {
-                return WinstonLogCreator(logLevel, "kafka.log")
+                return WinstonLogCreator(logLevel, kafkFileName)
             }
         })
 
@@ -228,14 +251,14 @@ module.exports = {
         })
 
         await consumer.subscribe({ topic: applId, fromBeginning: false })
-        logger = CommonUtils.createFileLogger(applId + ".log", enumToWinstomLogLevel(logLevel))
+        logger = CommonUtils.createFileLogger(appFileName, enumToWinstomLogLevel(logLevel))
         kafkaReaderLoop = consumer.run(
             {
                 eachMessage: async ({ topic, partition, message }) => {
                     const raw = message.value.toString()
                     const dict = JSON.parse(raw)
                     const messageType = dict["message_type"]
-                    logger.info(`Data recieved: ${JSON.stringify(dict)}`)
+                    logger.debug(`Data recieved: ${JSON.stringify(dict)}`)
                     if("depth" === messageType){
                         onNormalPriceData(dict, raw)
                     }

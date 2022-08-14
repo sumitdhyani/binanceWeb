@@ -14,8 +14,32 @@ const InvalidSymbol = appSpecificErrors.InvalidSymbol
 const createVirtualTradingPairName = CommonUtils.createVirtualTradingPairName
 const disintegrateVirtualTradingPairName = CommonUtils.disintegrateVirtualTradingPairName
 
+function stringToAPILogLevel(level){
+    if(level.toUpperCase() === "ERROR"){
+        return api.Loglevel.ERROR
+    }
+    else if(level.toUpperCase() === "WARN"){
+        return api.Loglevel.WARN
+    }
+    else if(level.toUpperCase() === "INFO"){
+        return api.Loglevel.INFO
+    }
+    else if(level.toUpperCase() === "DEBUG"){
+        return api.Loglevel.DEBUG
+    }
+    else{
+        return api.Loglevel.INFO
+    }
+}
 
+const broker = process.argv[2] 
 const listenPort = parseInt(process.argv[3])
+const appId = process.argv[4]
+let logLevel = api.Loglevel.INFO
+if(undefined !== process.argv[5]){
+    logLevel = stringToAPILogLevel(process.argv[5])
+}
+
 httpServer.listen(listenPort, () => {
     console.log(`listening on ${listenPort}...`)
 });
@@ -138,7 +162,7 @@ async function mainLoop(logger){
     })
 }
 
-api.start("test", mainLoop, [process.argv[2]], "WebServer", api.Loglevel.DEBUG).then(()=>{}).catch((err)=>{
+api.start(appId, mainLoop, [broker], appId, logLevel).then(()=>{}).catch((err)=>{
     console.log(`Error in init phase, details: ${err.message}, exiting...`)
     process.exit(0)
 })
