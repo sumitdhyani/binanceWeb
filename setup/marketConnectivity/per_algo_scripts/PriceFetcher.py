@@ -29,7 +29,7 @@ class VirtualPriceHandler:
     async def onPrice(self, depth):
         #logger.debug("%s : %s, %s", self.asset + self.currency, str(depth[0][0]), depth[1][0])
         if depth[0][0] is not None and depth[1][0] is not None:
-            msgDict = {"symbol" : self.asset + self.currency, "asset" : self.asset, "currency" : self.currency, "bridge" : self.bridge, "bids" : [depth[0]], "asks" : [depth[1]]}
+            msgDict = {"message_type" : "virtual_depth", "symbol" : self.asset + self.currency, "asset" : self.asset, "currency" : self.currency, "bridge" : self.bridge, "bids" : [depth[0]], "asks" : [depth[1]]}
             await self.producer.send_and_wait("virtual_prices", bytes(json.dumps(msgDict), 'utf-8'))        
 
 class PriceHandler:
@@ -42,7 +42,7 @@ class PriceHandler:
         bidLen = min(5, len(bids))
         askLen = min(5, len(asks))
         logger.debug("%s : %s, %s", depth.symbol, str(bids[0][0]), str(asks[1][0]))
-        msgDict = {"symbol" : depth.symbol, "bids" : bids[0:bidLen], "asks" : asks[0:askLen]}
+        msgDict = {"message_type" : "depth", "symbol" : depth.symbol, "bids" : bids[0:bidLen], "asks" : asks[0:askLen]}
         await self.producer.send_and_wait("prices", bytes(json.dumps(msgDict), 'utf-8'))
 
     
@@ -96,7 +96,8 @@ async def run():
     ddp = DepthDataProvider(client, networkComplaintHandler.registerComplaint, logger)
     cdp = ConversiondataProvider(lambda x, y : x + y, lambda pair, curr : pair[0 : pair.find(curr)], ddp.subscribe, ddp.unsubscribe, logger)
     consumer = aiokafka.AIOKafkaConsumer("price_subscriptions", "virtual_price_subscriptions",
-                                         bootstrap_servers=broker
+                                         bootstrap_servers=broker,
+                                         group_id="price_fetcher"
                                         )
     producer = aiokafka.AIOKafkaProducer(bootstrap_servers=broker)
     await producer.start()

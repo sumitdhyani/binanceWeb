@@ -33,11 +33,11 @@ async function mainLoop(logger){
         subscriptions = new Set()
         virtualSubscriptions = new Set()
         const normalPriceCallBack = function(depth){
-            socket.emit('depth', JSON.stringify(depth))
+            socket.emit('depth', depth)
         }
 
         const virtualPriceCallBack = function(depth){
-            socket.emit('virtualDepth', JSON.stringify(depth))
+            socket.emit('virtualDepth', depth)
         }
 
         socket.on('disconnect', ()=> {
@@ -138,4 +138,7 @@ async function mainLoop(logger){
     })
 }
 
-api.start("test", mainLoop, [process.argv[2]], "DemoApp", api.Loglevel.DEBUG).then(()=>{})
+api.start("test", mainLoop, [process.argv[2]], "WebServer", api.Loglevel.DEBUG).then(()=>{}).catch((err)=>{
+    console.log(`Error in init phase, details: ${err.message}, exiting...`)
+    process.exit(0)
+})
