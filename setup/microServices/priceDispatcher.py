@@ -33,8 +33,9 @@ subscriptionBook = {}
 
 async def dispatchPrice(producer, dict, raw):
     symbol = dict["symbol"]
+    rawBytes = bytes(raw, 'utf-8')
     if symbol in subscriptionBook.keys():
-        await asyncio.gather(*[producer.send_and_wait(topic, bytes(json.dumps(dict), 'utf-8')) for topic in subscriptionBook[symbol]])
+        await asyncio.gather(*[producer.send_and_wait(topic, rawBytes) for topic in subscriptionBook[symbol]])
     else:
         logger.warn("Price received for unsubscribed symbol")
 
