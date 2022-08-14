@@ -3,26 +3,17 @@ from selectors import EpollSelector
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
-import logging, asyncio, Keys, sys, binance, json, aiokafka
-from datetime import datetime
+sys.path.insert(0, os.path.dirname(parentdir))
+import asyncio, Keys, sys, binance, json, aiokafka
 from DepthDataProvider import DepthDataProvider
 from ConversionDataProvider import ConversiondataProvider
 from NetworkComplaintHandler import NetworkComplaintHandler
-from enum import Enum
-
+from CommonUtils import getLoggingLevel, getLogger
+  
 broker = sys.argv[1]
 appId = sys.argv[2]
-
-logger = logging.getLogger('tcpserver')
-#logger.addHandler(logging.StreamHandler(sys.stdout))
-logger.setLevel(logging.DEBUG)
-FORMAT = '%(asctime)-15s %(message)s'
-now = datetime.now()
-date = now.date()
-time = now.time()
-filenameSuffix = str(date) + "_" +  str(time.hour) + ":" + str(time.minute) + ":" + str(time.second) + ".log"
-FILENAME= appId + filenameSuffix
-logging.basicConfig(format=FORMAT, filename=FILENAME)
+loggingLevel = getLoggingLevel(sys.argv[3]) if(len(sys.argv) >= 4) else getLoggingLevel("")
+logger = getLogger(loggingLevel, appId)
 
 class VirtualPriceHandler:
     def __init__(self, producer, asset, currency, bridge):

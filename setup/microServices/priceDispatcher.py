@@ -2,34 +2,16 @@ import os, sys, inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
-import logging, asyncio, sys, json, aiokafka
+import asyncio, sys, json, aiokafka
 from datetime import datetime
-
-def getLoggingLevel(level):
-    level_uc = level.upper()
-    if level_uc == "ERROR":
-        return logging.ERROR
-    elif level_uc == "WARN":
-        return logging.WARN
-    elif level_uc == "INFO":
-        return logging.INFO
-    elif level_uc == "DEBUG":
-        return logging.DEBUG
-    
+from CommonUtils import getLoggingLevel, getLogger
+  
 broker = sys.argv[1]
 appId = sys.argv[2]
-loggingLevel = logging.INFO
-if(len(sys.argv) >= 4):
-    loggingLevel= getLoggingLevel(sys.argv[3])
+loggingLevel = getLoggingLevel(sys.argv[3]) if(len(sys.argv) >= 4) else getLoggingLevel("")
 
-logger = logging.getLogger('tcpserver')
-#logger.addHandler(logging.StreamHandler(sys.stdout))
-logger.setLevel(loggingLevel)
-FORMAT = '%(asctime)-15s %(message)s'
-now = datetime.now()
-FILENAME= appId + "_" + str(now.date()) + ".log"
-logging.basicConfig(format=FORMAT, filename=FILENAME)
 subscriptionBook = {}
+logger = getLogger(loggingLevel, appId)
 
 async def dispatchPrice(producer, dict, raw):
     symbol = dict["symbol"]
