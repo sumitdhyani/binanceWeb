@@ -26,3 +26,12 @@ def getLogger(level, appId):
     FILENAME= appId + "_" + dateSuffix + ".log"
     logging.basicConfig(format=FORMAT, filename=FILENAME)
     return logger
+
+def generateBinanceTradingPairName(asset, currency):
+    return asset + currency
+
+def generateBinanceVirtualTradingPairName(asset, currency, bridge):
+    return asset + "_" + currency + "_" + bridge
+
+def extractAssetFromSymbolName(tradingPair, currency):
+    return tradingPair[0 : tradingPair.find(currency)]

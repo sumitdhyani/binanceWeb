@@ -1,56 +1,6 @@
 from DepthDataProvider import DepthDataProvider
 import asyncio
-import binance
 from AsyncEvent import AsyncEvent
-
-# class PairRatioProvider:
-#     def __init__(self, sourceSymbol, destSymbol, bridgeCurrency, tradingpairNameGenerator, subscriberFunc, unsubscriberFunc, logger):
-#         tradingPairs = tradingpairNameGenerator(sourceSymbol, destSymbol, bridgeCurrency)
-#         self.sourceTradingPair = tradingPairs[0]
-#         self.destTradingPair = tradingPairs[1]
-#         self.sourcePrice = 0.0
-#         self.destPrice = 0.0
-#         self.subscriberFunc = subscriberFunc
-#         self.unsubscriberFunc = unsubscriberFunc
-#         self.ratioUpdateEvent = AsyncEvent.AsyncEvent()
-#         self.logger = logger
-        
-#     async def onSourcePriceUpdate(self, depth):
-#         depth = depth.get_bids()
-#         if 0 < len(depth):
-#             self.sourcePrice = (depth[0])[0]
-#             if 0.0 < self.destPrice:
-#                 ratio = self.sourcePrice / self.destPrice
-#                 await self.ratioUpdateEvent(ratio)
-
-
-#     async def onDestPriceUpdate(self, depth):
-#         depth = depth.get_asks()
-#         if 0 < len(depth):
-#             self.destPrice = (depth[0])[0]
-#             if 0.0 < self.sourcePrice:
-#                 ratio = self.sourcePrice / self.destPrice
-#                 await self.ratioUpdateEvent(ratio)
-
-#     async def subscribe(self, callback):
-#         if self.ratioUpdateEvent.empty():
-#             await self.subscriberFunc(self.sourceTradingPair, self.onSourcePriceUpdate)
-#             await self.subscriberFunc(self.destTradingPair, self.onDestPriceUpdate)
-        
-#         self.ratioUpdateEvent += callback
-
-#     async def unsubscribe(self, callback):
-#         try:
-#             self.ratioUpdateEvent -= callback
-#             if self.ratioUpdateEvent.empty():
-#                 self.unsubscriberFunc(self.sourceTradingPair, self.onSourcePriceUpdate)
-#                 self.unsubscriberFunc(self.destTradingPair, self.onDestPriceUpdate)
-#         except:
-#             self.logger.warning("Spurious unsubscription")
-#             pass
-    
-#     def empty(self):
-#         return self.ratioUpdateEvent.empty()
 
 class PerCurrencyConversiondataProvider:
     def __init__(self, bridge, tradingpairNameGenerator, tradingPairNameDisintegrator, subscriberFunc, unsubscriberFunc, logger):
@@ -145,7 +95,7 @@ class PerCurrencyConversiondataProvider:
             for converted in self.converteeDictionary[baseSymbol].keys():
                 await self.subscriberDictionary[converted + baseSymbol](self.getPricesForTradingPair(converted, baseSymbol))
     
-    def unsubscribe(self, source, dest, callback):
+    async def unsubscribe(self, source, dest, callback):
         tradingPair = source + dest
         if tradingPair not in self.subscriberDictionary.keys():
             return
@@ -161,13 +111,13 @@ class PerCurrencyConversiondataProvider:
                     self.convertedDictionary.pop(source)
                     if source not in self.converteeDictionary.keys():
                         mktTradingPair = self.tradingpairNameGenerator(source, self.bridge)
-                        self.unsubscriberFunc(mktTradingPair, self.onDepth)
+                        await self.unsubscriberFunc(mktTradingPair, self.onDepth)
                         self.priceTable.pop(mktTradingPair)
                 if 0 == len(self.converteeDictionary[dest]):
                     self.converteeDictionary.pop(dest)
                     if dest not in self.convertedDictionary.keys():
                         mktTradingPair = self.tradingpairNameGenerator(dest, self.bridge)
-                        self.unsubscriberFunc(mktTradingPair, self.onDepth)
+                        await self.unsubscriberFunc(mktTradingPair, self.onDepth)
                         self.priceTable.pop(mktTradingPair)
             else:
                 self.convertedDictionary[source][dest] -= 1
@@ -191,10 +141,10 @@ class ConversiondataProvider:
             self.perCurrencyConversiondataProvider[bridge] = PerCurrencyConversiondataProvider(bridge, self.tradingpairNameGenerator, self.tradingPairNameDisintegrator, self.subscriberFunc, self.unsubscriberFunc, self.logger)
         await self.perCurrencyConversiondataProvider[bridge].subscribe(source, dest, callback)
 
-    def unsubscribe(self, bridge, source, dest, callback):
+    async def unsubscribe(self, bridge, source, dest, callback):
         if bridge in self.perCurrencyConversiondataProvider.keys():
             conversionDataProvider = self.perCurrencyConversiondataProvider[bridge]
-            conversionDataProvider.unsubscribe(source, dest, callback)
+            await conversionDataProvider.unsubscribe(source, dest, callback)
             if conversionDataProvider.empty():
                 self.perCurrencyConversiondataProvider.pop(bridge)
 ###############################################################################################
