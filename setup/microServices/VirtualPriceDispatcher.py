@@ -1,4 +1,5 @@
 import os, sys, inspect, asyncio, json
+from pydoc_data.topics import topics
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
@@ -33,25 +34,24 @@ async def dispatchPrice(msg):
 
 async def registerSubscription(asset, currency , bridge, virtualSymbol, destinationTopic):
     if virtualSymbol not in subscriptionBook.keys():
-        await produce("virtual_price_calculations", generateSubMsgBytes(asset, currency, bridge))
         subscriptionBook[virtualSymbol] = set([destinationTopic])
-        print(subscriptionBook.keys())
+        await produce("virtual_price_calculations", generateSubMsgBytes(asset, currency, bridge))
     elif destinationTopic not in subscriptionBook[virtualSymbol]:
         subscriptionBook[virtualSymbol].add(destinationTopic)
     else:
         logger.warn("Duplicate subscription attempted for: %s destination topic: %s", virtualSymbol, destinationTopic)
         
-async def unregisterSubscription(asset, currency, bridge, virtualSymbol, topic):
+async def unregisterSubscription(asset, currency, bridge, virtualSymbol, destinationTopic):
     try:
         if virtualSymbol in subscriptionBook.keys():
-            subscriptionBook[virtualSymbol].remove(topic)
+            subscriptionBook[virtualSymbol].remove(destinationTopic)
             if 0 == len(subscriptionBook[virtualSymbol]):
                 await produce("virtual_price_calculations", generateUnSubMsgBytes(asset, currency, bridge))
                 subscriptionBook.pop(virtualSymbol)
         else:
-            logger.warn("Unsubscription attempted for " + virtualSymbol + " which has no active subscriptions")
+            logger.warn("Unsubscription attempted for %s which has no active subscriptions", virtualSymbol)
     except KeyError:
-        logger.warn("Unsubscription attempted for " + virtualSymbol + ", topic " + topic + " which is not an active listener for this symbol")
+        logger.warn("Unsubscription attempted for %s topic %s which is not an active listener for this symbol", virtualSymbol, destinationTopic)
 
 async def onSubMsg(msg):
     msgDict = json.loads(msg)

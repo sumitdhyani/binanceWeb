@@ -1,10 +1,10 @@
-import os, sys, inspect
+import os, sys, inspect, asyncio, json
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
-import asyncio, sys, json, aiokafka
-from datetime import datetime
 from CommonUtils import getLoggingLevel, getLogger
+from CommonUtils import generateBinanceVirtualTradingPairName as generateVirtualTradingPairName
+from CommunicationLayer import startCommunication, produce
   
 broker = sys.argv[1]
 appId = sys.argv[2]
@@ -13,56 +13,58 @@ loggingLevel = getLoggingLevel(sys.argv[3]) if(len(sys.argv) >= 4) else getLoggi
 subscriptionBook = {}
 logger = getLogger(loggingLevel, appId)
 
-async def dispatchPrice(producer, dict, raw):
+def generateSubMsgBytes(symbol):
+    dict = { "symbol": symbol, "action": "subscribe" }
+    return bytes(json.dumps(dict), 'utf-8')
+
+def generateUnSubMsgBytes(symbol):
+    dict = { "symbol": symbol, "action": "unsubscribe" }
+    return bytes(json.dumps(dict), 'utf-8')
+
+async def dispatchPrice(msg):
+    dict = json.loads(msg)
     symbol = dict["symbol"]
-    rawBytes = bytes(raw, 'utf-8')
+    rawBytes = bytes(msg, 'utf-8')
     if symbol in subscriptionBook.keys():
-        await asyncio.gather(*[producer.send_and_wait(topic, rawBytes) for topic in subscriptionBook[symbol]])
+        await asyncio.gather(*[produce(topic, rawBytes) for topic in subscriptionBook[symbol]])
     else:
-        logger.warn("Price received for unsubscribed symbol")
+        logger.warn("Price received for unsubscribed symbol %s", symbol)
 
-def registerSubscription(symbol, topic):
+async def registerSubscription(symbol, destinationTopic):
     if symbol not in subscriptionBook.keys():
-        subscriptionBook[symbol] = set()
-    subscriptionBook[symbol].add(topic)
+        subscriptionBook[symbol] = set([destinationTopic])
+        await produce("market_price_subscriptions", generateSubMsgBytes(symbol))
+    elif destinationTopic not in subscriptionBook[symbol]:
+        subscriptionBook[symbol].add(destinationTopic)
+    else:
+        logger.warn("Duplicate subscription attempted for: %s destination topic: %s", symbol, destinationTopic)
 
-def unregisterSubscription(symbol, topic):
+async def unregisterSubscription(symbol, destinationTopic):
     try:
         if symbol in subscriptionBook.keys():
-            subscriptionBook[symbol].remove(topic)
+            subscriptionBook[symbol].remove(destinationTopic)
+            if 0 == len(subscriptionBook[symbol]):
+                await produce("market_price_subscriptions", generateUnSubMsgBytes(symbol))
+                subscriptionBook.pop(symbol)
         else:
-            logger.warn("Unsubscription attempted for " + symbol + " which has no active subscriptions")
+            logger.warn("Unsubscription attempted for %s which has no active subscriptions", symbol)
     except KeyError:
-        logger.warn("Unsubscription attempted for " + symbol + ", topic " + topic + " which is not an active listener for this symbol")
+        logger.warn("Unsubscription attempted for %s topic %s which is not an active listener for this symbol", symbol, destinationTopic)
 
+async def onSubMsg(msg):
+    msgDict = json.loads(msg)
+    symbol = msgDict["symbol"]
+    action = msgDict["action"]
+    dest_topic = msgDict["destination_topic"]
+    if("subscribe" == action):
+        await registerSubscription(symbol, dest_topic)
+    else:
+        await unregisterSubscription(symbol, dest_topic)
 
 async def run():
-    consumer = aiokafka.AIOKafkaConsumer("price_subscriptions", 
-                                         "prices",
-                                         bootstrap_servers=broker,
-                                         group_id="price_dispatcher"
-                                        )
-    producer = aiokafka.AIOKafkaProducer(bootstrap_servers=broker)
-    await producer.start()
-    await consumer.start()
-    try:
-        async for kafkaMsg in consumer:
-            msg = kafkaMsg.value.decode("utf-8")
-            topic = kafkaMsg.topic
-            logger.debug("Subscription received: %s", msg)
-            msgDict = json.loads(msg)
-
-            if "prices" == topic:
-                await dispatchPrice(producer, msgDict, msg)
-            elif "price_subscriptions" == topic:
-                symbol = msgDict["symbol"]
-                action = msgDict["action"]
-                dest_topic = msgDict["destination_topic"]
-                if("subscribe" == action):
-                    registerSubscription(symbol, dest_topic)
-                else:
-                    unregisterSubscription(symbol, dest_topic)
-    finally:
-        await consumer.stop()
-
+    await startCommunication({"price_subscriptions" : onSubMsg, "prices" : dispatchPrice},
+                              broker,
+                              appId,
+                              "price_dispatcher",
+                              logger)
 asyncio.run(run())

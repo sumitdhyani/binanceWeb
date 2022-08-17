@@ -71,10 +71,10 @@ cdp = ConversiondataProvider(generateTradingPairName,
 async def onPriceSubscription(msgDict):
     asset, currency, bridge = msgDict["asset"], msgDict["currency"], msgDict["bridge"]
     virtualInstrument = generateVirtualTradingPairName(asset, currency, bridge)
-    virtualPriceHandler = uniqueSubscriptions.get(virtualInstrument)
-    if virtualPriceHandler is not None:
+    if virtualInstrument not in uniqueSubscriptions.keys():
         virtualPriceHandler = VirtualPriceHandler(asset, currency, bridge)
-        await cdp.subscribe(asset, currency, virtualPriceHandler.onPrice)
+        uniqueSubscriptions[virtualInstrument] = virtualPriceHandler
+        await cdp.subscribe(asset, currency, bridge, virtualPriceHandler.onPrice)
         logger.debug("Successful subscription for %s", virtualInstrument)
     else:
         logger.warn("Duplicate subscription for %s", virtualInstrument)
@@ -82,9 +82,8 @@ async def onPriceSubscription(msgDict):
 async def onPriceUnsubscription(msgDict):
     asset, currency, bridge = msgDict["asset"], msgDict["currency"], msgDict["bridge"]
     virtualInstrument = generateVirtualTradingPairName(asset, currency, bridge)
-    virtualPriceHandler = uniqueSubscriptions.get(virtualInstrument)
-    if virtualPriceHandler is not None:
-        await cdp.unsubscribe(asset, currency, bridge, virtualPriceHandler.onPrice) 
+    if virtualInstrument in uniqueSubscriptions.keys():
+        await cdp.unsubscribe(asset, currency, bridge, uniqueSubscriptions[virtualInstrument].onPrice) 
         uniqueSubscriptions.pop(virtualInstrument)
         logger.debug("Successful unsubscription for %s", virtualInstrument)
     else:
@@ -94,15 +93,15 @@ async def onSubMsg(msg):
     dict = json.loads(msg)
     action = dict["action"]
     if "subscribe" == action:
-        onPriceSubscription(dict)
+        await onPriceSubscription(dict)
     else:
-        onPriceUnsubscription(dict)
+        await onPriceUnsubscription(dict)
 
 async def OnInBoundMsg(msg):
     dict = json.loads(msg)
     msgType = dict["message_type"]
     if(msgType == "depth"):
-        vanillaPriceFetcher.onDepth(dict)
+        await vanillaPriceFetcher.onDepth(dict)
     else:
         logger.warn("Unrecognized message type: %s received", msgType)
 

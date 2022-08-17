@@ -16,9 +16,9 @@ class PerCurrencyConversiondataProvider:
         self.priceTable = {}
 
 
-    async def subscribe(self, source, dest, callback): 
+    async def subscribe(self, asset, currency, callback): 
         #Subscription table, keeps track of subscribers to this pair
-        subscriberPairIdentifier = source + dest
+        subscriberPairIdentifier = asset + currency
         if subscriberPairIdentifier not in self.subscriberDictionary.keys():
             self.subscriberDictionary[subscriberPairIdentifier] = AsyncEvent()
         self.subscriberDictionary[subscriberPairIdentifier] += callback
@@ -26,34 +26,34 @@ class PerCurrencyConversiondataProvider:
         #Decide whether or not to subscribe the market instruments for source and dest
         needToSubscribeSource = False
         needToSubscribeDest = False
-        if  not (source in self.convertedDictionary.keys() or source in self.converteeDictionary.keys()):
+        if  not (asset in self.convertedDictionary.keys() or asset in self.converteeDictionary.keys()):
             needToSubscribeSource = True
-        if  not (dest in self.convertedDictionary.keys() or dest in self.converteeDictionary.keys()):
+        if  not (currency in self.convertedDictionary.keys() or currency in self.converteeDictionary.keys()):
             needToSubscribeDest = True
 
         #increment the subscription counts in converted and convertee dictionaries
-        if source not in self.convertedDictionary.keys():
-            self.convertedDictionary[source] = {dest : 0}
-        elif dest not in self.convertedDictionary[source].keys():
-            self.convertedDictionary[source][dest] = 0
+        if asset not in self.convertedDictionary.keys():
+            self.convertedDictionary[asset] = {currency : 0}
+        elif currency not in self.convertedDictionary[asset].keys():
+            self.convertedDictionary[asset][currency] = 0
 
-        if dest not in self.converteeDictionary.keys():
-            self.converteeDictionary[dest] = {source : 0}
-        elif source not in self.converteeDictionary[dest].keys():
-            self.converteeDictionary[dest][source] = 0
+        if currency not in self.converteeDictionary.keys():
+            self.converteeDictionary[currency] = {asset : 0}
+        elif asset not in self.converteeDictionary[currency].keys():
+            self.converteeDictionary[currency][asset] = 0
             
-        self.convertedDictionary[source][dest] += 1
-        self.converteeDictionary[dest][source] += 1
+        self.convertedDictionary[asset][currency] += 1
+        self.converteeDictionary[currency][asset] += 1
 
         #subscribe in open market if needed
         if needToSubscribeSource:
-            await self.subscriberFunc(self.tradingpairNameGenerator(source, self.bridge), self.onDepth)
+            await self.subscriberFunc(self.tradingpairNameGenerator(asset, self.bridge), self.onDepth)
         if needToSubscribeDest:
-            await self.subscriberFunc(self.tradingpairNameGenerator(dest, self.bridge), self.onDepth)
+            await self.subscriberFunc(self.tradingpairNameGenerator(currency, self.bridge), self.onDepth)
 
-    def getPricesForTradingPair(self, source, dest):
-        sourceMktPair = self.tradingpairNameGenerator(source, self.bridge)
-        destMktPair = self.tradingpairNameGenerator(dest, self.bridge)
+    def getPricesForTradingPair(self, asset, currency):
+        sourceMktPair = self.tradingpairNameGenerator(asset, self.bridge)
+        destMktPair = self.tradingpairNameGenerator(currency, self.bridge)
 
         sourcePrices = None if sourceMktPair not in self.priceTable.keys() else self.priceTable[sourceMktPair]
         destPrices = None if destMktPair not in self.priceTable.keys() else self.priceTable[destMktPair]
@@ -74,16 +74,18 @@ class PerCurrencyConversiondataProvider:
         return ((bidLevel, askLevel))
         
     async def onDepth(self, depth):
-        symbol = depth.symbol
+        symbol = depth["symbol"]
         baseSymbol = self.tradingPairNameDisintegrator(symbol, self.bridge)
         if not(baseSymbol in self.convertedDictionary.keys() or baseSymbol in self.converteeDictionary.keys()):#The symbol was unsubscribed before this update was recieved
             return
 
+        bids = depth["bids"]
+        asks = depth["asks"]
         bestBidLevel, bestAskLevel = (None, None),  (None, None)
-        if 0 < len(depth.get_bids()):
-            bestBidLevel = depth.get_bids()[0]
-        if 0 < len(depth.get_asks()):
-            bestAskLevel = depth.get_asks()[0]
+        if 0 < len(bids):
+            bestBidLevel = bids[0]
+        if 0 < len(asks):
+            bestAskLevel = asks[0]
 
         self.priceTable[symbol] = (bestBidLevel, bestAskLevel)
 
@@ -136,15 +138,15 @@ class ConversiondataProvider:
         self.logger = logger
         self.perCurrencyConversiondataProvider = {}
     
-    async def subscribe(self, bridge, source, dest, callback):
+    async def subscribe(self, asset, currency, bridge, callback):
         if bridge not in self.perCurrencyConversiondataProvider.keys():
             self.perCurrencyConversiondataProvider[bridge] = PerCurrencyConversiondataProvider(bridge, self.tradingpairNameGenerator, self.tradingPairNameDisintegrator, self.subscriberFunc, self.unsubscriberFunc, self.logger)
-        await self.perCurrencyConversiondataProvider[bridge].subscribe(source, dest, callback)
+        await self.perCurrencyConversiondataProvider[bridge].subscribe(asset, currency, callback)
 
-    async def unsubscribe(self, bridge, source, dest, callback):
+    async def unsubscribe(self, asset, currency, bridge, callback):
         if bridge in self.perCurrencyConversiondataProvider.keys():
             conversionDataProvider = self.perCurrencyConversiondataProvider[bridge]
-            await conversionDataProvider.unsubscribe(source, dest, callback)
+            await conversionDataProvider.unsubscribe(asset, currency, callback)
             if conversionDataProvider.empty():
                 self.perCurrencyConversiondataProvider.pop(bridge)
 ###############################################################################################
