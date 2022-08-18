@@ -1,14 +1,11 @@
-import os, sys, inspect, asyncio, json, aiokafka
-from pydoc import cli
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
+import os, sys, inspect, aiokafka
+from kafka.admin import KafkaAdminClient, NewTopic
+from kafka.errors import TopicAlreadyExistsError
 
 producer = None
 admin = None
-from kafka.admin import KafkaAdminClient, NewTopic
 
-async def startCommunication(topicsAndCallbacks, brokers, clientId, groupId, logger):
+async def startCommunication(topicsAndCallbacks, brokers, clientId, groupId, logger, topicsToCreate = []):
     global producer
     global admin
     producer = aiokafka.AIOKafkaProducer(bootstrap_servers=brokers)
@@ -22,6 +19,15 @@ async def startCommunication(topicsAndCallbacks, brokers, clientId, groupId, log
                                          client_id=clientId
                                         )
     admin = KafkaAdminClient(bootstrap_servers=brokers)
+    try:
+        for newTopic in topicsToCreate:
+            await createTopic(newTopic, 1, 1)
+    except TopicAlreadyExistsError as ex:
+        logger.warn("Topic %s already exists, ignoring the attempt to create the new topic", newTopic)
+    except Exception as ex:
+        logger.error("Error encountered while creating new topic: %s, error details: %s exiting the application", newTopic, str(ex))
+        return
+
     await producer.start()
     await consumer.start()
     

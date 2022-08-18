@@ -7,7 +7,7 @@ import Keys
 from DepthDataProvider import DepthDataProvider
 from NetworkComplaintHandler import NetworkComplaintHandler
 from CommonUtils import getLoggingLevel, getLogger
-from CommunicationLayer import startCommunication, createTopic, produce
+from CommunicationLayer import startCommunication, produce
   
 broker = sys.argv[1]
 appId = sys.argv[2]
@@ -29,7 +29,7 @@ async def onPriceSubscription(depthDataProvider, symbol):
     if symbol not in subscriptionBook:
         subscriptionBook.add(symbol)
         await depthDataProvider.subscribe(symbol, onPrice)
-        logger.warn("Subscription for %s", symbol)
+        logger.info("Subscription for %s", symbol)
     else:
         logger.warn("Duplicate subscription for %s", symbol)
         

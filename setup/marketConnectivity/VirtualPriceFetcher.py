@@ -3,7 +3,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 from ConversionDataProvider import ConversiondataProvider
-from CommunicationLayer import startCommunication, createTopic, produce
+from CommunicationLayer import startCommunication, produce
 from CommonUtils import getLoggingLevel, getLogger
 from CommonUtils import generateBinanceTradingPairName as generateTradingPairName
 from CommonUtils import generateBinanceVirtualTradingPairName as generateVirtualTradingPairName
@@ -106,15 +106,12 @@ async def OnInBoundMsg(msg):
         logger.warn("Unrecognized message type: %s received", msgType)
 
 async def run():
-    try:
-        createTopic(appId, 1 , 1)
-        await startCommunication({"virtual_price_calculations" : onSubMsg, appId : OnInBoundMsg},
-                                 broker,
-                                 appId,
-                                 "virtual_price_fetcher",
-                                 logger)
-    except Exception as ex:
-        logger.error("Error durig init phase, details: %s, exiting", str(ex))
+    await startCommunication({"virtual_price_calculations" : onSubMsg, appId : OnInBoundMsg},
+                                broker,
+                                appId,
+                                "virtual_price_fetcher",
+                                logger,
+                                [appId])
         
 
 asyncio.run(run())
