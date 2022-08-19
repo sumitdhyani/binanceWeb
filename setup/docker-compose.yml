@@ -21,7 +21,7 @@ services:
       - ./docker.sock:/var/run/docker.sock
       - ./kafka:/kafka
   mkt_gateway:
-    image: market_gateway
+    image: python_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
@@ -43,7 +43,7 @@ services:
     ports:
       - "80:80"
   price_dispatcher:
-    image: market_gateway
+    image: python_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
@@ -53,7 +53,7 @@ services:
       - WebServer
     command: bash -c "sleep 10 && python3 ./microServices/priceDispatcher.py kafka:9092 PriceDispatcher"
   virtual_price_fetcher:
-    image: market_gateway
+    image: python_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
@@ -63,7 +63,7 @@ services:
       - kafka
     command: bash -c "sleep 10 && python3 ./marketConnectivity/VirtualPriceFetcher.py kafka:9092 VirtualPriceFetcher DEBUG"
   virtual_price_dispatcher:
-    image: market_gateway
+    image: python_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
