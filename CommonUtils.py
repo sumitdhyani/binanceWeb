@@ -15,16 +15,19 @@ def getLoggingLevel(level):
         return logging.INFO
     
 def getLogger(level, appId):
-    logger = logging.getLogger('tcpserver')
-    #logger.addHandler(logging.StreamHandler(sys.stdout))
-    logger.setLevel(level)
-    FORMAT = '%(asctime)-15s %(message)s'
     now = datetime.now()
     date = now.date()
     time = now.time()
     dateSuffix = str(date) + "_" + str(time.hour).zfill(2) + ":" + str(time.minute).zfill(2) + ":" + str(time.second).zfill(2)
-    FILENAME= appId + "_" + dateSuffix + ".log"
-    logging.basicConfig(format=FORMAT, filename=FILENAME)
+    FILENAME= "./Logs/" + appId + "_" + dateSuffix + ".log"
+
+    logger = logging.getLogger('tcpserver')
+    logger.setLevel(level)
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s : %(name)s : %(message)s')
+    file_handler = logging.FileHandler(FILENAME)
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(file_handler)
     return logger
 
 def generateBinanceTradingPairName(asset, currency):

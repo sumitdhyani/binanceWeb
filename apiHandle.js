@@ -234,7 +234,7 @@ module.exports = {
             brokers: hosts,
             logLevel: enumToKafkaLogLevel(logLevel),
             logCreator: (logLevel) => {
-                return WinstonLogCreator(logLevel, kafkFileName)
+                return WinstonLogCreator(logLevel, "Logs/" + kafkFileName)
             }
         })
 
@@ -251,7 +251,7 @@ module.exports = {
         })
 
         await consumer.subscribe({ topic: applId, fromBeginning: false })
-        logger = CommonUtils.createFileLogger(appFileName, enumToWinstomLogLevel(logLevel))
+        logger = CommonUtils.createFileLogger("Logs/" + appFileName, enumToWinstomLogLevel(logLevel))
         kafkaReaderLoop = consumer.run(
             {
                 eachMessage: async ({ topic, partition, message }) => {
