@@ -41,33 +41,6 @@ class VanillaPriceFetcher:
             await self.subscriptionBook[symbol](depth)
         else:
             logger.warn("Internally Depth received for unsubscribed symbol %s", symbol)
-        
-class VirtualPriceHandler:
-    def __init__(self, asset, currency, bridge, subscriptionBook):
-        self.asset = asset
-        self.currency = currency
-        self.bridge = bridge
-        self.subscriptionBook = subscriptionBook
-        
-    async def onPrice(self, depth):
-        virtualSymbol = generateVirtualTradingPairName(self.asset, self.currency, self.bridge)
-        if (depth[0][0] is not None and 
-            depth[1][0] is not None and
-            virtualSymbol in subscriptionBook.keys()
-            ):
-            destinations = list(subscriptionBook[virtualSymbol])
-            msgDict = {"message_type" : "virtual_depth",
-                       "symbol" : generateVirtualTradingPairName(self.asset, self.currency, self.bridge),
-                       "asset" : self.asset,
-                       "currency" : self.currency,
-                       "bridge" : self.bridge,
-                       "bids" : [depth[0]],
-                       "asks" : [depth[1]],
-                       "destination_topics" : destinations}
-            await produce("virtual_prices", bytes(json.dumps(msgDict), 'utf-8'))
-        else:
-            logger.warn("Price recieved for unsubscribed virtual symbol: %s", virtualSymbol)
-            
 
 vanillaPriceFetcher = VanillaPriceFetcher()
 subscriptionBook = {}
@@ -77,12 +50,31 @@ cdp = ConversiondataProvider(generateTradingPairName,
                              vanillaPriceFetcher.unsubscribe,
                              logger)
 
+        
+async def onPrice(depth, asset, currency, bridge):
+    virtualSymbol = generateVirtualTradingPairName(asset, currency, bridge)
+    if (depth[0][0] is not None and 
+        depth[1][0] is not None and
+        virtualSymbol in subscriptionBook.keys()
+        ):
+        destinations = list(subscriptionBook[virtualSymbol])
+        msgDict = {"message_type" : "virtual_depth",
+                    "symbol" : generateVirtualTradingPairName(asset, currency, bridge),
+                    "asset" : asset,
+                    "currency" : currency,
+                    "bridge" : bridge,
+                    "bids" : [depth[0]],
+                    "asks" : [depth[1]],
+                    "destination_topics" : destinations}
+        await produce("virtual_prices", bytes(json.dumps(msgDict), 'utf-8'))
+    else:
+        logger.warn("Price recieved for unsubscribed virtual symbol: %s", virtualSymbol)
+
 async def registerSubscription(subscriptionFunc, asset, currency, bridge, destinationTopic):
     virtualSymbol = generateVirtualTradingPairName(asset, currency, bridge)
     if virtualSymbol not in subscriptionBook.keys():
-        virtualPriceHandler = VirtualPriceHandler(asset, currency, bridge, subscriptionBook)
         subscriptionBook[virtualSymbol] = set([destinationTopic])
-        await subscriptionFunc(asset, currency, bridge, virtualPriceHandler.onPrice)
+        await subscriptionFunc(asset, currency, bridge, onPrice)
         logger.debug("Successful subscription for %s, destination topic: %s", virtualSymbol, destinationTopic)
     elif destinationTopic not in subscriptionBook[virtualSymbol]:
         subscriptionBook[virtualSymbol].add(destinationTopic)
@@ -96,7 +88,7 @@ async def unregisterSubscription(unsubscriptionFunc, asset, currency, bridge, de
         if virtualSymbol in subscriptionBook.keys():
             subscriptionBook[virtualSymbol].remove(destinationTopic)
             if 0 == len(subscriptionBook[virtualSymbol]):
-                await unsubscriptionFunc(asset, currency, bridge, subscriptionBook[virtualSymbol].onPrice)
+                await unsubscriptionFunc(asset, currency, bridge, onPrice)
                 subscriptionBook.pop(virtualSymbol)
         else:
             logger.warn("Unsubscription attempted for %s which has no active subscriptions", virtualSymbol)

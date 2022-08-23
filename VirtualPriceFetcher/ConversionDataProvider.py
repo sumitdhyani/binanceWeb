@@ -93,33 +93,40 @@ class PerCurrencyConversiondataProvider:
 
         if baseSymbol in self.convertedDictionary.keys():
             for convertee in self.convertedDictionary[baseSymbol].keys():
-                await self.subscriberDictionary[baseSymbol + convertee](self.getPricesForTradingPair(baseSymbol, convertee))
+                await self.subscriberDictionary[baseSymbol + convertee](self.getPricesForTradingPair(baseSymbol, convertee), baseSymbol, convertee, self.bridge)
 
         if baseSymbol in self.converteeDictionary.keys():
             for converted in self.converteeDictionary[baseSymbol].keys():
-                await self.subscriberDictionary[converted + baseSymbol](self.getPricesForTradingPair(converted, baseSymbol))
+                await self.subscriberDictionary[converted + baseSymbol](self.getPricesForTradingPair(converted, baseSymbol), converted, baseSymbol, self.bridge)
     
     async def unsubscribe(self, source, dest, callback):
+        self.logger.info("ConversiondataProvide::unsubscribe_1")
         tradingPair = source + dest
         if tradingPair not in self.subscriberDictionary.keys():
+            self.logger.info("ConversiondataProvide::unsubscribe_2")
             return
         try:
-            self.logger.debug("Unsubscribing %s", tradingPair)
+            self.logger.info("ConversiondataProvide::unsubscribe_3")
             evt = self.subscriberDictionary[tradingPair]
             evt -= callback
             if evt.empty():#no more subscribers for this pair
+                self.logger.info("ConversiondataProvide::unsubscribe_4")
                 self.subscriberDictionary.pop(tradingPair)
                 self.convertedDictionary[source].pop(dest)
                 self.converteeDictionary[dest].pop(source)
                 if 0 == len(self.convertedDictionary[source]):
+                    self.logger.info("ConversiondataProvide::unsubscribe_5")
                     self.convertedDictionary.pop(source)
                     if source not in self.converteeDictionary.keys():
+                        self.logger.info("ConversiondataProvide::unsubscribe_6")
                         mktTradingPair = self.tradingpairNameGenerator(source, self.bridge)
                         await self.unsubscriberFunc(mktTradingPair, self.onDepth)
                         self.priceTable.pop(mktTradingPair)
                 if 0 == len(self.converteeDictionary[dest]):
+                    self.logger.info("ConversiondataProvide::unsubscribe_7")
                     self.converteeDictionary.pop(dest)
                     if dest not in self.convertedDictionary.keys():
+                        self.logger.info("ConversiondataProvide::unsubscribe_8")
                         mktTradingPair = self.tradingpairNameGenerator(dest, self.bridge)
                         await self.unsubscriberFunc(mktTradingPair, self.onDepth)
                         self.priceTable.pop(mktTradingPair)

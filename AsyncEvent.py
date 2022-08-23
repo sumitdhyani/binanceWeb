@@ -1,95 +1,56 @@
-import inspect
-import asyncio
+import inspect, asyncio
+from AppSpecificErrors import DuplicateSubscription, SpuriousUnsubscription, InvalidCallbackFormat, InvalidEventInvokation
+
 
 class AsyncEvent:
     def __init__(self):
-        self.callbacks0 = []
-        self.callbacks1 = []
-        self.callbacks2 = []
-        self.callbacks3 = []
+        self.callbackSets = [set(), set(), set(), set(), set()]
 
-    def __iadd__(self, function):
+    def getNumArgs(self, function):
         argList = inspect.getfullargspec(function)[0]
         numArgs = len(argList)
         if 0 < numArgs and 'self' == argList[0]:
             numArgs -= 1
+        return numArgs
 
-        if 0 == numArgs:
-            self.callbacks0.append(function)
-        elif 1 == numArgs:
-            self.callbacks1.append(function)
-        elif 2 == numArgs:
-            self.callbacks2.append(function)
-        elif 3 == numArgs:
-            self.callbacks3.append(function)
+    def __iadd__(self, function):
+        numArgs = self.getNumArgs(function)
+        if numArgs >= len(self.callbackSets):
+            raise InvalidCallbackFormat("Too many params required by callback, max should be: " + str(len(self.callbackSets)) )
+                        
+        callbackSet =  self.callbackSets[numArgs]
+        if function not in callbackSet:
+            callbackSet.add(function)
+        else:
+            raise DuplicateSubscription("Attempt to register the callback more than once")
 
         return self
 
     def __isub__(self, function):
+        numArgs = self.getNumArgs(function)
+        if numArgs >= len(self.callbackSets):
+            raise InvalidCallbackFormat()
+        callbackSet =  self.callbackSets[numArgs]
+        
         try:
-            self.callbacks0.remove(function)
-            return self
-        except:
-            pass
-
-        try:
-            self.callbacks1.remove(function)
-            return self
-        except:
-            pass
-
-        try:
-            self.callbacks2.remove(function)
-            return self
-        except:
-            pass
-
-        try:
-            self.callbacks3.remove(function)
+            callbackSet.remove(function)
             return self
         except:
             raise Exception("Function is not a member of observer list")
 
     async def __call__(self, *args, **kwargs):
         numArgs = len(args)
-        callbackList = []
-        if 0 == numArgs:
-            callbackList = self.callbacks0
-        elif 1 == numArgs:
-            callbackList = self.callbacks1
-        elif 2 == numArgs:
-            callbackList = self.callbacks2
-        elif 3 == numArgs:
-            callbackList = self.callbacks3
+        if numArgs > len(self.callbackSets):
+            raise InvalidEventInvokation()
 
-        await asyncio.gather(*(callback(*args) for callback in callbackList))
+        callbackSet =  self.callbackSets[numArgs]
+        await asyncio.gather(*[callback(*args) for callback in callbackSet])
 
     def size(self):
-        return len(self.callbacks0) + len(self.callbacks1) + len(self.callbacks2) + len(self.callbacks3)
+        size = 0
+        for callbackSet in self.callbackSets:
+            size += len(callbackSet)
+        return size
 
     def empty(self):
         return (self.size() == 0)
-
-def func0():
-    print(0)
-
-def func1(arg1):
-    print(arg1)
-
-def func2(arg1, arg2):
-    print(arg1, arg2)
-
-def func3(arg1, arg2, arg3):
-    print(arg1, arg2, arg3)
-
-##test code
-# calee = Event()
-# calee += func0
-# calee += func1
-# calee += func2
-# calee += func3
-
-# calee()
-# calee(1)
-# calee(1,2)
-# calee(1,2,3)
