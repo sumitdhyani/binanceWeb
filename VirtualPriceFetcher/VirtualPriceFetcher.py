@@ -37,65 +37,79 @@ class VanillaPriceFetcher:
     
     async def onDepth(self, depth):
         symbol = depth["symbol"]
-        callback = self.subscriptionBook.get(symbol)
-        if callback is not None:
-            await callback(depth)
+        if symbol in self.subscriptionBook.keys():
+            await self.subscriptionBook[symbol](depth)
         else:
-            logger.warn("Depth received for unsubscribed symbol %s", symbol)
+            logger.warn("Internally Depth received for unsubscribed symbol %s", symbol)
         
 class VirtualPriceHandler:
-    def __init__(self, asset, currency, bridge):
+    def __init__(self, asset, currency, bridge, subscriptionBook):
         self.asset = asset
         self.currency = currency
         self.bridge = bridge
+        self.subscriptionBook = subscriptionBook
         
     async def onPrice(self, depth):
-        if depth[0][0] is not None and depth[1][0] is not None:
+        virtualSymbol = generateVirtualTradingPairName(self.asset, self.currency, self.bridge)
+        if (depth[0][0] is not None and 
+            depth[1][0] is not None and
+            virtualSymbol in subscriptionBook.keys()
+            ):
+            destinations = list(subscriptionBook[virtualSymbol])
             msgDict = {"message_type" : "virtual_depth",
-                       "symbol" : generateTradingPairName(self.asset, self.currency),
+                       "symbol" : generateVirtualTradingPairName(self.asset, self.currency, self.bridge),
                        "asset" : self.asset,
                        "currency" : self.currency,
                        "bridge" : self.bridge,
                        "bids" : [depth[0]],
-                       "asks" : [depth[1]]}
+                       "asks" : [depth[1]],
+                       "destination_topics" : destinations}
             await produce("virtual_prices", bytes(json.dumps(msgDict), 'utf-8'))
+        else:
+            logger.warn("Price recieved for unsubscribed virtual symbol: %s", virtualSymbol)
+            
 
 vanillaPriceFetcher = VanillaPriceFetcher()
-uniqueSubscriptions = {}
+subscriptionBook = {}
 cdp = ConversiondataProvider(generateTradingPairName,
                              extractAssetFromSymbolName, 
                              vanillaPriceFetcher.subscribe,
                              vanillaPriceFetcher.unsubscribe,
                              logger)
 
-async def onPriceSubscription(msgDict):
-    asset, currency, bridge = msgDict["asset"], msgDict["currency"], msgDict["bridge"]
-    virtualInstrument = generateVirtualTradingPairName(asset, currency, bridge)
-    if virtualInstrument not in uniqueSubscriptions.keys():
-        virtualPriceHandler = VirtualPriceHandler(asset, currency, bridge)
-        uniqueSubscriptions[virtualInstrument] = virtualPriceHandler
-        await cdp.subscribe(asset, currency, bridge, virtualPriceHandler.onPrice)
-        logger.debug("Successful subscription for %s", virtualInstrument)
+async def registerSubscription(subscriptionFunc, asset, currency, bridge, destinationTopic):
+    virtualSymbol = generateVirtualTradingPairName(asset, currency, bridge)
+    if virtualSymbol not in subscriptionBook.keys():
+        virtualPriceHandler = VirtualPriceHandler(asset, currency, bridge, subscriptionBook)
+        subscriptionBook[virtualSymbol] = set([destinationTopic])
+        await subscriptionFunc(asset, currency, bridge, virtualPriceHandler.onPrice)
+        logger.debug("Successful subscription for %s, destination topic: %s", virtualSymbol, destinationTopic)
+    elif destinationTopic not in subscriptionBook[virtualSymbol]:
+        subscriptionBook[virtualSymbol].add(destinationTopic)
+        logger.debug("Successful subscription for %s, destination topic: %s", virtualSymbol, destinationTopic)
     else:
-        logger.warn("Duplicate subscription for %s", virtualInstrument)
+        logger.warn("Duplicate subscription attempted for: %s destination topic: %s", virtualSymbol, destinationTopic)
 
-async def onPriceUnsubscription(msgDict):
-    asset, currency, bridge = msgDict["asset"], msgDict["currency"], msgDict["bridge"]
-    virtualInstrument = generateVirtualTradingPairName(asset, currency, bridge)
-    if virtualInstrument in uniqueSubscriptions.keys():
-        await cdp.unsubscribe(asset, currency, bridge, uniqueSubscriptions[virtualInstrument].onPrice) 
-        uniqueSubscriptions.pop(virtualInstrument)
-        logger.debug("Successful unsubscription for %s", virtualInstrument)
-    else:
-        logger.warn("Spurious unsubscription for %s", virtualInstrument)
+async def unregisterSubscription(unsubscriptionFunc, asset, currency, bridge, destinationTopic):
+    virtualSymbol = generateVirtualTradingPairName(asset, currency, bridge)
+    try:
+        if virtualSymbol in subscriptionBook.keys():
+            subscriptionBook[virtualSymbol].remove(destinationTopic)
+            if 0 == len(subscriptionBook[virtualSymbol]):
+                await unsubscriptionFunc(asset, currency, bridge, subscriptionBook[virtualSymbol].onPrice)
+                subscriptionBook.pop(virtualSymbol)
+        else:
+            logger.warn("Unsubscription attempted for %s which has no active subscriptions", virtualSymbol)
+    except KeyError:
+        logger.warn("Unsubscription attempted for %s, destination topic: %s which is not an active listener for this symbol", virtualSymbol, destinationTopic)
 
 async def onSubMsg(msg):
     dict = json.loads(msg)
     action = dict["action"]
     if "subscribe" == action:
-        await onPriceSubscription(dict)
+        await registerSubscription(cdp.subscribe, dict["asset"], dict["currency"], dict["bridge"], dict["destination_topic"])
     else:
-        await onPriceUnsubscription(dict)
+        await unregisterSubscription(cdp.unsubscribe, dict["asset"], dict["currency"], dict["bridge"], dict["destination_topic"])
 
 async def OnInBoundMsg(msg):
     dict = json.loads(msg)
@@ -106,7 +120,7 @@ async def OnInBoundMsg(msg):
         logger.warn("Unrecognized message type: %s received", msgType)
 
 async def run():
-    await startCommunication({"virtual_price_calculations" : onSubMsg, appId : OnInBoundMsg},
+    await startCommunication({"virtual_price_subscriptions" : onSubMsg, appId : OnInBoundMsg},
                                 broker,
                                 appId,
                                 "virtual_price_fetcher",
