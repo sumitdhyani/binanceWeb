@@ -1,4 +1,4 @@
-version: '2.1'
+version: "2"
 services:
   zookeeper:
     image: wurstmeister/zookeeper
@@ -25,8 +25,6 @@ services:
     volumes:
       - .:/usr/src
     working_dir: /usr/src
-    links:
-      - kafka
     depends_on:
       - kafka
     command: bash -c "sleep 10 && python3 ./marketConnectivity/PriceFetcher.py kafka:9092 MarketGateway DEBUG"
@@ -35,8 +33,6 @@ services:
     volumes:
       - .:/usr/src
     working_dir: /usr/src
-    links:
-      - kafka
     depends_on:
       - mkt_gateway
     command: node ./httpWebServer/main.js kafka:9092 80 WebServer
@@ -47,8 +43,6 @@ services:
     volumes:
       - .:/usr/src
     working_dir: /usr/src
-    links:
-      - kafka
     depends_on:
       - WebServer
     command: bash -c "sleep 10 && python3 ./DataDispatcher/DataDispatcher.py kafka:9092 PriceDispatcher prices,virtual_prices"
@@ -57,8 +51,6 @@ services:
     volumes:
       - .:/usr/src
     working_dir: /usr/src
-    links:
-      - kafka
     depends_on:
       - kafka
     command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka:9092 VirtualPriceFetcher DEBUG"
