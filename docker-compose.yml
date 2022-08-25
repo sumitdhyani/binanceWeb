@@ -51,7 +51,7 @@ services:
       - kafka
     depends_on:
       - WebServer
-    command: bash -c "sleep 10 && python3 ./PriceDispatcher/priceDispatcher.py kafka:9092 PriceDispatcher prices,virtual_prices"
+    command: bash -c "sleep 10 && python3 ./DataDispatcher/DataDispatcher.py kafka:9092 PriceDispatcher prices,virtual_prices"
   virtual_price_fetcher:
     image: python_base
     volumes:
