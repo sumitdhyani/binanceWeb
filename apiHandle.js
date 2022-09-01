@@ -137,11 +137,11 @@ async function cancelAllSubscriptions() {
     virtualSubscriptionBook.clear()
 }
 
-async function enqueueSubscriptionRequest(dict, topic)
+async function enqueueSubscriptionRequest(dict, topic, key)
 {
     dict["destination_topic"] = appId
     msg = JSON.stringify(dict)
-    await producer.send({ topic: topic, messages: [{ key: symbol, value: msg }] })
+    await producer.send({ topic: topic, messages: [{ key: key, value: msg }] })
 }
 
 module.exports = {
@@ -172,7 +172,7 @@ module.exports = {
         else {
             subscriptionBook.set(symbol, callback)
             obj = { symbol : symbol, action : "subscribe"}
-            await enqueueSubscriptionRequest(obj, "price_subscriptions")
+            await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol)
         }
     },
 
@@ -190,7 +190,7 @@ module.exports = {
             else {
                 virtualSubscriptionBook.set(virtualSymbol, callback)
                 obj = { asset: asset, currency: currency, bridge: bridge, action: "subscribe" }
-                await enqueueSubscriptionRequest(obj, "virtual_price_subscriptions")
+                await enqueueSubscriptionRequest(obj, "virtual_price_subscriptions", virtualSymbol)
             }
         }
     },
@@ -201,7 +201,7 @@ module.exports = {
         }
         else {
             obj = { symbol: symbol, action: "unsubscribe" }
-            await enqueueSubscriptionRequest(obj, "price_subscriptions")
+            await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol)
         }
     },
 
@@ -212,7 +212,7 @@ module.exports = {
         }
         else {
             obj = {asset: asset, currency: currency, bridge : bridge, action: "unsubscribe" }
-            await enqueueSubscriptionRequest(obj, "virtual_price_subscriptions")
+            await enqueueSubscriptionRequest(obj, "virtual_price_subscriptions", virtualSymbol)
         }
     },
 

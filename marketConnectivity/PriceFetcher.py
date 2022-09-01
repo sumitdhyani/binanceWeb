@@ -6,7 +6,8 @@ import Keys
 from DepthDataProvider import DepthDataProvider
 from NetworkComplaintHandler import NetworkComplaintHandler
 from CommonUtils import getLoggingLevel, getLogger
-from CommunicationLayer import startCommunication, produce
+from CommunicationLayer import produce
+import PubSubService
   
 broker = sys.argv[1]
 appId = sys.argv[2]
@@ -29,17 +30,25 @@ async def onPrice(depth):
                    "asks" : asks[0:askLen],
                    "destination_topics" : destinations
                    }
-        await produce("prices", bytes(json.dumps(msgDict), 'utf-8'))
+        await produce("prices", json.dumps(msgDict), depth.symbol)
     else:
         logger.warn("Price recieved for unsubscribed symbol: %s", depth.symbol)
         
-
+async def cancelAllSubscriptions(symbol, unsubscriptionFunc):
+    if symbol in subscriptionBook:
+        unsubscriptionFunc(symbol)
+        subscriptionBook.pop(symbol)
+    else:
+        logger.warning("cancelAllSubscriptions called for a spurious symbol: %s", symbol)
+    
 async def registerSubscription(subscriptionFunc, symbol, destinationTopic):
     if symbol not in subscriptionBook.keys():
         subscriptionBook[symbol] = set([destinationTopic])
         await subscriptionFunc(symbol, onPrice)
+        return (symbol,)
     elif destinationTopic not in subscriptionBook[symbol]:
         subscriptionBook[symbol].add(destinationTopic)
+        return (symbol,)
     else:
         logger.warn("Duplicate subscription attempted for: %s destination topic: %s", symbol, destinationTopic)
 
@@ -50,30 +59,37 @@ def unregisterSubscription(unsubscriptionFunc, symbol, destinationTopic):
             if 0 == len(subscriptionBook[symbol]):
                 unsubscriptionFunc(symbol, onPrice)
                 subscriptionBook.pop(symbol)
+            return (symbol,)
         else:
             logger.warn("Unsubscription attempted for %s which has no active subscriptions", symbol)
     except KeyError:
         logger.warn("Unsubscription attempted for %s topic %s which is not an active listener for this symbol", symbol, destinationTopic)
 
-async def onSubMsg(msg, subscriptionFunc, unsubscriptionFunc):
-    msgDict = json.loads(msg)
+async def onSubMsg(msgDict, subscriptionFunc, unsubscriptionFunc):
     symbol = msgDict["symbol"]
     action = msgDict["action"]
     dest_topic = msgDict["destination_topic"]
     if("subscribe" == action):
-        await registerSubscription(subscriptionFunc, symbol, dest_topic)
+        return await registerSubscription(subscriptionFunc, symbol, dest_topic)
     else:
-        unregisterSubscription(unsubscriptionFunc, symbol, dest_topic)
+        return unregisterSubscription(unsubscriptionFunc, symbol, dest_topic)
 
 
 async def run():
-    client = await binance.AsyncClient.create(api_key=Keys.PUBLIC, api_secret=Keys.SECRET)
-    networkComplaintHandler = NetworkComplaintHandler("https://www.binance.com/")
-    ddp = DepthDataProvider(client, networkComplaintHandler.registerComplaint, logger)
-    await startCommunication({"price_subscriptions" : lambda msg : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe)},
-                              broker,
-                              appId,
+    try:
+        client = await binance.AsyncClient.create(api_key=Keys.PUBLIC, api_secret=Keys.SECRET)
+        networkComplaintHandler = NetworkComplaintHandler("https://www.binance.com/")
+        ddp = DepthDataProvider(client, networkComplaintHandler.registerComplaint, logger)
+    except Exception as ex:
+        logger.error("Error while connecting to market, details: %s", str(ex))
+        return
+    
+    await PubSubService.start(broker,
+                              "price_subscriptions",
+                              lambda msg : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
                               "price_fetcher",
+                              appId,
+                              lambda symbol : cancelAllSubscriptions(symbol, ddp.unsubscribe),
                               logger)
 
 asyncio.run(run())
