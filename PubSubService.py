@@ -1,6 +1,6 @@
 import asyncio, aiokafka, traceback
 import json
-from CommunicationLayer import startCommunication, produce, pause
+from CommunicationLayer import startCommunication, produce
 from aiokafka.structs import TopicPartition
 pubSubSyncdata = "pubSub_sync_data"
 pubSubSyncdataRequests = "pubSub_sync_data_requests"
@@ -13,6 +13,7 @@ async def onRebalance(oldRevoked,
                       serviceGroup,
                       partitionToSubscriptionKeys,
                       appUnsubMethod,
+                      serviceId,
                       logger):
     await asyncio.gather(*[onPartitionRevoked(partition, 
                                               partitionToSubscriptionKeys,
@@ -21,11 +22,12 @@ async def onRebalance(oldRevoked,
                                               ) for topic, partition in oldRevoked])
     await asyncio.gather(*[onNewPartitionAssigned(topic,
                                                   partition,
-                                                  serviceGroup) for topic, partition in newAssigned])
+                                                  serviceGroup,
+                                                  serviceId) for topic, partition in newAssigned])
 
-async def onNewPartitionAssigned(topic, partition, serviceGroup):
+async def onNewPartitionAssigned(topic, partition, serviceGroup, serviceId):
     group = generateTopicPartitionGroupId(serviceGroup, topic, partition)
-    syncMsgsDict = {"group" : group}
+    syncMsgsDict = {"group" : group, "destination_topic" : serviceId}
     await produce(pubSubSyncdataRequests, json.dumps(syncMsgsDict), group)
 
 async def onPartitionRevoked(partition,
@@ -120,6 +122,7 @@ async def start(brokers,
                           serviceGroup,
                           partitionToSubscriptionKeys,
                           appUnsubMethod,
+                          serviceId,
                           logger)
     syncTopic = serviceId + "_syncIn"
     await startCommunication({inTopic : mainCallback}, 
@@ -128,5 +131,5 @@ async def start(brokers,
                              serviceGroup,
                              logger,
                              True,
-                             [syncTopic],
+                             [syncTopic, serviceId],
                              [[inTopic], rebalanceCallback])

@@ -23,7 +23,7 @@ class VanillaPriceFetcher:
         if symbol not in self.subscriptionBook.keys():
             self.subscriptionBook[symbol] = callback
             msgDict = { "symbol": symbol, "action" : "subscribe", "destination_topic" : appId }
-            await produce("price_subscriptions", bytes(json.dumps(msgDict), 'utf-8'))
+            await produce("price_subscriptions", json.dumps(msgDict), symbol)
         else:
             logger.warn("Internally Duplicate subscription for %s", symbol)
 
@@ -31,7 +31,7 @@ class VanillaPriceFetcher:
         try:
             self.subscriptionBook.pop(symbol)
             msgDict = { "symbol": symbol, "action" : "unsubscribe", "destination_topic" : appId }
-            await produce("price_subscriptions", bytes(json.dumps(msgDict), 'utf-8'))
+            await produce("price_subscriptions", json.dumps(msgDict), symbol)
         except KeyError:
             logger.warn("Internally spurious unsubscription for %s", symbol)
     
@@ -66,7 +66,7 @@ async def onPrice(depth, asset, currency, bridge):
                     "bids" : [depth[0]],
                     "asks" : [depth[1]],
                     "destination_topics" : destinations}
-        await produce("virtual_prices", bytes(json.dumps(msgDict), 'utf-8'))
+        await produce("virtual_prices", json.dumps(msgDict), virtualSymbol)
     else:
         logger.warn("Price recieved for unsubscribed virtual symbol: %s", virtualSymbol)
 
@@ -117,6 +117,7 @@ async def run():
                                 appId,
                                 "virtual_price_fetcher",
                                 logger,
+                                False,
                                 [appId])
         
 
