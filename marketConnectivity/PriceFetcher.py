@@ -90,6 +90,7 @@ async def run():
                               "price_fetcher",
                               appId,
                               lambda symbol : cancelAllSubscriptions(symbol, ddp.unsubscribe),
-                              logger)
+                              logger,
+                              False)
 
 asyncio.run(run())

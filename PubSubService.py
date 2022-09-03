@@ -13,7 +13,7 @@ async def onRebalance(oldRevoked,
                       serviceGroup,
                       partitionToSubscriptionKeys,
                       appUnsubMethod,
-                      serviceId,
+                      syncQueueId,
                       logger):
     await asyncio.gather(*[onPartitionRevoked(partition, 
                                               partitionToSubscriptionKeys,
@@ -23,11 +23,11 @@ async def onRebalance(oldRevoked,
     await asyncio.gather(*[onNewPartitionAssigned(topic,
                                                   partition,
                                                   serviceGroup,
-                                                  serviceId) for topic, partition in newAssigned])
+                                                  syncQueueId) for topic, partition in newAssigned])
 
-async def onNewPartitionAssigned(topic, partition, serviceGroup, serviceId):
+async def onNewPartitionAssigned(topic, partition, serviceGroup, syncQueueId):
     group = generateTopicPartitionGroupId(serviceGroup, topic, partition)
-    syncMsgsDict = {"group" : group, "destination_topic" : serviceId}
+    syncMsgsDict = {"group" : group, "destination_topic" : syncQueueId}
     await produce(pubSubSyncdataRequests, json.dumps(syncMsgsDict), group)
 
 async def onPartitionRevoked(partition,
@@ -99,12 +99,13 @@ async def onSubMsg(topic,
                           logger)
     
 async def start(brokers,
-                inTopic,
+                reqTopic,
                 appCallback,
                 serviceGroup,
                 serviceId,
                 appUnsubMethod,
-                logger):
+                logger,
+                isInternalService):
     partitionToSubscriptionKeys = {}
     async def mainCallback(topic, partition, key, msg):
         await onSubMsg(topic,
@@ -116,20 +117,20 @@ async def start(brokers,
                        partitionToSubscriptionKeys,
                        logger)
 
+    syncTopic = serviceId + "_syncIn"
     async def rebalanceCallback(oldRevoked,newAssigned):
         await onRebalance(oldRevoked, 
                           newAssigned,
                           serviceGroup,
                           partitionToSubscriptionKeys,
                           appUnsubMethod,
-                          serviceId,
+                          syncTopic,
                           logger)
-    syncTopic = serviceId + "_syncIn"
-    await startCommunication({inTopic : mainCallback}, 
+    await startCommunication({reqTopic : mainCallback}, 
                              brokers,
                              serviceId,
                              serviceGroup,
                              logger,
                              True,
-                             [syncTopic, serviceId],
-                             [[inTopic], rebalanceCallback])
+                             [syncTopic, serviceId] if isInternalService else [syncTopic],
+                             [[reqTopic], rebalanceCallback])
