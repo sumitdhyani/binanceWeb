@@ -64,11 +64,11 @@ async def onSyncDataRequest(msg):
 
 
 async def run():
-    await startCommunication({pubSubSyncdata: onSyncData, pubSubSyncdataRequests : onSyncDataRequest},
-                             {},
+    await startCommunication({pubSubSyncdataRequests : onSyncDataRequest},
+                             {pubSubSyncdata: onSyncData},
                              broker,
                              appId,
-                             appId,
+                             "sync_data_provider",
                              logger)
     
 asyncio.run(run())
