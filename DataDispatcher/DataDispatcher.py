@@ -25,6 +25,7 @@ async def run():
         dict[inboundTopic] = dispatchData
         
     await startCommunication(dict,
+                             {},
                              broker,
                              appId,
                              "data_dispatcher",

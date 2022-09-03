@@ -65,6 +65,7 @@ async def onSyncDataRequest(msg):
 
 async def run():
     await startCommunication({pubSubSyncdata: onSyncData, pubSubSyncdataRequests : onSyncDataRequest},
+                             {},
                              broker,
                              appId,
                              appId,

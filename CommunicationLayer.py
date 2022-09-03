@@ -8,7 +8,8 @@ producer = None
 admin = None
 consumer = None
 
-async def startCommunication(topicsAndCallbacks,
+async def startCommunication(coOrdinatedtopicsAndCallbacks,
+                             unCoOrdinatedtopicsAndCallbacks,
                              brokers,
                              clientId,
                              groupId,
@@ -21,14 +22,14 @@ async def startCommunication(topicsAndCallbacks,
     global consumer
     try:
         producer = aiokafka.AIOKafkaProducer(bootstrap_servers=brokers, acks="all")
-        callbackDict = topicsAndCallbacks
+        callbackDict = coOrdinatedtopicsAndCallbacks
         consumer = aiokafka.AIOKafkaConsumer(bootstrap_servers=brokers,
                                              group_id=groupId,
                                              client_id=clientId,
                                              enable_auto_commit=False
                                             )
         admin = KafkaAdminClient(bootstrap_servers=brokers)
-        consumer.subscribe([topic for topic in topicsAndCallbacks.keys()],
+        consumer.subscribe([topic for topic in coOrdinatedtopicsAndCallbacks.keys()],
                            listener= None if topicsAndrebalanceListener is None else
                            RebalanceListener(logger,
                                              set(topicsAndrebalanceListener[0]), 
@@ -61,7 +62,6 @@ async def startCommunication(topicsAndCallbacks,
                         await consumer.commit({tp : kafkaMsg.offset + 1})
                     except Exception as ex:
                         logger.warn("Exception in task loop, details: %s, traceback: %s", str(ex), traceback.format_exc())
-                    
                 else:
                     logger.warn("Message received from unregistered topic: %s", kafkaMsg.topic)
         finally:

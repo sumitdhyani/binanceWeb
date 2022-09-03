@@ -113,12 +113,13 @@ async def OnInBoundMsg(msg):
 
 async def run():
     await startCommunication({"virtual_price_subscriptions" : onSubMsg, appId : OnInBoundMsg},
-                                broker,
-                                appId,
-                                "virtual_price_fetcher",
-                                logger,
-                                False,
-                                [appId])
+                             {},
+                             broker,
+                             appId,
+                             "virtual_price_fetcher",
+                             logger,
+                             False,
+                             [appId])
         
 
 asyncio.run(run())
