@@ -36,7 +36,7 @@ async def onPrice(depth):
         
 async def cancelAllSubscriptions(symbol, unsubscriptionFunc):
     if symbol in subscriptionBook:
-        unsubscriptionFunc(symbol)
+        unsubscriptionFunc(symbol, onPrice)
         subscriptionBook.pop(symbol)
     else:
         logger.warning("cancelAllSubscriptions called for a spurious symbol: %s", symbol)
