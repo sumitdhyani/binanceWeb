@@ -89,6 +89,7 @@ async def run():
                               lambda msg : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
                               "price_fetcher",
                               appId,
+                              lambda symbol, destTopic : registerSubscription(ddp.subscribe, symbol, destTopic),
                               lambda symbol : cancelAllSubscriptions(symbol, ddp.unsubscribe),
                               logger,
                               False)

@@ -1,9 +1,12 @@
-import asyncio, aiokafka, traceback
+import asyncio, re, aiokafka, traceback
+from asyncio.log import logger
 import json
-from CommunicationLayer import startCommunication, produce
+from CommunicationLayer import startCommunication, produce, pause, resume
 from aiokafka.structs import TopicPartition
 pubSubSyncdata = "pubSub_sync_data"
 pubSubSyncdataRequests = "pubSub_sync_data_requests"
+pausedTopic = None
+pausedPartition = None
 
 def generateTopicPartitionGroupId(serviceGroup, topic, partition):
     return serviceGroup + topic + str(partition)
@@ -23,17 +26,43 @@ async def onRebalance(oldRevoked,
     await asyncio.gather(*[onNewPartitionAssigned(topic,
                                                   partition,
                                                   serviceGroup,
-                                                  syncQueueId) for topic, partition in newAssigned])
+                                                  syncQueueId,
+                                                  logger) for topic, partition in newAssigned])
 
-async def onNewPartitionAssigned(topic, partition, serviceGroup, syncQueueId):
+async def onNewPartitionAssigned(topic,
+                                 partition,
+                                 serviceGroup,
+                                 syncQueueId,
+                                 logger):
+    global pausedTopic
+    global pausedPartition
+    logger.info("New assigned topic: %s, partition: %s", topic, str(partition))
     group = generateTopicPartitionGroupId(serviceGroup, topic, partition)
     syncMsgsDict = {"group" : group, "destination_topic" : syncQueueId}
     await produce(pubSubSyncdataRequests, json.dumps(syncMsgsDict), group)
+    #pause(topic, partition)
+    #pausedTopic = topic
+    #pausedPartition = partition
 
+async def onSyncData(message, appSubFunc):
+    global pausedTopic
+    global pausedPartition
+    msgDict = json.loads(message)
+    if msgDict:
+        for key in msgDict.keys():
+            for destTopic in msgDict[key]:
+                params = re.split(",", key.replace(",)", ")").strip("[]()").replace("'", '')) + [destTopic]
+                await appSubFunc(*params)
+    else:
+        logger.info("Resuming topic: %s, partition: %s", pausedTopic, str(pausedPartition))
+        #resume(pausedTopic, pausedPartition)
+    
+    
 async def onPartitionRevoked(partition,
                              partitionToSubscriptionKeys,
                              appUnsubMethod,
                              logger):
+    logger.info("Revoked partition: %s", str(partition))
     try:
         for subscriptionKey in partitionToSubscriptionKeys[partition]:
             logger.info("Partition %s revoked, key: %s for this partition will be dropped", str(partition), subscriptionKey)
@@ -45,22 +74,22 @@ async def onPartitionRevoked(partition,
         logger.warning("Unexpected error while rebalancing, details: %s", str(ex))
         
 def updatePartitionBook(partition,
-                        subscriptionKey,
+                        subscriptionParams,
                         partitionToSubscriptionKeys):
     if partition not in partitionToSubscriptionKeys.keys():
         partitionToSubscriptionKeys[partition] = set()
-    partitionToSubscriptionKeys[partition].add(subscriptionKey)
+    partitionToSubscriptionKeys[partition].add(subscriptionParams)
 
 async def sendSycInfo(topic,
                       partition,
                       msgKey,
+                      subscriptionParams,
                       serviceGroup,
                       action,
                       destTopic,
-                      logger
-                      ):
+                      logger):
     logger.info("Sending sync msg for: %s", msgKey)
-    syncMsgDict = {"key" : msgKey,
+    syncMsgDict = {"key" : subscriptionParams,
                    "group" : generateTopicPartitionGroupId(serviceGroup, topic, partition),
                    "action" : action,
                    "destination_topic" : destTopic}
@@ -75,9 +104,9 @@ async def onSubMsg(topic,
                    partitionToSubscriptionKeys,
                    logger):
     msgDict = json.loads(msg)
-    subscriptionKey = None
+    subscriptionParams = None
     try:
-        subscriptionKey = await appCallback(msgDict)
+        subscriptionParams = await appCallback(msgDict)
     except Exception as ex:
         logger.error("Exceptin in Application code: %s", str(ex))
         
@@ -85,14 +114,15 @@ async def onSubMsg(topic,
     
     #Subscription key is expected to be a tuple of values required to identify the
     #subscribed entity, this tuple of values will later be used to unsubscribe that entity
-    if subscriptionKey is not None:
+    if subscriptionParams is not None:
         updatePartitionBook(partition,
-                            subscriptionKey,
+                            subscriptionParams,
                             partitionToSubscriptionKeys)
         
         await sendSycInfo(topic,
                           partition,
                           msgKey,
+                          subscriptionParams,
                           serviceGroup,
                           msgDict["action"],
                           msgDict["destination_topic"],
@@ -103,6 +133,7 @@ async def start(brokers,
                 appCallback,
                 serviceGroup,
                 serviceId,
+                appSubMethod,
                 appUnsubMethod,
                 logger,
                 isInternalService):
@@ -127,7 +158,7 @@ async def start(brokers,
                           syncTopic,
                           logger)
     await startCommunication({reqTopic : mainCallback},
-                             {},
+                             {syncTopic : lambda topic, partition, key, msg : onSyncData(msg, appSubMethod) },
                              brokers,
                              serviceId,
                              serviceGroup,

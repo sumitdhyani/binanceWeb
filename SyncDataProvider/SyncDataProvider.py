@@ -44,22 +44,28 @@ async def onSyncData(msg):
     msgDict = json.loads(msg)
     action = msgDict["action"]
     selectedFunc = onSub if action == "subscribe" else onUnsub
+    listToTuple = tuple(msgDict["key"])
     selectedFunc(msgDict["group"],
-                 msgDict["key"],
+                 listToTuple,
                  msgDict["destination_topic"])
 
 async def onSyncDataRequest(msg):
     msgDict = json.loads(msg)
 
     group = msgDict["group"]
+    destTopic = msgDict["destination_topic"]
+    logger.warning("Book status: %s", str(book))
     if group in book.keys():
-        destTopic = msgDict["destination_topic"]
-        content = json.dumps(book[group])
+        dict = {}
+        for key, value in book[group].items():
+            dict[str(key)] = value
+        content = json.dumps(dict)
         logger.info("Producing response to destination: %s, content: %s", destTopic, content)
         await produce(destTopic, content, group)
-        await produce(destTopic, json.dumps({"message_type": "downloadEnd"}), group)
     else:
         logger.warning("Data requested for non-existent group: %s", group)
+    
+    await produce(destTopic, json.dumps({}), group)
     
 
 

@@ -8,7 +8,9 @@ from aiokafka.structs import TopicPartition
 producer = None
 admin = None
 groupConsumer = None
-
+indiVidualConsumer = None
+coOrdinatedtopicCallbackDict = None
+unCoOrdinatedtopicCallbackDict = None
 async def startCommunication(coOrdinatedtopicsAndCallbacks,
                              unCoOrdinatedtopicsAndCallbacks,
                              brokers,
@@ -21,75 +23,79 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
     global producer
     global admin
     global groupConsumer
+    global coOrdinatedtopicCallbackDict
+    global unCoOrdinatedtopicCallbackDict
+    coOrdinatedtopicCallbackDict = coOrdinatedtopicsAndCallbacks
+    unCoOrdinatedtopicCallbackDict = unCoOrdinatedtopicsAndCallbacks
+
     try:
-        producer = aiokafka.AIOKafkaProducer(bootstrap_servers=brokers, acks="all")
-        groupConsumer = aiokafka.AIOKafkaConsumer(bootstrap_servers=brokers,
-                                             group_id=groupId,
-                                             client_id=groupId+clientId+"_group",
-                                             enable_auto_commit=False
-                                            )
-        
-        individualConsumer = None
-        if 0 < len(unCoOrdinatedtopicsAndCallbacks):
-            individualConsumer = aiokafka.AIOKafkaConsumer(bootstrap_servers=brokers,
-                                                           group_id=clientId,
-                                                           client_id=groupId+clientId,
-                                                           enable_auto_commit=False
-                                                           )
-            individualConsumer.subscribe([topic for topic in unCoOrdinatedtopicsAndCallbacks.keys()])
         admin = KafkaAdminClient(bootstrap_servers=brokers)
-        groupConsumer.subscribe([topic for topic in coOrdinatedtopicsAndCallbacks.keys()],
-                           listener= None if topicsAndrebalanceListener is None else
-                           RebalanceListener(logger,
-                                             set(topicsAndrebalanceListener[0]), 
-                                             topicsAndrebalanceListener[1])
-                           )
-        
         try:
             for newTopic in topicsToCreate:
                 await createTopic(newTopic, 1, 1)
         except TopicAlreadyExistsError as ex:
             logger.warn("Topic %s already exists, ignoring the attempt to create the new topic", newTopic)
-       
-        async def consumptionLoop(consumer, callbackDict):
-            try:
-                async for kafkaMsg in consumer:
-                    msg = kafkaMsg.value.decode("utf-8")
-                    key = kafkaMsg.key.decode("utf-8")
-                    logger.debug("Msg received: %s", msg)
-                    callback = callbackDict.get(kafkaMsg.topic)
-                    if callback is not None:
+
+        producer = aiokafka.AIOKafkaProducer(bootstrap_servers=brokers, acks="all")
+        await producer.start()
+        groupConsumer = aiokafka.AIOKafkaConsumer(bootstrap_servers=brokers,
+                                                  group_id=groupId,
+                                                  client_id=groupId+clientId+"_group",
+                                                  enable_auto_commit=False)
+        
+        async def consumptionBatch(consumer, callbackDict):
+            dict =  await consumer.getmany(timeout_ms=1000)
+            return (dict, callbackDict)
+        
+        groupConsumer.subscribe([topic for topic in coOrdinatedtopicsAndCallbacks.keys()],
+                                listener= None if topicsAndrebalanceListener is None else
+                                RebalanceListener(logger,
+                                                  set(topicsAndrebalanceListener[0]), 
+                                                  topicsAndrebalanceListener[1]))
+        await groupConsumer.start()
+
+        individualConsumer = None
+        if unCoOrdinatedtopicsAndCallbacks:
+            individualConsumer = aiokafka.AIOKafkaConsumer(bootstrap_servers=brokers,
+                                                           group_id=clientId,
+                                                           client_id=groupId+clientId,
+                                                           enable_auto_commit=False)
+            individualConsumer.subscribe([topic for topic in unCoOrdinatedtopicsAndCallbacks.keys()])
+            await individualConsumer.start()
+
+
+        while True:
+            consumptionFunctions = None
+            if individualConsumer is not None:
+                consumptionFunctions = [consumptionBatch(groupConsumer, coOrdinatedtopicsAndCallbacks), consumptionBatch(individualConsumer, unCoOrdinatedtopicsAndCallbacks)]
+            else:
+                consumptionFunctions = [consumptionBatch(groupConsumer, coOrdinatedtopicsAndCallbacks)]
+
+            for coro in asyncio.as_completed(consumptionFunctions):
+                result = await coro
+                messageDict = result[0]
+                callbackDict = result[1]
+                for topicPartition, kafkaMsgs in messageDict.items():
+                    for kafkaMsg in kafkaMsgs:
+                        msg = kafkaMsg.value.decode("utf-8")
+                        key = kafkaMsg.key.decode("utf-8")
+                        logger.debug("Msg received: %s", msg)
                         try:
-                            msg = kafkaMsg.value.decode("utf-8")
+                            callback = callbackDict.get(kafkaMsg.topic)
                             if lowLevelListener:
-                                await callback(kafkaMsg.topic, kafkaMsg.partition, key, msg)
+                                await callback(topicPartition.topic, topicPartition.partition, key, msg)
                             else:
                                 await callback(msg)
-                            tp = TopicPartition(kafkaMsg.topic, kafkaMsg.partition)
-                            await consumer.commit({tp : kafkaMsg.offset + 1})
                         except Exception as ex:
-                            logger.warn("Exception in task loop, details: %s, traceback: %s", str(ex), traceback.format_exc())
-                    else:
-                        logger.warn("Message received from unregistered topic: %s", kafkaMsg.topic)
-            finally:
-                await consumer.stop()
-
-        await producer.start()
-        await groupConsumer.start()
-        consumptionLoops = [consumptionLoop(groupConsumer, coOrdinatedtopicsAndCallbacks)]
-        if individualConsumer is not None:
-            await individualConsumer.start()
-            consumptionLoops.append(consumptionLoop(individualConsumer, unCoOrdinatedtopicsAndCallbacks))
-
-        try:
-            await asyncio.gather(*consumptionLoops)
-        finally:
-            await producer.stop()
-            await admin.close()
-            
+                            logger.error("Unexpedted exception in the task loop, details %s, traceback: %s", str(ex), traceback.format_exc())
     except Exception as ex:
-        logger.error("Unexpedted exception in the main loop, details %s, traceback: %s", str(ex), traceback.format_exc())
-        
+        logger.error("Unexpedted exception in the init phase loop, details %s, traceback: %s", str(ex), traceback.format_exc())
+        await producer.stop()
+        admin.close()
+        await groupConsumer.stop()
+        if indiVidualConsumer is not None:
+            await indiVidualConsumer.stop()
+            
 async def produce(topic, data, key):
     global producer
     await producer.send_and_wait(topic,
@@ -100,4 +106,14 @@ async def createTopic(queueId, numPartitions, replicationFactor):
     global admin
     admin.create_topics([NewTopic(name=queueId, num_partitions=numPartitions, replication_factor=replicationFactor)])
     
-    
+def pause(topic, partition):
+    if topic in coOrdinatedtopicCallbackDict.keys():
+        groupConsumer.pause(TopicPartition(topic, partition))
+    elif topic in unCoOrdinatedtopicCallbackDict.keys():
+        indiVidualConsumer.pause(TopicPartition(topic, partition))
+
+def resume(topic, partition):
+    if topic in coOrdinatedtopicCallbackDict.keys():
+        groupConsumer.resume(TopicPartition(topic, partition))
+    elif topic in unCoOrdinatedtopicCallbackDict.keys():
+        indiVidualConsumer.resume(TopicPartition(topic, partition))
