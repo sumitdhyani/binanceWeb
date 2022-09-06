@@ -5,8 +5,6 @@ from CommunicationLayer import startCommunication, produce, pause, resume
 from aiokafka.structs import TopicPartition
 pubSubSyncdata = "pubSub_sync_data"
 pubSubSyncdataRequests = "pubSub_sync_data_requests"
-pausedTopic = None
-pausedPartition = None
 
 def generateTopicPartitionGroupId(serviceGroup, topic, partition):
     return serviceGroup + topic + str(partition)
@@ -34,19 +32,12 @@ async def onNewPartitionAssigned(topic,
                                  serviceGroup,
                                  syncQueueId,
                                  logger):
-    global pausedTopic
-    global pausedPartition
     logger.info("New assigned topic: %s, partition: %s", topic, str(partition))
     group = generateTopicPartitionGroupId(serviceGroup, topic, partition)
     syncMsgsDict = {"group" : group, "destination_topic" : syncQueueId}
     await produce(pubSubSyncdataRequests, json.dumps(syncMsgsDict), group)
-    #pause(topic, partition)
-    #pausedTopic = topic
-    #pausedPartition = partition
 
 async def onSyncData(message, appSubFunc):
-    global pausedTopic
-    global pausedPartition
     msgDict = json.loads(message)
     if msgDict:
         for key in msgDict.keys():
@@ -55,7 +46,6 @@ async def onSyncData(message, appSubFunc):
                 await appSubFunc(*params)
     else:
         logger.info("Resuming topic: %s, partition: %s", pausedTopic, str(pausedPartition))
-        #resume(pausedTopic, pausedPartition)
     
     
 async def onPartitionRevoked(partition,

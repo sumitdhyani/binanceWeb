@@ -45,7 +45,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         
         async def consumptionBatch(consumer, callbackDict):
             dict =  await consumer.getmany(timeout_ms=1000)
-            return (dict, callbackDict)
+            return (dict, callbackDict, consumer)
         
         groupConsumer.subscribe([topic for topic in coOrdinatedtopicsAndCallbacks.keys()],
                                 listener= None if topicsAndrebalanceListener is None else
@@ -75,6 +75,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                 result = await coro
                 messageDict = result[0]
                 callbackDict = result[1]
+                consumer = result[2]
                 for topicPartition, kafkaMsgs in messageDict.items():
                     for kafkaMsg in kafkaMsgs:
                         msg = kafkaMsg.value.decode("utf-8")
@@ -86,6 +87,9 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                                 await callback(topicPartition.topic, topicPartition.partition, key, msg)
                             else:
                                 await callback(msg)
+                            tp = TopicPartition(kafkaMsg.topic, kafkaMsg.partition)
+                            await consumer.commit({tp: kafkaMsg.offset + 1})
+
                         except Exception as ex:
                             logger.error("Unexpedted exception in the task loop, details %s, traceback: %s", str(ex), traceback.format_exc())
     except Exception as ex:

@@ -107,7 +107,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - WebServer
-    command: bash -c "python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper pubSub_sync_data,pubSub_sync_data_requests,price_subscriptions DEBUG"
+    command: bash -c "python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper pubSub_sync_data,pubSub_sync_data_requests,price_subscriptions,MarketGateway_1_syncIn,MarketGateway_2_syncIn DEBUG"
   sync_data_provider:
     image: python_base
     volumes:
