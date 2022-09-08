@@ -118,7 +118,6 @@ class Downloading(AFSMState):
     
     async def after_entry(self):
         self.logger.info("Entered Downloading state, partition: %s", str(self.partition))
-        await self.syncdataRequestor(self.partition)
     
     async def on_SyncData(self, symbolRelatedSubscriptionParams, destTopics):
         self.logger.info("on_SyncData in Downloading state, partition: %s", str(self.partition))

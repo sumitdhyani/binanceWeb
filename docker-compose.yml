@@ -56,7 +56,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 10 && python3 ./marketConnectivity/PriceFetcher.py kafka_3:9092 MarketGateway_1 DEBUG"
+    command: bash -c "sleep 10 && python3 ./marketConnectivity/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_1 DEBUG"
   mkt_gateway_2:
     image: python_base
     volumes:
@@ -64,7 +64,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 10 && python3 ./marketConnectivity/PriceFetcher.py kafka_3:9092 MarketGateway_2 DEBUG"
+    command: bash -c "sleep 10 && python3 ./marketConnectivity/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_2 DEBUG"
   WebServer:
     image: node:16.16-alpine3.15
     volumes:
