@@ -57,15 +57,17 @@ async def onSyncDataRequest(msg):
     logger.warning("Book status: %s", str(book))
     if group in book.keys():
         dict = {}
-        for key, value in book[group].items():
-            dict[str(key)] = value
-        content = json.dumps(dict)
-        logger.info("Producing response to destination: %s, content: %s", destTopic, content)
-        await produce(destTopic, content, group)
+        for identifier, destination_topics in book[group].items():
+            dict["group"] = group
+            dict["key"] = str(identifier)
+            dict["destination_topics"] = destination_topics
+            content = json.dumps(dict)
+            logger.info("Producing response to destination: %s, content: %s", destTopic, content)
+            await produce(destTopic, content, group)
     else:
         logger.warning("Data requested for non-existent group: %s", group)
     
-    await produce(destTopic, json.dumps({}), group)
+    await produce(destTopic, json.dumps({"group" : group, "download_end" : "true"}), group)
     
 
 
