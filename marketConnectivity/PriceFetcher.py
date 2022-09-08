@@ -1,4 +1,4 @@
-import os, sys, json, inspect, asyncio, binance, aiokafka
+import os, sys, json, inspect, asyncio, binance, aiokafka, re
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
@@ -8,8 +8,9 @@ from NetworkComplaintHandler import NetworkComplaintHandler
 from CommonUtils import getLoggingLevel, getLogger
 from CommunicationLayer import produce
 import PubSubService
-  
+
 broker = sys.argv[1]
+#broker = re.split(",", sys.argv[1])
 appId = sys.argv[2]
 loggingLevel = getLoggingLevel(sys.argv[3]) if(len(sys.argv) >= 4) else getLoggingLevel("")
 logger = getLogger(loggingLevel, appId)

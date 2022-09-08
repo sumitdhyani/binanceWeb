@@ -18,7 +18,8 @@ def getLogger(level, appId):
     now = datetime.now()
     date = now.date()
     time = now.time()
-    dateSuffix = str(date) + "_" + str(time.hour).zfill(2) + ":" + str(time.minute).zfill(2) + ":" + str(time.second).zfill(2)
+    #dateSuffix = str(date) + "_" + str(time.hour).zfill(2) + ":" + str(time.minute).zfill(2) + ":" + str(time.second).zfill(2)
+    dateSuffix = str(date)
     FILENAME= "./Logs/" + appId + "_" + dateSuffix + ".log"
 
     logger = logging.getLogger('tcpserver')
