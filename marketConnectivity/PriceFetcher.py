@@ -93,6 +93,7 @@ async def run():
                               lambda symbol, destTopic : registerSubscription(ddp.subscribe, symbol, destTopic),
                               lambda symbol : cancelAllSubscriptions(symbol, ddp.unsubscribe),
                               logger,
-                              False)
+                              False,
+                              None)
 
 asyncio.run(run())

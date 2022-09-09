@@ -84,14 +84,22 @@ services:
     depends_on:
       - WebServer
     command: bash -c "sleep 10 && python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices"
-  virtual_price_fetcher:
+  virtual_price_fetcher_1:
     image: python_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_3:9092 VirtualPriceFetcher DEBUG"
+    command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpc_1 DEBUG"
+  virtual_price_fetcher_2:
+    image: python_base
+    volumes:
+      - .:/usr/src
+    working_dir: /usr/src
+    depends_on:
+      - kafka_3
+    command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpc_2 DEBUG"
   price_dispatcher:
     image: python_base
     volumes:
@@ -107,7 +115,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - WebServer
-    command: bash -c "python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper pubSub_sync_data,pubSub_sync_data_requests,price_subscriptions,MarketGateway_1_syncIn,MarketGateway_2_syncIn DEBUG"
+    command: bash -c "python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper pubSub_sync_data,pubSub_sync_data_requests,Vpc_1,Vpc_2 DEBUG"
   sync_data_provider:
     image: python_base
     volumes:

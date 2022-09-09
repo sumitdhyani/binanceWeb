@@ -8,6 +8,7 @@ from CommonUtils import getLoggingLevel, getLogger
 from CommonUtils import generateBinanceTradingPairName as generateTradingPairName
 from CommonUtils import generateBinanceVirtualTradingPairName as generateVirtualTradingPairName
 from CommonUtils import extractAssetFromSymbolName
+import PubSubService
 
 #Reading commandline params
 broker = sys.argv[1]
@@ -50,6 +51,14 @@ cdp = ConversiondataProvider(generateTradingPairName,
                              vanillaPriceFetcher.unsubscribe,
                              logger)
 
+async def cancelAllSubscriptions(unsubscriptionFunc, asset, currency, bridge):
+    virtualSymbol = generateVirtualTradingPairName(asset, currency, bridge)
+    if virtualSymbol in subscriptionBook.keys():
+        await unsubscriptionFunc(asset, currency, bridge, onPrice)
+        subscriptionBook.pop(virtualSymbol)
+        logger.warn("cancelAllSubscriptions for %s", virtualSymbol)
+    else:
+        logger.warn("In cancelAllSubscriptions, %s which has no active subscriptions", virtualSymbol)
         
 async def onPrice(depth, asset, currency, bridge):
     virtualSymbol = generateVirtualTradingPairName(asset, currency, bridge)
@@ -76,9 +85,11 @@ async def registerSubscription(subscriptionFunc, asset, currency, bridge, destin
         subscriptionBook[virtualSymbol] = set([destinationTopic])
         await subscriptionFunc(asset, currency, bridge, onPrice)
         logger.debug("Successful subscription for %s, destination topic: %s", virtualSymbol, destinationTopic)
+        return (asset, currency, bridge)
     elif destinationTopic not in subscriptionBook[virtualSymbol]:
         subscriptionBook[virtualSymbol].add(destinationTopic)
         logger.debug("Successful subscription for %s, destination topic: %s", virtualSymbol, destinationTopic)
+        return (asset, currency, bridge)
     else:
         logger.warn("Duplicate subscription attempted for: %s destination topic: %s", virtualSymbol, destinationTopic)
 
@@ -90,36 +101,36 @@ async def unregisterSubscription(unsubscriptionFunc, asset, currency, bridge, de
             if 0 == len(subscriptionBook[virtualSymbol]):
                 await unsubscriptionFunc(asset, currency, bridge, onPrice)
                 subscriptionBook.pop(virtualSymbol)
+            return (asset, currency, bridge)
         else:
             logger.warn("Unsubscription attempted for %s which has no active subscriptions", virtualSymbol)
     except KeyError:
         logger.warn("Unsubscription attempted for %s, destination topic: %s which is not an active listener for this symbol", virtualSymbol, destinationTopic)
 
-async def onSubMsg(msg):
-    dict = json.loads(msg)
-    action = dict["action"]
+async def onSubMsg(msgDict):
+    action = msgDict["action"]
     if "subscribe" == action:
-        await registerSubscription(cdp.subscribe, dict["asset"], dict["currency"], dict["bridge"], dict["destination_topic"])
+        return await registerSubscription(cdp.subscribe, msgDict["asset"], msgDict["currency"], msgDict["bridge"], msgDict["destination_topic"])
     else:
-        await unregisterSubscription(cdp.unsubscribe, dict["asset"], dict["currency"], dict["bridge"], dict["destination_topic"])
+        return await unregisterSubscription(cdp.unsubscribe, msgDict["asset"], msgDict["currency"], msgDict["bridge"], msgDict["destination_topic"])
 
-async def OnInBoundMsg(msg):
-    dict = json.loads(msg)
-    msgType = dict["message_type"]
+async def OnInBoundMsg(msgDict):
+    msgType = msgDict["message_type"]
     if(msgType == "depth"):
-        await vanillaPriceFetcher.onDepth(dict)
+        await vanillaPriceFetcher.onDepth(msgDict)
     else:
         logger.warn("Unrecognized message type: %s received", msgType)
 
 async def run():
-    await startCommunication({"virtual_price_subscriptions" : onSubMsg, appId : OnInBoundMsg},
-                             {},
-                             broker,
-                             appId,
-                             "virtual_price_fetcher",
-                             logger,
-                             False,
-                             [appId])
-        
+    await PubSubService.start(broker,
+                              "virtual_price_subscriptions",
+                              onSubMsg,
+                              "virtual_price_fetcher",
+                              appId,
+                              lambda asset, currency, bridge, destTopic : registerSubscription(cdp.subscribe, asset, currency, bridge, destTopic),
+                              lambda asset, currency, bridge : cancelAllSubscriptions(asset, currency, bridge),
+                              logger,
+                              True,
+                              OnInBoundMsg)
 
 asyncio.run(run())

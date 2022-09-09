@@ -16,7 +16,7 @@ def generateComponentsFromGroupName(readerGroup):
     return re.split(":", readerGroup)
 
 def getSubscriptionParamsFromKey(subscriptionKey):
-    return re.split(",", subscriptionKey.replace(",)", ")").strip("[]()").replace("'", ''))
+    return re.split(",", subscriptionKey.replace(",)", ")").strip("[]()").replace("'", '').replace(" ",''))
 
 async def onRebalance(oldRevoked,
                       newAssigned,
@@ -120,7 +120,8 @@ async def start(brokers,
                 appSubMethod,
                 appUnsubAllMethod,
                 logger,
-                isInternalService):
+                isInternalService,
+                inMsgCallBack):
     syncTopic = serviceId + "_syncIn"
     async def rebalanceCallback(oldRevoked,newAssigned):
         await onRebalance(oldRevoked,
@@ -140,8 +141,11 @@ async def start(brokers,
                                                                  syncTopic),
                           lambda partition : tpBook.pop(str(partition)),
                           logger)
+    individualConsumerDict = {syncTopic : lambda topic, partition, key, msg : onSyncData(msg, logger) }
+    if isInternalService:
+        individualConsumerDict[serviceId] = lambda topic, partition, key, msg : inMsgCallBack(json.loads(msg))
     await startCommunication({reqTopic : lambda topic, partition, key, msg : onSubMsg(partition, msg, logger)},
-                             {syncTopic : lambda topic, partition, key, msg : onSyncData(msg, logger) },
+                             individualConsumerDict,
                              brokers,
                              serviceId,
                              serviceGroup,
