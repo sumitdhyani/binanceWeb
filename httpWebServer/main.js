@@ -13,6 +13,8 @@ const DuplicateSubscription = appSpecificErrors.DuplicateSubscription
 const InvalidSymbol = appSpecificErrors.InvalidSymbol
 const createVirtualTradingPairName = CommonUtils.createVirtualTradingPairName
 const disintegrateVirtualTradingPairName = CommonUtils.disintegrateVirtualTradingPairName
+const sendWebserverEvent = api.sendWebserverEvent
+const WebserverEvents = api.WebserverEvents
 
 function stringToAPILogLevel(level){
     if(level.toUpperCase() === "ERROR"){
@@ -52,7 +54,16 @@ async function mainLoop(logger){
                                                   createVirtualTradingPairName,
                                                   logger)
 
+    await sendWebserverEvent(WebserverEvents.Registration)
+    setInterval(()=>{
+        sendWebserverEvent(WebserverEvents.HeartBeat).then(()=>{}).catch((err)=>{
+            console.log(`Error whle sending HeartBeat event, details: ${err.message}`)
+        })
+    }, 5000)
     io.on('connection', (socket) =>{
+        sendWebserverEvent(WebserverEvents.NewConnection).then(()=>{}).catch((err)=>{
+            console.log(`Error whle sending NewConnection event, details: ${err.message}`)
+        })
         console.log(`New connection, id: ${socket.id}`)
         subscriptions = new Set()
         virtualSubscriptions = new Set()
@@ -65,6 +76,9 @@ async function mainLoop(logger){
         }
 
         socket.on('disconnect', ()=> {
+            sendWebserverEvent(WebserverEvents.Disconnection).then(()=>{}).catch((err)=>{
+                console.log(`Error whle sending Disconnection event, details: ${err.message}`)
+            })
             logger.warn(`Disconnection, id: ${socket.id}, cancelling all subscriptions`)
 
             for(let symbol of subscriptions){

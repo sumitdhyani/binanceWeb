@@ -39,7 +39,7 @@ services:
     environment:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_ADVERTISED_HOST_NAME: kafka_3
-      KAFKA_CREATE_TOPICS: "test_topic:2:2,price_subscriptions:2:2,prices:2:2,virtual_price_subscriptions:2:2,virtual_prices:2:2,instrument_info:2:2,instrument_update_info:2:2,pubSub_sync_data:1:1,pubSub_sync_data_requests:2:2"
+      KAFKA_CREATE_TOPICS: "test_topic:2:2,price_subscriptions:2:2,prices:2:2,virtual_price_subscriptions:2:2,virtual_prices:2:2,instrument_info:2:2,instrument_update_info:2:2,pubSub_sync_data:1:1,pubSub_sync_data_requests:2:2,webserver_events:2:2"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_BROKER_ID: 3
     links:
@@ -91,7 +91,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpc_1 DEBUG"
+    command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_1 DEBUG"
   virtual_price_fetcher_2:
     image: python_base
     volumes:
@@ -99,7 +99,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpc_2 DEBUG"
+    command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_2 DEBUG"
   price_dispatcher:
     image: python_base
     volumes:
@@ -115,7 +115,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - WebServer
-    command: bash -c "python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper pubSub_sync_data,pubSub_sync_data_requests,Vpc_1,Vpc_2 DEBUG"
+    command: bash -c "python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper pubSub_sync_data,pubSub_sync_data_requests,Vpf_1,Vpf_2,webserver_events DEBUG"
   sync_data_provider:
     image: python_base
     volumes:

@@ -22,6 +22,14 @@ const NativeLoglevel = {
     DEBUG: Symbol("DEBUG")
 }
 
+const WebserverEvents = {
+    Registration : Symbol("Registration"),
+    NewConnection: Symbol("NewConnection"),
+    Disconnection: Symbol("Disconnection"),
+    HeartBeat: Symbol("HeartBeat"),
+}
+
+
 const KafkatoWinstonLogLevel = level => {
     switch (level) {
         case Kafka.ERROR:
@@ -142,6 +150,48 @@ async function enqueueSubscriptionRequest(dict, topic, key)
     dict["destination_topic"] = appId
     msg = JSON.stringify(dict)
     await producer.send({ topic: topic, messages: [{ key: key, value: msg }] })
+}
+
+function getJsonStringForNewConnection()
+{
+    dict = {evt : WebserverEvents.NewConnection.description, appId : appId}
+    return JSON.stringify(dict)
+}
+
+function getJsonStringForDisconnection()
+{
+    dict = {evt : WebserverEvents.Disconnection.description, appId : appId}
+    return JSON.stringify(dict)
+}
+
+function getJsonStringForHeartbeat()
+{
+    dict = {evt : WebserverEvents.HeartBeat.description, appId : appId}
+    return JSON.stringify(dict)
+}
+
+function getJsonStringForRegistration()
+{
+    dict = {evt : WebserverEvents.Registration.description, appId : appId}
+    return JSON.stringify(dict)
+}
+
+async function sendWebserverEvent(event)
+{
+    switch(event){
+        case WebserverEvents.NewConnection:
+            await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForNewConnection() }] })
+            break
+        case WebserverEvents.Disconnection:
+            await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForDisconnection() }] })
+            break
+        case WebserverEvents.HeartBeat:
+            await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForHeartbeat() }] })
+            break
+        case WebserverEvents.Registration:
+            await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForRegistration() }] })
+            break
+    }
 }
 
 module.exports = {
@@ -271,4 +321,8 @@ module.exports = {
     },
 
     Loglevel: NativeLoglevel,
+
+    sendWebserverEvent : sendWebserverEvent,
+
+    WebserverEvents : WebserverEvents
 };
