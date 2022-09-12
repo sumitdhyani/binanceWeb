@@ -22,11 +22,13 @@ const NativeLoglevel = {
     DEBUG: Symbol("DEBUG")
 }
 
+const AdminEvents = {
+    HeartBeat: Symbol("HeartBeat")
+}
+
 const WebserverEvents = {
-    Registration : Symbol("Registration"),
     NewConnection: Symbol("NewConnection"),
-    Disconnection: Symbol("Disconnection"),
-    HeartBeat: Symbol("HeartBeat"),
+    Disconnection: Symbol("Disconnection")
 }
 
 
@@ -166,13 +168,13 @@ function getJsonStringForDisconnection()
 
 function getJsonStringForHeartbeat()
 {
-    dict = {evt : WebserverEvents.HeartBeat.description, appId : appId}
+    dict = {evt : AdminEvents.HeartBeat.description, appId : appId}
     return JSON.stringify(dict)
 }
 
 function getJsonStringForRegistration()
 {
-    dict = {evt : WebserverEvents.Registration.description, appId : appId}
+    dict = {evt : AdminEvents.Registration.description, appId : appId}
     return JSON.stringify(dict)
 }
 
@@ -182,14 +184,16 @@ async function sendWebserverEvent(event)
         case WebserverEvents.NewConnection:
             await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForNewConnection() }] })
             break
-        case WebserverEvents.Disconnection:
+        case AdminEvents.Disconnection:
             await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForDisconnection() }] })
             break
-        case WebserverEvents.HeartBeat:
-            await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForHeartbeat() }] })
-            break
-        case WebserverEvents.Registration:
-            await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForRegistration() }] })
+    }
+}
+
+async function sendAdminEvent(event){
+    switch(event){
+        case AdminEvents.HeartBeat:
+            await producer.send({ topic: "heartbeats", messages: [{ key: appId, value: getJsonStringForHeartbeat() }] })
             break
     }
 }
@@ -302,6 +306,13 @@ module.exports = {
 
         await consumer.subscribe({ topic: applId, fromBeginning: false })
         logger = CommonUtils.createFileLogger("Logs/" + appFileName, enumToWinstomLogLevel(logLevel))
+
+        setInterval(()=>{
+            sendAdminEvent(AdminEvents.HeartBeat).then(()=>{}).catch((err)=>{
+                console.log(`Error while sending HeartBeat event, details: ${err.message}`)
+            })
+        }, 5000)
+
         kafkaReaderLoop = consumer.run(
             {
                 eachMessage: async ({ topic, partition, message }) => {

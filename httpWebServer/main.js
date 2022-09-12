@@ -54,12 +54,6 @@ async function mainLoop(logger){
                                                   createVirtualTradingPairName,
                                                   logger)
 
-    await sendWebserverEvent(WebserverEvents.Registration)
-    setInterval(()=>{
-        sendWebserverEvent(WebserverEvents.HeartBeat).then(()=>{}).catch((err)=>{
-            console.log(`Error whle sending HeartBeat event, details: ${err.message}`)
-        })
-    }, 5000)
     io.on('connection', (socket) =>{
         sendWebserverEvent(WebserverEvents.NewConnection).then(()=>{}).catch((err)=>{
             console.log(`Error whle sending NewConnection event, details: ${err.message}`)
