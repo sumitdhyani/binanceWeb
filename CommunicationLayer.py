@@ -4,13 +4,7 @@ from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from RebalanceListener import ConsumerRebalanceListener, RebalanceListener
 from aiokafka.structs import TopicPartition
-
-async def timer(sec, func):
-    async def internalFunc():
-        await asyncio.sleep(sec)
-        await func()
-        await timer(sec, func)
-    await asyncio.wait([asyncio.sleep(0), internalFunc()], return_when=asyncio.FIRST_COMPLETED)
+from CommonUtils import timer
 
 async def sendHeartbeat(appId):
     await produce("heartbeats", json.dumps({"evt":"HeartBeat", "appId":appId}), appId)

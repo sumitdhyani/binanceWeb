@@ -1,4 +1,4 @@
-import logging
+import logging, asyncio
 from datetime import datetime
 
 def getLoggingLevel(level):
@@ -39,3 +39,10 @@ def generateBinanceVirtualTradingPairName(asset, currency, bridge):
 
 def extractAssetFromSymbolName(tradingPair, currency):
     return tradingPair[0 : tradingPair.find(currency)]
+
+async def timer(sec, func):
+    async def internalFunc():
+        await asyncio.sleep(sec)
+        await func()
+        await timer(sec, func)
+    await asyncio.wait([asyncio.sleep(0), internalFunc()], return_when=asyncio.FIRST_COMPLETED)
