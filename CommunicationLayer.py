@@ -1,10 +1,10 @@
-import os, sys, inspect, asyncio, aiokafka, traceback, json
-from tkinter.messagebox import NO
+from multiprocessing import dummy
+import asyncio, aiokafka, traceback, json
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
-from RebalanceListener import ConsumerRebalanceListener, RebalanceListener
+from RebalanceListener import RebalanceListener
 from aiokafka.structs import TopicPartition
-from CommonUtils import timer
+from CommonUtils import Timer
 
 async def sendHeartbeat(appId):
     await produce("heartbeats", json.dumps({"evt":"HeartBeat", "appId":appId}), appId)
@@ -67,7 +67,11 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
             individualConsumer.subscribe([topic for topic in unCoOrdinatedtopicsAndCallbacks.keys()])
             await individualConsumer.start()
 
-        await timer(5, lambda : sendHeartbeat(clientId))
+        timer = Timer()
+        async def dummyFunc():
+            await sendHeartbeat(clientId)
+        await timer.setTimer(5, dummyFunc)
+        await produce("registrations", json.dumps({"appId" : clientId, "appGroup" : groupId}), clientId)
         while True:
             consumptionFunctions = None
             if individualConsumer is not None:

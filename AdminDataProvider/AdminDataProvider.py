@@ -1,9 +1,11 @@
+from curses import meta
 import os, sys, inspect, asyncio, json
+from random import setstate
 from ssl import ALERT_DESCRIPTION_UNKNOWN_PSK_IDENTITY
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
-from CommonUtils import getLoggingLevel, getLogger, timer
+from CommonUtils import getLoggingLevel, getLogger, Timer
 from CommunicationLayer import startCommunication, produce
 
 broker = sys.argv[1]
@@ -11,27 +13,60 @@ appId = sys.argv[2]
 loggingLevel = getLoggingLevel(sys.argv[3]) if(len(sys.argv) >= 4) else getLoggingLevel("")
 logger = getLogger(loggingLevel, appId)
 
-apps = {}
+appMetadata = {}
 allowedMissedHeartbeats = 3
+heartbeatBook = {}
 
-async def increaseMissedHeartBeats(otherApp):
-    apps[otherApp] += 1
-    if apps[otherApp] >= allowedMissedHeartbeats:
-        apps.pop(otherApp)
+timer = Timer()
+async def increaseMissedHeartBeats(otherApp, parentFunc):
+    heartbeatBook[otherApp] += 1
+    if heartbeatBook[otherApp] >= allowedMissedHeartbeats:
         await produce("admin_events", json.dumps({"evt" : "app_down", "appId" : otherApp}), otherApp)
+        heartbeatBook.pop(otherApp)
+        appMetadata.pop(otherApp)
+        await timer.unsetTimer(parentFunc)
         
 async def onHeartbeat(msg):
     msgDict = json.loads(msg)
     otherApp = msgDict["appId"]
-    if otherApp not in apps:
-        apps[otherApp] = 1
-        await produce("admin_events", json.dumps({"evt" : "app_up", "appId" : otherApp}), otherApp)
-        await timer(5, lambda : increaseMissedHeartBeats(otherApp))
-    apps[otherApp] -= 1
+    if otherApp not in heartbeatBook.keys():
+        heartbeatBook[otherApp] = 0
+        async def dummyFunc():
+            await increaseMissedHeartBeats(otherApp, dummyFunc)
+        await timer.setTimer(5, dummyFunc)
+    else:
+        heartbeatBook[otherApp] -= 1
+    
+async def onRegistration(msg):
+    msgDict = json.loads(msg)
+    msgDict["evt"] = "app_up"
+    await produce("admin_events", json.dumps(msgDict), msgDict["appId"])
+
+async def onAdminQuery(msg):
+    msgDict = json.loads(msg)
+    destTopic = msgDict["destination_topic"] 
+    result = None
+    if "eq" not in msgDict.keys():
+        result = []
+    elif msgDict["eq"] == {}:
+        result = [metaData for app, metaData in appMetadata.items()]
+    else:    
+        equalityDict = msgDict["eq"]
+        result = [metaData for app, metaData in appMetadata.items() if all(key in metaData.keys() and metaData[key] == equalityDict[key]
+                  for key in equalityDict.keys())]
+    await produce(destTopic, json.dumps(result), destTopic)
+
+async def onAdminEvent(msg):
+    msgDict = json.loads(msg)
+    evt = msgDict["evt"]
+    if "app_up" == evt: 
+        otherApp = msgDict["appId"]
+        appMetadata[otherApp] = msgDict
+    
 
 async def run():
-    await startCommunication({"heartbeats" : onHeartbeat},
-                             {},
+    await startCommunication({"heartbeats" : onHeartbeat, "admin_queries" : onAdminQuery},
+                             {"registrations" : onRegistration, "admin_events" : onAdminEvent},
                              broker,
                              appId,
                              "admin_data_provider",

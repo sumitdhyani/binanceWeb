@@ -23,6 +23,7 @@ const NativeLoglevel = {
 }
 
 const AdminEvents = {
+    Registration: Symbol("Registration"),
     HeartBeat: Symbol("HeartBeat")
 }
 
@@ -174,7 +175,7 @@ function getJsonStringForHeartbeat()
 
 function getJsonStringForRegistration()
 {
-    dict = {evt : AdminEvents.Registration.description, appId : appId}
+    dict = {appId : appId, appGroup : "FeedServer"}
     return JSON.stringify(dict)
 }
 
@@ -194,6 +195,9 @@ async function sendAdminEvent(event){
     switch(event){
         case AdminEvents.HeartBeat:
             await producer.send({ topic: "heartbeats", messages: [{ key: appId, value: getJsonStringForHeartbeat() }] })
+            break
+        case AdminEvents.Registration:
+            await producer.send({ topic: "registrations", messages: [{ key: appId, value: getJsonStringForRegistration() }] })
             break
     }
 }
@@ -307,6 +311,7 @@ module.exports = {
         await consumer.subscribe({ topic: applId, fromBeginning: false })
         logger = CommonUtils.createFileLogger("Logs/" + appFileName, enumToWinstomLogLevel(logLevel))
 
+        await sendAdminEvent(AdminEvents.Registration)
         setInterval(()=>{
             sendAdminEvent(AdminEvents.HeartBeat).then(()=>{}).catch((err)=>{
                 console.log(`Error while sending HeartBeat event, details: ${err.message}`)
