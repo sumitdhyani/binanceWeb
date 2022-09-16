@@ -51,11 +51,13 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
             dict =  await consumer.getmany(timeout_ms=1000)
             return (dict, callbackDict, consumer)
         
+        rebalanceListener = (None if topicsAndrebalanceListener is None else
+                             RebalanceListener(logger,
+                                               set(topicsAndrebalanceListener[0]), 
+                                               topicsAndrebalanceListener[1]))
+
         groupConsumer.subscribe([topic for topic in coOrdinatedtopicsAndCallbacks.keys()],
-                                listener= None if topicsAndrebalanceListener is None else
-                                RebalanceListener(logger,
-                                                  set(topicsAndrebalanceListener[0]), 
-                                                  topicsAndrebalanceListener[1]))
+                                listener=rebalanceListener)
         await groupConsumer.start()
 
         individualConsumer = None
@@ -64,7 +66,8 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                                                            group_id=clientId,
                                                            client_id=groupId+clientId,
                                                            enable_auto_commit=False)
-            individualConsumer.subscribe([topic for topic in unCoOrdinatedtopicsAndCallbacks.keys()])
+            individualConsumer.subscribe([topic for topic in unCoOrdinatedtopicsAndCallbacks.keys()],
+                                         listener=rebalanceListener)
             await individualConsumer.start()
 
         timer = Timer()
@@ -85,21 +88,26 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                 callbackDict = result[1]
                 consumer = result[2]
                 for topicPartition, kafkaMsgs in messageDict.items():
-                    for kafkaMsg in kafkaMsgs:
-                        msg = kafkaMsg.value.decode("utf-8")
-                        key = kafkaMsg.key.decode("utf-8")
-                        logger.debug("Msg received: %s", msg)
-                        try:
-                            callback = callbackDict.get(kafkaMsg.topic)
-                            if lowLevelListener:
-                                await callback(topicPartition.topic, topicPartition.partition, key, msg)
-                            else:
-                                await callback(msg)
-                            tp = TopicPartition(kafkaMsg.topic, kafkaMsg.partition)
-                            await consumer.commit({tp: kafkaMsg.offset + 1})
-
-                        except Exception as ex:
-                            logger.error("Unexpedted exception in the task loop, details %s, traceback: %s", str(ex), traceback.format_exc())
+                    lastCommitted = await consumer.committed(topicPartition)
+                    lastCommitted = 0 if lastCommitted is None else lastCommitted
+                    if lastCommitted < kafkaMsgs[0].offset:
+                        logger.warn("Messages lost, tp: %s no. of lost messages : %s, recovering", str(topicPartition), str(kafkaMsgs[0].offset - lastCommitted))
+                        consumer.seek(topicPartition, lastCommitted)
+                    else:
+                        for kafkaMsg in kafkaMsgs:
+                            msg = kafkaMsg.value.decode("utf-8")
+                            key = kafkaMsg.key.decode("utf-8")
+                            logger.debug("Msg received: %s, offset :%s", msg, str(kafkaMsg.offset))
+                            try:
+                                callback = callbackDict.get(kafkaMsg.topic)
+                                if lowLevelListener:
+                                    await callback(topicPartition.topic, topicPartition.partition, key, msg)
+                                else:
+                                    await callback(msg)
+                                tp = TopicPartition(kafkaMsg.topic, kafkaMsg.partition)
+                                await consumer.commit({tp: kafkaMsg.offset + 1})
+                            except Exception as ex:
+                                logger.error("Unexpedted exception in the task loop, details %s, traceback: %s", str(ex), traceback.format_exc())
     except Exception as ex:
         logger.error("Unexpedted exception in the init phase loop, details %s, traceback: %s", str(ex), traceback.format_exc())
         await producer.stop()
