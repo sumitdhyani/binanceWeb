@@ -66,8 +66,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                                                            group_id=clientId,
                                                            client_id=groupId+clientId,
                                                            enable_auto_commit=False)
-            individualConsumer.subscribe([topic for topic in unCoOrdinatedtopicsAndCallbacks.keys()],
-                                         listener=rebalanceListener)
+            individualConsumer.subscribe([topic for topic in unCoOrdinatedtopicsAndCallbacks.keys()])
             await individualConsumer.start()
 
         timer = Timer()
