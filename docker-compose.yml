@@ -55,8 +55,8 @@ services:
       - .:/usr/src
     working_dir: /usr/src
     depends_on:
-      - admin_data_provider
-    command: bash -c "sleep 10 && python3 ./marketConnectivity/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_1 DEBUG"
+      - kafka_3
+    command: bash -c "sleep 20 && python3 ./marketConnectivity/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_1 DEBUG"
   mkt_gateway_2:
     image: python_base
     volumes:
@@ -64,26 +64,37 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 10 && python3 ./marketConnectivity/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_2 DEBUG"
-  WebServer:
-    image: node:16.16-alpine3.15
+    command: bash -c "sleep 20 && python3 ./marketConnectivity/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_2 DEBUG"
+  web_server:
+    build: ./images/nodejs_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
     depends_on:
-      - mkt_gateway_1
-      - mkt_gateway_2
-    command: node ./httpWebServer/main.js kafka_3:9092 80 WebServer
+      - kafka_3
+    command: bash -c "sleep 20 && node ./httpWebServer/main.js kafka_3:9092 80 web_server"
     ports:
       - "80:80"
+  web_authenticator:
+    build: ./images/nodejs_base
+    volumes:
+      - .:/usr/src
+    working_dir: /usr/src
+    depends_on:
+      - web_server
+      - kafka_3
+    #command: node ./httpWebServer/main.js kafka_3:9092 80 WebServer
+    command: bash -c "sleep 30 && node ./httpWebServer/WebAuthenticator.js kafka_3:9092 90 web_authenticator DEBUG"
+    ports:
+      - "90:90"
   data_dispatcher:
     image: python_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
     depends_on:
-      - WebServer
-    command: bash -c "sleep 10 && python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices"
+      - kafka_3
+    command: bash -c "sleep 20 && python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices"
   virtual_price_fetcher_1:
     image: python_base
     volumes:
@@ -91,7 +102,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_1 DEBUG"
+    command: bash -c "sleep 20 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_1 DEBUG"
   virtual_price_fetcher_2:
     image: python_base
     volumes:
@@ -99,31 +110,31 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 10 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_2 DEBUG"
+    command: bash -c "sleep 20 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_2 DEBUG"
   price_dispatcher:
     image: python_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
     depends_on:
-      - WebServer
-    command: bash -c "sleep 10 && python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices"
+      - kafka_3
+    command: bash -c "sleep 20 && python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices"
   topic_data_dumper:
     image: python_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
     depends_on:
-      - WebServer
-    command: bash -c "python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper pubSub_sync_data,pubSub_sync_data_requests,Vpf_1,Vpf_2,webserver_events,admin_events,heartbeats,registrations INFO"
+      - kafka_3
+    command: bash -c "sleep 30 && python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper admin_queries,web_authenticator,admin_events,registrations INFO"
   sync_data_provider:
     image: python_base
     volumes:
       - .:/usr/src
     working_dir: /usr/src
     depends_on:
-      - WebServer
-    command: bash -c "python3 ./SyncDataProvider/SyncDataProvider.py kafka_3:9092 SyncDataProvider DEBUG"
+      - kafka_3
+    command: bash -c "sleep 20 && python3 ./SyncDataProvider/SyncDataProvider.py kafka_3:9092 SyncDataProvider DEBUG"
   admin_data_provider:
     image: python_base
     volumes:

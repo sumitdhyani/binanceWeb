@@ -170,7 +170,7 @@ async function mainLoop(logger){
     })
 }
 
-api.start(appId, mainLoop, [broker], appId, logLevel).then(()=>{}).catch((err)=>{
+api.start(appId, mainLoop, [broker], appId, listenPort, logLevel).then(()=>{}).catch((err)=>{
     console.log(`Error in init phase, details: ${err.message}, exiting...`)
     process.exit(0)
 })

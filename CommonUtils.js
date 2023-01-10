@@ -27,19 +27,19 @@ class Event
                                new Set()]
     }
 
-    #validateCallbackStructure(callback){
+    validateCallbackStructure(callback){
         if(callback.length >= this.evtListeneters.length)
             throw new Error(`The callback should have max ${this.evtListeneters.length - 1} params`)
     }
 
-    #validateEventArgs(args){
+    validateEventArgs(args){
         if(args.length >= this.evtListeneters.length)
             throw new Error(`The event reaise should have max ${this.evtListeneters.length - 1} params`)
     }
 
     registerCallback(callback)
     {
-        this.#validateCallbackStructure(callback)
+        this.validateCallbackStructure(callback)
         if(this.evtListeneters[callback.length].has(callback)){
             throw new appSpecificErrors.DuplicateSubscription("This callback is already registered")
         }
@@ -48,7 +48,7 @@ class Event
 
     unregisterCallback(callback)
     {
-        this.#validateCallbackStructure(callback)
+        this.validateCallbackStructure(callback)
         if(!this.evtListeneters[callback.length].delete(callback)){
             throw new appSpecificErrors.SpuriousUnsubscription("This callback was never registered")
         }
@@ -56,7 +56,7 @@ class Event
 
     raise(...args)
     {
-        this.#validateEventArgs(args)
+        this.validateEventArgs(args)
         this.evtListeneters[args.length].forEach(callback => {
             callback(...args)
         })

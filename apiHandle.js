@@ -4,12 +4,16 @@ const fs = require('fs');
 const readline = require('readline');
 const CommonUtils = require("./CommonUtils")
 const appSpecificErrors = require('./appSpecificErrors');
+const process = require('process')
+const env = process.env
 
+port = 0
 subscriptionBook = new Map()
 virtualSubscriptionBook = new Map()
 producer = null
 symbolDict = new Map()
 let logger = null
+numClientConnections  = 0
 const createTradingPairName = CommonUtils.createTradingPairName
 const createVirtualTradingPairName = CommonUtils.createVirtualTradingPairName
 const disintegrateVirtualTradingPairName = CommonUtils.disintegrateVirtualTradingPairName
@@ -157,13 +161,13 @@ async function enqueueSubscriptionRequest(dict, topic, key)
 
 function getJsonStringForNewConnection()
 {
-    dict = {evt : WebserverEvents.NewConnection.description, appId : appId}
+    dict = {evt : WebserverEvents.NewConnection.description, appId : appId, numClientConnections : ++numClientConnections}
     return JSON.stringify(dict)
 }
 
 function getJsonStringForDisconnection()
 {
-    dict = {evt : WebserverEvents.Disconnection.description, appId : appId}
+    dict = {evt : WebserverEvents.Disconnection.description, appId : appId, numClientConnections : --numClientConnections}
     return JSON.stringify(dict)
 }
 
@@ -175,7 +179,12 @@ function getJsonStringForHeartbeat()
 
 function getJsonStringForRegistration()
 {
-    dict = {appId : appId, appGroup : "FeedServer"}
+    dict = {appId : appId, appGroup : "FeedServer", hostPort : env.LOCALIP + ":" + port}
+    return JSON.stringify(dict)
+}
+
+function getJsonStringForComponentInfo(){
+    dict = {appId : appId, appGroup : "FeedServer", hostPort : env.LOCALIP + ":" + port, numClientConnections : numClientConnections}
     return JSON.stringify(dict)
 }
 
@@ -185,7 +194,7 @@ async function sendWebserverEvent(event)
         case WebserverEvents.NewConnection:
             await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForNewConnection() }] })
             break
-        case AdminEvents.Disconnection:
+        case WebserverEvents.Disconnection:
             await producer.send({ topic: "webserver_events", messages: [{ key: appId, value: getJsonStringForDisconnection() }] })
             break
     }
@@ -200,6 +209,14 @@ async function sendAdminEvent(event){
             await producer.send({ topic: "registrations", messages: [{ key: appId, value: getJsonStringForRegistration() }] })
             break
     }
+}
+
+async function sendComponentInfo(destTopic){
+    await producer.send({ topic: destTopic, messages: [{ key: appId, value: getJsonStringForComponentInfo() }] })
+}
+
+async function onComponentEnquiry(dict){
+    await sendComponentInfo(dict["destination_topic"])
 }
 
 module.exports = {
@@ -274,15 +291,13 @@ module.exports = {
         }
     },
 
-    start: async function (apiHandleId, clientEntryPointFunction, hosts, applId, logLevel) {
+    start: async function (apiHandleId, clientEntryPointFunction, hosts, applId, listenPort, logLevel) {
+        port = listenPort.toString()
         appId = applId
         const date = new Date()
         const timeSuffix =  date.getFullYear().toString() + "-" +
                             (date.getMonth() + 1).toString().padStart(2, '0') + "-" +
-                            date.getDate().toString().padStart(2, '0') + "_" +
-                            date.getHours().toString().padStart(2, '0') + ":" +
-                            date.getMinutes().toString().padStart(2, '0') + ":" +
-                            date.getSeconds().toString().padStart(2, '0')
+                            date.getDate().toString().padStart(2, '0')
         const appFileName = applId + "_" + timeSuffix + ".log"
         const kafkFileName = "Kafka_" + appFileName
 
@@ -330,6 +345,9 @@ module.exports = {
                     }
                     else if("virtual_depth" == messageType){
                         onVirtualPriceData(dict, raw)
+                    }
+                    else if("component_enquiry" == messageType){
+                        await onComponentEnquiry(dict)
                     }
                 },
             })

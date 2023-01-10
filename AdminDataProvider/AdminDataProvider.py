@@ -39,27 +39,31 @@ async def onHeartbeat(msg):
     
 async def onRegistration(msg):
     msgDict = json.loads(msg)
+    appMetadata[msgDict["appId"]] = msgDict.copy()
     msgDict["evt"] = "app_up"
     await produce("admin_events", json.dumps(msgDict), msgDict["appId"])
 
 async def onAdminQuery(msg):
     msgDict = json.loads(msg)
     destTopic = msgDict["destination_topic"] 
-    result = None
-    if "eq" not in msgDict.keys():
-        result = []
-    elif msgDict["eq"] == {}:
-        result = [metaData for app, metaData in appMetadata.items()]
-    else:    
+    responseDict = {"message_type" : "admin_query_response"}
+    results = []
+    if "eq" in msgDict.keys():
         equalityDict = msgDict["eq"]
-        result = [metaData for app, metaData in appMetadata.items() if all(key in metaData.keys() and metaData[key] == equalityDict[key]
-                  for key in equalityDict.keys())]
-    await produce(destTopic, json.dumps(result), destTopic)
+        results = [metaData for app, metaData in appMetadata.items() if all(key in metaData.keys() and metaData[key] == equalityDict[key]
+                   for key in equalityDict.keys())]
+    else:    
+        results = [metaData for app,
+                   metaData in appMetadata.items()]
+                   
+    responseDict["results"] = results
+    logger.info("Received admin query: %s, current metadata: %s, result: %s", msg, str(appMetadata), str(responseDict))
+    await produce(destTopic, json.dumps(responseDict), destTopic)
 
 async def onAdminEvent(msg):
     msgDict = json.loads(msg)
     evt = msgDict["evt"]
-    if "app_up" == evt: 
+    if "app_up" == evt:
         otherApp = msgDict["appId"]
         appMetadata[otherApp] = msgDict
     
