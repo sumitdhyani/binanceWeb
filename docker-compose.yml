@@ -17,7 +17,7 @@ services:
       - zookeeper
     volumes:
       - ./docker.sock:/var/run/docker.sock
-      - ./kafka_1:/kafka_1
+      - ./kafka_1:/kafka
   kafka_2:
     image: wurstmeister/kafka:2.11-1.1.1
     ports:
@@ -31,7 +31,7 @@ services:
       - kafka_1
     volumes:
       - ./docker.sock:/var/run/docker.sock
-      - ./kafka_2:/kafka_2
+      - ./kafka_2:/kafka
   kafka_3:
     image: wurstmeister/kafka:2.11-1.1.1
     ports:
@@ -46,7 +46,7 @@ services:
       - kafka_2
     volumes:
       - ./docker.sock:/var/run/docker.sock
-      - ./kafka_3:/kafka_3
+      - ./kafka_3:/kafka
   mkt_gateway_1:
     build: ./images/ubuntu_all_packages
     volumes:
