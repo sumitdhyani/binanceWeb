@@ -4,6 +4,10 @@ const CommonUtils = require("../CommonUtils")
 const appSpecificErrors = require('../appSpecificErrors')
 const api = require('../apiHandle')
 const process = require('process')
+const express = require('express')
+const app = express()
+const httpHandle = require('http')
+const { json } = require('express')
 //const { isAsyncFunction } = require('util/types')
 //const { setMaxIdleHTTPParsers } = require('http')
 const NativeLoglevel = api.Loglevel
@@ -11,6 +15,7 @@ const WebserverEvents= api.WebserverEvents
 feedServerBook = new Map()
 let producer = null
 let logger = null
+const httpServer = httpHandle.createServer(app)
 
 function stringToAPILogLevel(level){
     if(level.toUpperCase() === "ERROR"){
@@ -79,7 +84,7 @@ function enumToWinstomLogLevel(level) {
 
 const broker = process.argv[2] 
 const listenPort = parseInt(process.argv[3])
-const appName = process.argv[4]
+const appId = process.argv[4]
 let logLevel = api.Loglevel.INFO
 if(undefined !== process.argv[5]){
     logLevel = stringToAPILogLevel(process.argv[5])
@@ -137,7 +142,7 @@ async function onAdminQueryResponse(dict){
     for(const result of results){
         appName = result["appId"] 
         if(!feedServerBook.has(appName)){
-            feedServerBook.set(appName, [0, dict])
+            feedServerBook.set(appName, [0, result])
             logger.info(`adminQuery resopnse received for app: ${appName}`)
         }
 
@@ -159,35 +164,35 @@ const AdminEvents = {
 
 function getJsonStringForHeartbeat()
 {
-    dict = {evt : AdminEvents.HeartBeat.description, appId : appName}
+    dict = {evt : AdminEvents.HeartBeat.description, appId : appId}
     return JSON.stringify(dict)
 }
 
 function getJsonStringForRegistration()
 {
-    dict = {appId : appName, appGroup : "FeedServer"}
+    dict = {appId : appId, appGroup : "FeedServer"}
     return JSON.stringify(dict)
 }
 
 async function sendAdminEvent(event){
     switch(event){
         case AdminEvents.HeartBeat:
-            await producer.send({ topic: "heartbeats", messages: [{ key: appName, value: getJsonStringForHeartbeat() }] })
+            await producer.send({ topic: "heartbeats", messages: [{ key: appId, value: getJsonStringForHeartbeat() }] })
             break
         case AdminEvents.Registration:
-            await producer.send({ topic: "registrations", messages: [{ key: appName, value: getJsonStringForRegistration() }] })
+            await producer.send({ topic: "registrations", messages: [{ key: appId, value: getJsonStringForRegistration() }] })
             break
     }
 }
 
 async function sendAdminQuery(){
-    dict = {destination_topic : appName, eq : {appGroup : "FeedServer"}}
-    await producer.send({ topic: "admin_queries", messages: [{ key: appName, value: JSON.stringify(dict) }] })
+    dict = {destination_topic : appId, eq : {appGroup : "FeedServer"}}
+    await producer.send({ topic: "admin_queries", messages: [{ key: appId, value: JSON.stringify(dict) }] })
 }
 
 async function sendWebserverQuery(topic){
-    dict = {destination_topic : appName, message_type : "component_enquiry"}
-    await producer.send({ topic: topic, messages: [{ key: appName, value: JSON.stringify(dict) }] })
+    dict = {destination_topic : appId, message_type : "component_enquiry"}
+    await producer.send({ topic: topic, messages: [{ key: appId, value: JSON.stringify(dict) }] })
 }
 
 const WinstonLogCreator = (logLevel, fileName) => {
@@ -208,17 +213,49 @@ const WinstonLogCreator = (logLevel, fileName) => {
     }
 }
 
+function launchHttpCommunicationEngine(app, apiLogger)
+{
+    logger = apiLogger
+    app.get('/', (req, res) =>{
+        res.send("Hello World!");
+    });
+
+    app.get('/api', (req, res) =>{
+        res.send("Welcome to api page!");
+    });
+
+    app.get('/api/serveraddr', (req, res) =>{
+        lowest = -1
+        currServer = null
+        feedServerBook.forEach((value, key) => {
+            if(value[0] > lowest){
+                lowest = value[0]
+                currServer = value[1]
+            }
+        });
+        console.log(JSON.stringify(feedServerBook))
+        console.log(currServer)
+        res.send(currServer)
+    });
+
+    app.get('/api/sort/:arr', (req, res) =>{
+        names = req.params.arr.split(",");
+        names.sort()
+        res.send(String(names));
+    });
+}
+
 async function run() {
-    console.log(`Started WebAuthenticator, appId: ${appName}`)
+    console.log(`Started WebAuthenticator, appId: ${appId}`)
     const date = new Date()
     const timeSuffix =  date.getFullYear().toString() + "-" +
                         (date.getMonth() + 1).toString().padStart(2, '0') + "-" +
                         date.getDate().toString().padStart(2, '0')
-    const appFileName = appName + "_" + timeSuffix + ".log"
+    const appFileName = appId + "_" + timeSuffix + ".log"
     const kafkFileName = "Kafka_" + appFileName
 
     kafka = new Kafka({
-        clientId: appName,
+        clientId: appId,
         brokers: [broker],
         logLevel: enumToKafkaLogLevel(logLevel),
         logCreator: (logLevel) => {
@@ -227,7 +264,7 @@ async function run() {
     })
 
     const admin = kafka.admin()
-    consumer = kafka.consumer({ groupId: appName })
+    consumer = kafka.consumer({ groupId: appId })
     producer = kafka.producer()
     await admin.connect()
     await consumer.connect()
@@ -235,11 +272,12 @@ async function run() {
 
     //Create the inbound topic for this service
     await admin.createTopics({
-        topics: [{ topic: appName, replicationFactor: 1, numPartitions: 1 }]
+        topics: [{ topic: appId, replicationFactor: 1, numPartitions: 1 }]
     })
 
     await consumer.subscribe({ topic: 'webserver_events', fromBeginning: false })
     await consumer.subscribe({ topic: 'admin_events', fromBeginning: false })
+    await consumer.subscribe({ topic: appId, fromBeginning: false })
     logger = CommonUtils.createFileLogger("Logs/" + appFileName, enumToWinstomLogLevel(logLevel))
     await sendAdminEvent(AdminEvents.Registration)
 
@@ -259,8 +297,8 @@ async function run() {
                     console.log(`webserver_events recieved: ${JSON.stringify(dict)}`)
                     onWebserverEvt(dict)
                 }
-                else if(topic == appName){
-                    console.log(`${appName} recieved: ${JSON.stringify(dict)}`)
+                else if(topic == appId){
+                    console.log(`${appId} recieved: ${JSON.stringify(dict)}`)
                     messageType = dict["message_type"]
                     if("admin_query_response" == messageType){
                         await onAdminQueryResponse(dict)
@@ -279,6 +317,11 @@ async function run() {
     }, 5000)
 
     await sendAdminQuery()
+
+    launchHttpCommunicationEngine(app, logger)
+    httpServer.listen(listenPort, () => {
+        console.log(`listening on ${listenPort}...`)
+    });
 }
 
 run().then(()=>{}).catch((err)=>{
