@@ -1,156 +1,186 @@
-//The startStateFetcher should be a callable returning initial state
-//This is done to suppport the state machines which have multiple entry points, so that
-//the callable can point to the appropriate starting point depending on the conditions
-//in which the state machine was started
+#include <memory>
+#include <functional>
+#include <queue>
+#include <variant>
 
-class AFSMException extends Error{
-
+class AFSMError extends Error{
     constructor(message){
         super(message)
-        this.name = "AFSMException" 
+        this.name = this.constructor.name 
     }
 }
 
-class FinalityReachedException extends AFSMException{
-    constructor (message){
-        super(message)
-        this.name = "FinalityReachedException"
+class FinalityReachedException extends AFSMError
+{
+    constructor(){
+        super("State machine has reched final state and can't process any new events")
     }
 }
 
-const EventErrors = {
-    unhandledEvent : 'unhandled',
-    conditionalReject : 'conditionalReject'
+class SMInactiveException extends AFSMError
+{
+    constructor(){
+	    super("State machine needs to be started by calling the start() method")
+        this.name = "SMInactiveException"
+    }
 }
 
-const SpecialEvents = {
-    defer : 'defer'
+class UnhandledEvtException extends AFSMError
+{
+    constructor(stateName, evtName){
+	    super(`Event: ${evtName} is unhandled in state: ${stateName}`)
+    }
 }
 
-class AFSM:
-    def __init__(self, startStateFetcher):
-        self.currState = LauncherState(startStateFetcher())
-        self.prevState = None
-        self.endingEvent = asyncio.Event()
-        self.endingNotifier = AsyncEvent.AsyncEvent()
-        self.eventQueue = []
-        self.deferalQueue = []
-        self.conclusion = None
+class ImproperReactionException extends AFSMError
+{
+    constructor(state, evt, reaction){
+	    super(`Improper reaction from state: ${state.name}, while handling event: ${evt.name} the reaction should be either a new state or a member of "SpecialTransition", but the type of the reaction was of type: ${reaction.name}`)
+    }
+}
+const Specialtransition = 
+{
+	nullTransition : "nullTransition",
+	deferralTransition : "deferralTransition"
+};
 
-    async def start(self):
-        await self.handleEvent("launch")
+class State
+{
+	constructor(evtProcessorDictionary, isFinal = false){
+        this.isFinal = isFinal
+        this.name = this.constructor.name
+        this.evtProcessorDictionary = evtProcessorDictionary
+    }
 
-    async def startAndAwaitEnd(self):
-        await self.handleEvent("launch")
-        await self.endingEvent.wait()
+	onEntry() {};
+	beforeExit() {};
+	isFinal(){	return m_isFinal; }
+    react(name, evtData)
+    {
+        if(this.evtProcessorDictionary.has(name)){
+            return this.evtProcessorDictionary[name](evtData)
+        }
+        else{
+            throw UnhandledEvtException(this.name, name)
+        }
+    }
+};
 
-    async def findNextState(self, evt, *args):
-        nextState = await self.currState.react(evt, *args)
-        if EventErrors.unhandledEvent == nextState:
-            if issubclass(type(self.currState), AFSM):
-                try:
-                    nextState = await self.currState.handleEvent(evt, *args)
-                except FinalityReachedException:
-                    pass
-            if EventErrors.unhandledEvent != nextState:
-                nextState = None
-        return nextState
+class FSM
+{
+	constructor(startStateFetcher)
+	{
+        this.currState = startStateFetcher()
+        this.started = false
+        this.deferralQueue = []
+    }
 
-    async def handleStateEntry(self, state):
-        res = await state.after_entry()
-        childStateMachine = (state  
-                             if issubclass(type(state), AFSM) else
-                             None)
-        if childStateMachine is None:
-            return res
-        else:
-            return await childStateMachine.start()
+	handleEvent(evt)
+	{
+		onEvent(evt);
+	}
 
-    async def handleStateExit(self, state):
-        childStateMachine = (state  
-                            if issubclass(type(state), AFSM) else
-                            None)
-        if childStateMachine is not None:
-            await self.handleStateExit(childStateMachine.currState)
-        await state.before_exit()
+	start()
+	{
+		this.started = true;
+		if (this.currState.isFinal())
+			throw FinalityReachedException();
+		else
+			handleStateEntry(this.currState);
+	}
 
-    async def processEvent(self, evt, *args):
-        nextState = await self.findNextState(evt, *args)
-        if EventErrors.unhandledEvent == nextState:
-            await self.onUnconsumedEvt(evt)
-        elif EventErrors.conditionalReject == nextState:
-            await self.onConditionalReject(evt)
-        elif SpecialEvents.defer == nextState:
-            self.deferalQueue.append([evt, args])
-        elif nextState != None:
-            await self.handleStateExit(self.currState)
-            self.prevState = self.currState
-            self.currState = nextState
-            endResult = await self.handleStateEntry(self.currState)
-            if self.currState.isFinal:
-                self.conclusion = endResult
-                await self.endingNotifier(self.conclusion)
-                self.endingEvent.set()
-            else:
-                await self.processDeferalQueueLoop()
+	onEvent(name, evtData)
+	{
+        if (!this.started)
+            throw SMInactiveException();
+        else if (this.currState.isFinal())
+            throw FinalityReachedException();
 
-    async def handleEvent(self, evt, *args):
-        if(self.currState.isFinal):
-            raise FinalityReachedException()
-        self.eventQueue.append([evt, args])
-        if 1 == len(self.eventQueue):
-            await self.processEvtQueueLoop()
+        transition = this.currState.react(name, evtData)
+        if(transition instanceof State){
+            nextState = transition
+            handleStateExit(this.currState)
+            m_currState = nextState
+            handleStateEntry(this.currState)
+        }
+        else if(Specialtransition.deferralTransition == transition){
+            this.deferralQueue.push(()=>{ this.handleEvent(name, evtData)})
+        }
+	}
 
-    async def processDeferalQueueLoop(self):
-        localQueue = []
-        localQueue, self.deferalQueue = self.deferalQueue, localQueue
-        while 0 < len(localQueue):
-            nextEvt = localQueue[0]
-            await self.processEvent(nextEvt[0], *nextEvt[1])
-            localQueue.pop(0)
+	processDeferralQueue()
+	{
+		local = []
+        temp = local
+        local = this.deferralQueue
+        this.deferralQueue = temp
 
-    async def processEvtQueueLoop(self):
-        while 0 < len(self.eventQueue):
-            nextEvt = self.eventQueue[0]
-            await self.processEvent(nextEvt[0], *nextEvt[1])
-            self.eventQueue.pop(0)
+        local.swap(deferralQueue)
 
-    async def registerForEnd(self, callback):
-        self.endingNotifier += callback
+		local.swap(m_deferralQueue);
+		
+		while (0 < local.length)
+		{
+            local[0]()
+            local.pop()
+		}
+	}
+	
+	handleStateEntry(state)
+	{
+		state.onEntry();
+		processDeferralQueue();
+	}
 
-    async def onUnconsumedEvt(self, evt):
-        pass
+	handleStateExit(state)
+	{
+        if(state instanceof CompositeState){
+            state.compositeStateExit()
+        }
+        else{
+		    state.beforeExit()
+        }
+	}
+};
 
-    async def onConditionalReject(self, ev2t):
-        pass
+class CompositeState extends State
+{
+	constructor(startStstefetcher, 
+                evtProcessorDictionary,
+                 isFinal = false)
+	{
+        super(evtProcessorDictionary, isFinal)
+        this.fsm = new FSM(startStateFetcher)
+        this.fsm.start()
+    }
 
+    compositeStateExit(){
+        this.beforeExit()
+    }
 
-class AFSMState:
-    def __init__(self, isFinal):
-        self.isFinal = isFinal
+    react(name, evtData)
+    {
+        try{
+            transition = super.react(name, evtData)
+            if(transition instanceof State)
+                return transition
+        }
+        catch(err){
+            if(!(err instanceof UnhandledEvtException)){
+                throw err
+            }
+        }
 
-    async def after_entry(self):
-        pass
-
-    async def before_exit(self):
-        pass
-
-    async def react(self, evt, *args):
-        funcName = "on_" + evt
-        if hasattr(self, funcName):
-            return await getattr(self, funcName)(*args)
-        else:
-            return EventErrors.unhandledEvent
-
-class CompositeState(AFSMState, AFSM):
-    def __init__(self, startStateFetcher):
-        AFSMState.__init__(self, False)
-        AFSM.__init__(self, startStateFetcher)
-
-class LauncherState(AFSMState):
-    def __init__(self, initialState):
-        super().__init__(False)
-        self.initialState = initialState
-
-    async def on_launch(self):
-        return self.initialState
+        try{
+            this.fsm.handleEvent(evt)
+        }
+        catch(err){
+            if(!(err instanceof FinalityReachedException)){
+                throw err
+            }
+            else{
+                return Specialtransition.nullTransition
+            }
+        }
+    }
+}
