@@ -89,10 +89,10 @@ async function mainLoop(logger){
                 const [asset, currency, bridge] = disintegrateVirtualTradingPairName(virtualSymbol)
                 subscriptionHandler.unsubscribeVirtual(asset, currency, bridge, virtualPriceCallBack).
                 then(()=>{
-                    logger.info(`Subscription cancelled for connection id: ${socket.id}, symbol: ${symbol}, upon disconnection`)
+                    logger.info(`Subscription cancelled for connection id: ${socket.id}, symbol: ${virtualSymbol}, upon disconnection`)
                 }).
                 catch((err)=>{
-                    logger.info(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
+                    logger.info(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${virtualSymbol}, details: ${err.message}`)
                 })
             }
 

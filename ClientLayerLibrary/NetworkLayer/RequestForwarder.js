@@ -60,6 +60,10 @@ function connect(serverAddress, callback, logger){//Server address <ip>:<port>
         callback(depth)
     })
 
+    sock.on('virtualDepth', (depth)=>{
+        logger(`Virtual depth recieved: ${depth}`)
+    })
+
     sock.on('subscriptionSuccess', (symbol)=>{
         logger(`subscriptionSuccess for: ${symbol}`)
     })
@@ -77,23 +81,23 @@ function connect(serverAddress, callback, logger){//Server address <ip>:<port>
     })
 
     sock.on('virtualSubscriptionSuccess', (asset, currency, bridge)=>{
-        logger.info(`virtualSubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
+        logger(`virtualSubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
     })
 
     sock.on('virtualSubscriptionFailure', (asset, currency, bridge, reason)=>{
-        logger.info(`virtualSubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
+        logger(`virtualSubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
     })
 
     sock.on('virtualUnsubscriptionSuccess', (asset, currency, bridge)=>{
-        logger.info(`virtualUnsubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
+        logger(`virtualUnsubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
     })
 
     sock.on('virtualUnsubscriptionFailure', (asset, currency, bridge, reason)=>{
-        logger.info(`virtualUnsubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
+        logger(`virtualUnsubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
     })
 
     sock.on('subscriptionFailure', (symbol, reason)=>{
-        logger.info(`subscriptionSuccess for: ${symbol}, reason: ${reason}`)
+        logger(`subscriptionSuccess for: ${symbol}, reason: ${reason}`)
     })
 }
 
