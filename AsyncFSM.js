@@ -1,8 +1,3 @@
-#include <memory>
-#include <functional>
-#include <queue>
-#include <variant>
-
 class AFSMError extends Error{
     constructor(message){
         super(message)
@@ -34,11 +29,19 @@ class UnhandledEvtException extends AFSMError
 
 class ImproperReactionException extends AFSMError
 {
-    constructor(state, evt, reaction){
-	    super(`Improper reaction from state: ${state.name}, while handling event: ${evt.name} the reaction should be either a new state or a member of "SpecialTransition", but the type of the reaction was of type: ${reaction.name}`)
+    constructor(stateName, evtName, reactionType){
+	    super(`Improper reaction from state: ${stateName}, while handling event: ${evtName}, the reaction should be either a new state or a member of "SpecialTransition", but the type of the reaction was of type: ${reactionType}`)
     }
 }
-const Specialtransition = 
+
+class RecursiveEventException extends AFSMError
+{
+    constructor(){
+	    super(`Raising and event on FSM while it is already processing an event`)
+    }
+}
+
+const SpecialTransition = 
 {
 	nullTransition : "nullTransition",
 	deferralTransition : "deferralTransition"
@@ -46,106 +49,124 @@ const Specialtransition =
 
 class State
 {
-	constructor(evtProcessorDictionary, isFinal = false){
+	constructor(isFinal = false){
         this.isFinal = isFinal
         this.name = this.constructor.name
-        this.evtProcessorDictionary = evtProcessorDictionary
     }
 
-	onEntry() {};
-	beforeExit() {};
-	isFinal(){	return m_isFinal; }
-    react(name, evtData)
+    on_launch() { return SpecialTransition.nullTransition }
+	onEntry() { }
+	beforeExit() {}
+	final(){ return this.isFinal }
+    react(evtName, evtData)
     {
-        if(this.evtProcessorDictionary.has(name)){
-            return this.evtProcessorDictionary[name](evtData)
+        let expectedEvtHandlerMethodName = "on_" + evtName
+        if(this[expectedEvtHandlerMethodName] == undefined)
+            throw new UnhandledEvtException(this.name, evtName)
+
+        let transition = null
+        if(evtData == null){
+            transition = (this[expectedEvtHandlerMethodName])()
         }
         else{
-            throw UnhandledEvtException(this.name, name)
+            transition = (this[expectedEvtHandlerMethodName])(evtData)
+        }
+        
+        if (transition instanceof State){
+            this.beforeExit()
+            return transition
+        }
+        else if (SpecialTransition[transition] != undefined){
+            return transition
+        }
+        else{
+            throw new ImproperReactionException(this.name, evtName, typeof transition)
         }
     }
-};
+}
 
 class FSM
 {
-	constructor(startStateFetcher)
+	constructor(startStateFetcher, logger = (message)=>{ console.log(message) } )
 	{
         this.currState = startStateFetcher()
+        this.logger = logger
         this.started = false
+        this.smBusy = false//FSM is bust processing an evt
         this.deferralQueue = []
     }
 
-	handleEvent(evt)
+    checkIfFSMReadyToHandleEvt(){
+        if (!this.started)
+            throw new SMInactiveException()
+        else if (this.currState.final())
+            throw new FinalityReachedException()
+        else if(this.smBusy)
+            throw new RecursiveEventException()
+    }
+
+	handleEvent(evtName, evtData = null)
 	{
-		onEvent(evt);
+        this.checkIfFSMReadyToHandleEvt()
+        this.processSingleEvent(evtName, evtData)
 	}
+
+    processSingleEvent(evtName, evtData){
+        this.smBusy = true
+        let transition = this.currState.react(evtName, evtData)
+        this.smBusy = false
+        if(transition instanceof State){
+            this.currState = transition
+            this.handleStateEntry(this.currState)
+        }
+        else if(SpecialTransition.deferralTransition == transition){
+            this.deferralQueue.push([evtName, evtData])
+        }
+    }
 
 	start()
 	{
-		this.started = true;
-		if (this.currState.isFinal())
-			throw FinalityReachedException();
-		else
-			handleStateEntry(this.currState);
+		this.started = true
+        if (this.currState.final())
+            throw new FinalityReachedException()
+        this.handleStateEntry(this.currState)
 	}
 
-	onEvent(name, evtData)
-	{
-        if (!this.started)
-            throw SMInactiveException();
-        else if (this.currState.isFinal())
-            throw FinalityReachedException();
-
-        transition = this.currState.react(name, evtData)
-        if(transition instanceof State){
-            nextState = transition
-            handleStateExit(this.currState)
-            m_currState = nextState
-            handleStateEntry(this.currState)
+	processDeferralQueue(){
+        if (0 == this.deferralQueue.length){
+            return
         }
-        else if(Specialtransition.deferralTransition == transition){
-            this.deferralQueue.push(()=>{ this.handleEvent(name, evtData)})
-        }
-	}
 
-	processDeferralQueue()
-	{
 		local = []
-        temp = local
+        let temp = local
         local = this.deferralQueue
         this.deferralQueue = temp
-
-        local.swap(deferralQueue)
-
-		local.swap(m_deferralQueue);
 		
-		while (0 < local.length)
-		{
-            local[0]()
-            local.pop()
+		while (0 < local.length){
+            try{
+                this.checkIfFSMReadyToHandleEvt()
+                let [evtName, evtData] = local[0]
+                this.processSingleEvent(evtName, evtData)
+            }
+            catch(err){
+                this.logger(`Error while processing deferral queue: ${err.message}`)
+            }
+            finally{
+                local.pop()
+            }
 		}
 	}
 	
-	handleStateEntry(state)
-	{
-		state.onEntry();
-		processDeferralQueue();
-	}
-
-	handleStateExit(state)
-	{
-        if(state instanceof CompositeState){
-            state.compositeStateExit()
-        }
-        else{
-		    state.beforeExit()
-        }
+	handleStateEntry(state){
+		state.onEntry()
+        this.handleEvent("launch")
+		this.processDeferralQueue()
 	}
 };
 
 class CompositeState extends State
 {
-	constructor(startStstefetcher, 
+	constructor(startStateFetcher, 
                 evtProcessorDictionary,
                  isFinal = false)
 	{
@@ -154,16 +175,14 @@ class CompositeState extends State
         this.fsm.start()
     }
 
-    compositeStateExit(){
-        this.beforeExit()
-    }
-
     react(name, evtData)
     {
         try{
             transition = super.react(name, evtData)
-            if(transition instanceof State)
+            if(transition instanceof State){
+                this.fsm.currState.beforeExit()
                 return transition
+            }
         }
         catch(err){
             if(!(err instanceof UnhandledEvtException)){
@@ -178,9 +197,16 @@ class CompositeState extends State
             if(!(err instanceof FinalityReachedException)){
                 throw err
             }
-            else{
-                return Specialtransition.nullTransition
-            }
         }
+        return SpecialTransition.nullTransition
     }
 }
+
+module.exports.FSM = FSM
+module.exports.State = State
+module.exports.CompositeState = CompositeState
+module.exports.FinalityReachedException = FinalityReachedException
+module.exports.SMInactiveException = SMInactiveException
+module.exports.UnhandledEvtException = UnhandledEvtException
+module.exports.ImproperReactionException = ImproperReactionException
+module.exports.SpecialTransition = SpecialTransition
