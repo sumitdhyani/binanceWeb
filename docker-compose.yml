@@ -74,6 +74,8 @@ services:
     volumes:
       - .:/usr/src
     working_dir: /usr/src
+    environment:
+      - LOCALIP=${LOCALIP}
     depends_on:
       - kafka_3
     command: bash -c "sleep 20 && node ./httpWebServer/main.js kafka_3:9092 80 web_server"
@@ -130,7 +132,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 30 && python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper admin_queries,web_authenticator,admin_events,registrations INFO"
+    command: bash -c "sleep 30 && python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper2 admin_queries,web_authenticator,admin_events,registrations,web_server INFO"
   sync_data_provider:
     build: ./images/ubuntu_all_packages
     volumes:

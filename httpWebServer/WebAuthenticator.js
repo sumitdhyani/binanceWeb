@@ -12,6 +12,8 @@ const { json } = require('express')
 //const { setMaxIdleHTTPParsers } = require('http')
 const NativeLoglevel = api.Loglevel
 const WebserverEvents= api.WebserverEvents
+//Key: appId of feedServer,
+//Value: array of 2 elements [0] = no. of clients connected currently, [1] = all the other details of the feed_server
 feedServerBook = new Map()
 let producer = null
 let logger = null
@@ -222,6 +224,22 @@ function launchHttpCommunicationEngine(app, apiLogger)
 
     app.get('/api', (req, res) =>{
         res.send("Welcome to api page!");
+    });
+
+    app.get('/auth/:json', (req, res) =>{
+        res.send(json.stringify())
+        lowest = -1
+        currServer = null
+        feedServerBook.forEach((value, key) => {
+            if(value[0] > lowest){
+                lowest = value[0]
+                currServer = value[1]
+            }
+        });
+        console.log(JSON.stringify(feedServerBook))
+        console.log(currServer)
+        res.send({success : true, 
+                  feed_server : currServer["hostPort"]})
     });
 
     app.get('/api/serveraddr', (req, res) =>{

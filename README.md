@@ -10,3 +10,4 @@ docker-compose up -d kafka_3
 3. When you see all the topics, run the following command:
 docker-compose up -d
 
+1. Have a .env file in the root directory and define the variable LOCALIP=<absolute ip of your machine>
