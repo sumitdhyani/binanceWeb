@@ -1,5 +1,5 @@
 FROM ubuntu:20.04
-RUN apt-get update && apt-get upgrade
+RUN apt-get -y update && apt-get -y upgrade
 RUN apt-get install -y software-properties-common
 RUN apt-get install -y openjdk-8-jdk
 RUN apt-get install -y openjdk-8-jre

@@ -17,7 +17,7 @@ class Authenticating extends State{
     }
 
     onEntry(){
-        this.authentication_method(this.conn_params)
+        this.authentication_method(this.auth_params)
     }
 
     on_auth_response(response){

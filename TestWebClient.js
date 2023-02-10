@@ -5,7 +5,7 @@ function onData(data){
     console.log(`Received data: ${JSON.stringify(data)}`)
 }
 
-launch({}, onData, (msg)=>{console.log(msg)})
+launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, (msg)=>{console.log(msg)})
 
 function actionForVirtualSymbol(action, asset, currency, bridge)
 {

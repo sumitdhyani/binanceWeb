@@ -227,7 +227,6 @@ function launchHttpCommunicationEngine(app, apiLogger)
     });
 
     app.get('/auth/:json', (req, res) =>{
-        res.send(json.stringify())
         lowest = -1
         currServer = null
         feedServerBook.forEach((value, key) => {
