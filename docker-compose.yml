@@ -47,22 +47,22 @@ services:
     volumes:
       - ./docker.sock:/var/run/docker.sock
       - ./kafka_3:/kafka
-  mkt_gateway_1:
+  binance_mkt_gateway_1:
     build: ./images/ubuntu_all_packages
     volumes:
       - .:/usr/src
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && python3 ./marketConnectivity/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_1 DEBUG"
-  mkt_gateway_2:
+    command: bash -c "sleep 20 && python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_1 DEBUG"
+  binance_mkt_gateway_2:
     build: ./images/ubuntu_all_packages
     volumes:
       - .:/usr/src
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && python3 ./marketConnectivity/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_2 DEBUG"
+    command: bash -c "sleep 20 && python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_2 DEBUG"
   node_package_installer:
     build: ./images/ubuntu_all_packages
     volumes:

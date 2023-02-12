@@ -2,6 +2,8 @@ import os, sys, json, inspect, asyncio, binance, aiokafka, re
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
+parentdir = os.path.dirname(parentdir)
+sys.path.insert(0, parentdir)
 import Keys
 from DepthDataProvider import DepthDataProvider
 from NetworkComplaintHandler import NetworkComplaintHandler
