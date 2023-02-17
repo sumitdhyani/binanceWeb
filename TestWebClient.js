@@ -1,5 +1,16 @@
 const { launch, subUnsub } = require('./ClientLayerLibrary/ClientInterface')
-const prompt = require("prompt-async");
+const constants = require('./ClientLayerLibrary/Constants').constants
+const prompt = require("prompt-async")
+
+function forwardUserIntent(intent){
+    try{
+        intent[constants.tags.exchange] = constants.exchanges.exch_binance
+        subUnsub(intent)
+    }
+    catch(err){
+        console.log(err.message)
+    }
+}
 
 function onData(data){
     console.log(`Received data: ${JSON.stringify(data)}`)
@@ -9,7 +20,7 @@ launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", 
 
 function actionForVirtualSymbol(action, asset, currency, bridge)
 {
-    subUnsub({action : action,
+    forwardUserIntent({action : action,
               asset : asset, 
               currency : currency, 
               bridge : bridge})
@@ -18,7 +29,7 @@ function actionForVirtualSymbol(action, asset, currency, bridge)
 
 async function actionForNormalSymbol(action, symbol)
 {
-    subUnsub({action : action,
+    forwardUserIntent({action : action,
               symbol : symbol})
 }
 

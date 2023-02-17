@@ -24,14 +24,15 @@ class SubscriptionHandler
         this.virtualSubscriptionBook = new Map()
     }
 
-    async subscribe(symbol, callback){
-        let evt = this.normalSubscriptionBook.get(symbol)
+    async subscribe(symbol, exchange, callback){
+        const key = [symbol, exchange].toString()
+        let evt = this.normalSubscriptionBook.get(key)
 
         if(undefined === evt){
             evt = new Event()
-            this.normalSubscriptionBook.set(symbol, evt)
-            await this.depthSubscriber(symbol, (depth)=>{
-                this.onDepth(symbol, depth)
+            this.normalSubscriptionBook.set(key, evt)
+            await this.depthSubscriber(symbol, exchange, (depth)=>{
+                this.onDepth(symbol, exchange, depth)
             })
         }
 
@@ -53,13 +54,14 @@ class SubscriptionHandler
         evt.registerCallback(callback)
     }
 
-    async unsubscribe(symbol, callback){
-        const evt = this.normalSubscriptionBook.get(symbol)
+    async unsubscribe(symbol, exchange, callback){
+        const key = [symbol, exchange].toString()
+        const evt = this.normalSubscriptionBook.get(key)
         if(undefined !== evt){
             evt.unregisterCallback(callback)
             if(evt.empty()){
-                this.normalSubscriptionBook.delete(symbol)
-                await this.depthUnsubscriber(symbol)
+                this.normalSubscriptionBook.delete(key)
+                await this.depthUnsubscriber(symbol, exchange)
             }
         }
         else
@@ -81,8 +83,9 @@ class SubscriptionHandler
             throw new SpuriousUnsubscription(`The symbol ${symbol} is not currently subscribed`)
     }
 
-    onDepth(symbol, depth){
-        const evt = this.normalSubscriptionBook.get(symbol)
+    onDepth(symbol, exchange, depth){
+        const key = [symbol, exchange].toString()
+        const evt = this.normalSubscriptionBook.get(key)
         if(undefined !== evt){
             evt.raise(depth)
         }

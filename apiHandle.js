@@ -7,13 +7,13 @@ const appSpecificErrors = require('./appSpecificErrors');
 const process = require('process')
 const env = process.env
 
-port = 0
-subscriptionBook = new Map()
-virtualSubscriptionBook = new Map()
-producer = null
-symbolDict = new Map()
+let port = 0
+const subscriptionBook = new Map()
+const virtualSubscriptionBook = new Map()
+let producer = null
+let symbolDict = new Map()
 let logger = null
-numClientConnections  = 0
+let numClientConnections  = 0
 const createTradingPairName = CommonUtils.createTradingPairName
 const createVirtualTradingPairName = CommonUtils.createVirtualTradingPairName
 const disintegrateVirtualTradingPairName = CommonUtils.disintegrateVirtualTradingPairName
@@ -102,8 +102,8 @@ const WinstonLogCreator = (logLevel, fileName) => {
 }
 
 function onNormalPriceData(dict, raw) {
-    symbol = dict["symbol"]
-    const callback = subscriptionBook.get(symbol)
+    const key = [dict["symbol"], dict["exchange"]].toString()
+    const callback = subscriptionBook.get(key)
     if (undefined !== callback) {
         callback(raw)
     }
@@ -120,6 +120,7 @@ function onVirtualPriceData(dict, raw){
 
 async function loadSymbols() {
     const fileStream = fs.createReadStream('symbols.txt');
+    logger.warn(`loading symbols`)
 
     const rl = readline.createInterface({
         input: fileStream,
@@ -130,15 +131,15 @@ async function loadSymbols() {
         dict = JSON.parse(line)
         const desc = dict["baseAsset"] + " vs " + dict["quoteAsset"]
         dict["description"] = desc
-        symbol = dict["symbol"]
-        symbolDict.set(symbol, dict)
+        const key =  [dict["symbol"], "BINANCE"].toString()
+        symbolDict[key] = dict
     }
 }
 
 
 async function cancelAllSubscriptions() {
-    for (let symbol of subscriptionBook.keys()) {
-        msg = JSON.stringify({ "symbol": symbol, "action": "unsubscribe" })
+    for (let [symbol, exchange] of subscriptionBook.keys()) {
+        msg = JSON.stringify({ symbol: symbol, exchange : exchange, action : "unsubscribe" })
         await producer.send({ topic: "price_subscriptions", messages: [{ key: symbol, value: msg }] })
     }
 
@@ -237,17 +238,18 @@ module.exports = {
         downloadEndCallback()
     },
 
-    subscribePrice: async function (symbol, callback) {
-        if (!(symbolDict.has(symbol))) {
-            throw new appSpecificErrors.InvalidSymbol(`Invalid symbol: ${symbol}`)
+    subscribePrice: async function (symbol, exchange, callback) {
+        const key = [symbol, exchange].toString()
+        if (undefined === symbolDict[key]) {
+            throw new appSpecificErrors.InvalidSymbol(`Invalid instrument, symbol: ${key}`)
         }
-        else if (subscriptionBook.has(symbol)) {
+        else if (undefined !== subscriptionBook[key]) {
             throw new appSpecificErrors.DuplicateSubscription()
         }
         else {
-            subscriptionBook.set(symbol, callback)
-            obj = { symbol : symbol, action : "subscribe"}
-            await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol)
+            subscriptionBook.set(key, callback)
+            obj = { symbol : symbol, exchange : exchange, action : "subscribe"}
+            await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol + ":" + exchange)
         }
     },
 
@@ -270,13 +272,14 @@ module.exports = {
         }
     },
 
-    unsubscribePrice: async function (symbol) {
-        if (!subscriptionBook.delete(symbol)) {
+    unsubscribePrice: async function (symbol, exchange) {
+        const key = [symbol, exchange].toString()
+        if (!subscriptionBook.delete(key)) {
             throw new appSpecificErrors.SpuriousUnsubscription()
         }
         else {
-            obj = { symbol: symbol, action: "unsubscribe" }
-            await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol)
+            obj = { symbol: symbol, exchange : exchange, action: "unsubscribe" }
+            await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol + ":" + exchange)
         }
     },
 
@@ -301,6 +304,7 @@ module.exports = {
         const appFileName = applId + "_" + timeSuffix + ".log"
         const kafkFileName = "Kafka_" + appFileName
 
+        logger = CommonUtils.createFileLogger("Logs/" + appFileName, enumToWinstomLogLevel(logLevel))
         await loadSymbols()
         kafka = new Kafka({
             clientId: apiHandleId,
@@ -324,7 +328,6 @@ module.exports = {
         })
 
         await consumer.subscribe({ topic: applId, fromBeginning: false })
-        logger = CommonUtils.createFileLogger("Logs/" + appFileName, enumToWinstomLogLevel(logLevel))
 
         await sendAdminEvent(AdminEvents.Registration)
         setInterval(()=>{

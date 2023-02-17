@@ -75,13 +75,14 @@ async function mainLoop(logger){
             })
             logger.warn(`Disconnection, id: ${socket.id}, cancelling all subscriptions`)
 
-            for(let symbol of subscriptions){
-                subscriptionHandler.unsubscribe(symbol, normalPriceCallBack).
+            for(let key of subscriptions){
+                const [symbol, exchange] = key
+                subscriptionHandler.unsubscribe(symbol, exchange, normalPriceCallBack).
                 then(()=>{
-                    logger.info(`Subscription cancelled for connection id: ${socket.id}, symbol: ${symbol}, upon disconnection`)
+                    logger.info(`Subscription cancelled for connection id: ${socket.id}, symbol: ${symbol}, exchange: ${exchange} upon disconnection`)
                 }).
                 catch((err)=>{
-                    logger.info(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
+                    logger.info(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${symbol}, exchange: ${exchange}, details: ${err.message}`)
                 })
             }
             
@@ -100,36 +101,38 @@ async function mainLoop(logger){
             virtualSubscriptions.clear()
         })
 
-        socket.on('subscribe', (symbol)=> {
-                subscriptionHandler.subscribe(symbol, normalPriceCallBack).
+        socket.on('subscribe', (symbol, exchange)=> {
+                const key = [symbol, exchange].toString()
+                subscriptionHandler.subscribe(symbol, exchange, normalPriceCallBack).
                 then(()=>{
-                    socket.emit('subscriptionSuccess', symbol)
-                    subscriptions.add(symbol)
-                    logger.info(`Subscription successsful for connection id: ${socket.id}, symbol: ${symbol}`)
+                    socket.emit('subscriptionSuccess', key)
+                    subscriptions.add(key)
+                    logger.info(`Subscription successsful for connection id: ${socket.id}, symbol: ${key}`)
                 }).
                 catch((err)=>{
                     if(err instanceof DuplicateSubscription){
-                        socket.emit('subscriptionFailure', symbol, `Duplicate subscription request for symbol: ${symbol}`)
+                        socket.emit('subscriptionFailure', key, `Duplicate subscription request for symbol: ${key}`)
                     }
                     else if(err instanceof InvalidSymbol){
-                        socket.emit('subscriptionFailure', symbol, `Invalid symbol: ${symbol}`)
+                        socket.emit('subscriptionFailure', key, `Invalid symbol: ${key}`)
                     }
-                    logger.warn(`Error while subscription for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
+                    logger.warn(`Error while subscription for connection id: ${socket.id}, symbol: ${key}, details: ${err.message}`)
                 })
         })
 
-        socket.on('unsubscribe', (symbol)=> {
-            subscriptionHandler.unsubscribe(symbol, normalPriceCallBack).
+        socket.on('unsubscribe', (symbol, exchange)=> {
+            const key = [symbol, exchange].toString()
+            subscriptionHandler.unsubscribe(symbol, exchange, normalPriceCallBack).
             then(()=>{
-                socket.emit('unsubscriptionSuccess', symbol)
-                subscriptions.delete(symbol)
-                logger.info(`Unsubscription successsful for connection id: ${socket.id}, symbol: ${symbol}`)
+                socket.emit('unsubscriptionSuccess', key)
+                subscriptions.delete(key)
+                logger.info(`Unsubscription successsful for connection id: ${socket.id}, symbol: ${key}`)
             }).
             catch((err)=>{
                 if(err instanceof SpuriousUnsubscription){
-                    socket.emit('unsubscriptionFailure', symbol, `The symbol ${symbol} currently not subscribed for this client`)
+                    socket.emit('unsubscriptionFailure', key, `The symbol ${key} currently not subscribed for this client`)
                 }
-                logger.info(`Error while unsubscription for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
+                logger.info(`Error while unsubscription for connection id: ${socket.id}, symbol: ${key}, details: ${err.message}`)
             })
         })
 

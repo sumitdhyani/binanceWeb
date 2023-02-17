@@ -113,7 +113,7 @@ function onWebserverEvt(dict){
 function onAdminEvent(dict){
     evt = dict["evt"]
     appName = dict["appId"]
-    appGroup = dict["FeedServer"]
+    appGroup = dict["appGroup"]
 
     if(appGroup != "FeedServer"){
         return
@@ -121,7 +121,7 @@ function onAdminEvent(dict){
 
     if(0 == evt.localeCompare("app_up")){
         if(!feedServerBook.has(appName)){
-            feedServerBook.set(appName, 0)
+            feedServerBook.set(appName, [0, dict])
             logger.info(`app_up received for app: ${appName}`)
         }
         else{
@@ -172,7 +172,7 @@ function getJsonStringForHeartbeat()
 
 function getJsonStringForRegistration()
 {
-    dict = {appId : appId, appGroup : "FeedServer"}
+    dict = {appId : appId, appGroup : "web_auth"}
     return JSON.stringify(dict)
 }
 
@@ -235,10 +235,15 @@ function launchHttpCommunicationEngine(app, apiLogger)
                 currServer = value[1]
             }
         });
-        console.log(JSON.stringify(feedServerBook))
-        console.log(currServer)
-        res.send({success : true, 
-                  feed_server : currServer["hostPort"]})
+        if(lowest != -1){
+            logger.info(JSON.stringify(feedServerBook))
+            logger.info(`On http request, returning the server: ${JSON.stringify(currServer)}`)
+            res.send({success : true, 
+                      feed_server : currServer["hostPort"]})
+        }
+        else{
+            logger.info(`No feedserver found`)
+        }
     });
 
     app.get('/api/serveraddr', (req, res) =>{
@@ -304,18 +309,17 @@ async function run() {
                 const raw = message.value.toString()
                 const dict = JSON.parse(raw)
                 logger.info(`Data recieved: ${JSON.stringify(dict)}`)
-                console.log(`Data recieved: ${JSON.stringify(dict)}`)
                 
                 if(topic == "admin_events"){
-                    console.log(`admin_events recieved: ${JSON.stringify(dict)}`)
+                    logger.info(`admin_events recieved: ${JSON.stringify(dict)}`)
                     onAdminEvent(dict)
                 }
                 else if(topic == "webserver_events"){
-                    console.log(`webserver_events recieved: ${JSON.stringify(dict)}`)
+                    logger.info(`webserver_events recieved: ${JSON.stringify(dict)}`)
                     onWebserverEvt(dict)
                 }
                 else if(topic == appId){
-                    console.log(`${appId} recieved: ${JSON.stringify(dict)}`)
+                    logger.info(`${appId} recieved: ${JSON.stringify(dict)}`)
                     messageType = dict["message_type"]
                     if("admin_query_response" == messageType){
                         await onAdminQueryResponse(dict)

@@ -3,11 +3,11 @@ const { io } = require('socket.io-client')
 let sock = null
 
 function subscribe(symbol, exchange){
-    sock.emit('subscribe', symbol)
+    sock.emit('subscribe', symbol, exchange)
 }
 
 function unsubscribe(symbol, exchange){
-    sock.emit('unsubscribe', symbol)
+    sock.emit('unsubscribe', symbol, exchange)
 }
 
 function subscribeVirtual(asset, currency, bridge, exchange){
@@ -94,10 +94,6 @@ function connect(serverAddress, callback, logger){//Server address <ip>:<port>
 
     sock.on('virtualUnsubscriptionFailure', (asset, currency, bridge, reason)=>{
         logger(`virtualUnsubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
-    })
-
-    sock.on('subscriptionFailure', (symbol, reason)=>{
-        logger(`subscriptionSuccess for: ${symbol}, reason: ${reason}`)
     })
 }
 

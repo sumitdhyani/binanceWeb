@@ -6,6 +6,7 @@ parentdir = os.path.dirname(parentdir)
 sys.path.insert(0, parentdir)
 import Keys
 from DepthDataProvider import DepthDataProvider
+from MockDepthDataProvider import MockDepthDataProvider
 from NetworkComplaintHandler import NetworkComplaintHandler
 from CommonUtils import getLoggingLevel, getLogger
 from CommunicationLayer import produce
@@ -28,6 +29,7 @@ async def onPrice(depth):
     if depth.symbol in subscriptionBook.keys():
         destinations = list(subscriptionBook[depth.symbol])
         msgDict = {"message_type" : "depth",
+                   "exchange" : "BINANCE",
                    "symbol" : depth.symbol,
                    "bids" : bids[0:bidLen],
                    "asks" : asks[0:askLen],
@@ -78,17 +80,31 @@ async def onSubMsg(msgDict, subscriptionFunc, unsubscriptionFunc):
         return unregisterSubscription(unsubscriptionFunc, symbol, dest_topic)
 
 
-async def run():
-    try:
-        client = await binance.AsyncClient.create(api_key=Keys.PUBLIC, api_secret=Keys.SECRET)
-        networkComplaintHandler = NetworkComplaintHandler("https://www.binance.com/")
-        ddp = DepthDataProvider(client, networkComplaintHandler.registerComplaint, logger)
-    except Exception as ex:
-        logger.error("Error while connecting to market, details: %s", str(ex))
-        return
+# async def run():
+#     try:
+#         client = await binance.AsyncClient.create(api_key=Keys.PUBLIC, api_secret=Keys.SECRET)
+#         networkComplaintHandler = NetworkComplaintHandler("https://www.binance.com/")
+#         ddp = DepthDataProvider(client, networkComplaintHandler.registerComplaint, logger)
+#     except Exception as ex:
+#         logger.error("Error while connecting to market, details: %s", str(ex))
+#         return
     
+#     await PubSubService.start(broker,
+#                               "binance_price_subscriptions",
+#                               lambda msg : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
+#                               "price_fetcher",
+#                               appId,
+#                               lambda symbol, destTopic : registerSubscription(ddp.subscribe, symbol, destTopic),
+#                               lambda symbol : cancelAllSubscriptions(symbol, ddp.unsubscribe),
+#                               logger,
+#                               False,
+#                               None)
+
+async def run():
+    logger.debug("Started mock version of mkt gwy")
+    ddp = MockDepthDataProvider(logger)
     await PubSubService.start(broker,
-                              "price_subscriptions",
+                              "binance_price_subscriptions",
                               lambda msg : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
                               "price_fetcher",
                               appId,
@@ -97,5 +113,6 @@ async def run():
                               logger,
                               False,
                               None)
+
 
 asyncio.run(run())
