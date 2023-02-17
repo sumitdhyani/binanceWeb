@@ -39,7 +39,7 @@ services:
     environment:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_ADVERTISED_HOST_NAME: kafka_3
-      KAFKA_CREATE_TOPICS: "test_topic:2:2,price_subscriptions:2:2,prices:2:2,virtual_price_subscriptions:2:2,virtual_prices:2:2,instrument_info:2:2,instrument_update_info:2:2,pubSub_sync_data:1:1,pubSub_sync_data_requests:2:2,admin_events:1:2,webserver_events:1:2,heartbeats:1:2,registrations:1:2,admin_queries:1:2"
+      KAFKA_CREATE_TOPICS: "test_topic:2:2,price_subscriptions:2:2,binance_price_subscriptions:2:2,prices:2:2,virtual_price_subscriptions:2:2,virtual_prices:2:2,instrument_info:2:2,instrument_update_info:2:2,pubSub_sync_data:1:1,pubSub_sync_data_requests:2:2,admin_events:1:2,webserver_events:1:2,heartbeats:1:2,registrations:1:2,admin_queries:1:2"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_BROKER_ID: 3
     depends_on:
@@ -47,6 +47,14 @@ services:
     volumes:
       - ./docker.sock:/var/run/docker.sock
       - ./kafka_3:/kafka
+  request_router:
+    image: ubuntu_all_packages
+    volumes:
+      - .:/usr/src
+    working_dir: /usr/src
+    depends_on:
+      - kafka_3
+    command: python3 ./marketConnectivity/RequestRouter.py kafka_1:9092,kafka_2:9092,kafka_3:9092 request_router_1 '{"${exch_binance}":"binance_price_subscriptions"}' DEBUG
   binance_mkt_gateway_1:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -54,7 +62,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_1 DEBUG"
+    command: python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_1 DEBUG
   binance_mkt_gateway_2:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -62,7 +70,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_2 DEBUG"
+    command: python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_2 DEBUG
   node_package_installer:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -78,7 +86,7 @@ services:
       - LOCALIP=${LOCALIP}
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && node ./httpWebServer/main.js kafka_3:9092 80 web_server"
+    command: node ./httpWebServer/main.js kafka_3:9092 80 web_server
     ports:
       - "80:80"
   web_authenticator:
@@ -90,7 +98,7 @@ services:
       - web_server
       - kafka_3
     #command: node ./httpWebServer/main.js kafka_3:9092 80 WebServer
-    command: bash -c "sleep 30 && node ./httpWebServer/WebAuthenticator.js kafka_3:9092 90 web_authenticator DEBUG"
+    command: node ./httpWebServer/WebAuthenticator.js kafka_3:9092 90 web_authenticator DEBUG
     ports:
       - "90:90"
   data_dispatcher:
@@ -100,7 +108,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices"
+    command: python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices
   virtual_price_fetcher_1:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -108,7 +116,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_1 DEBUG"
+    command: python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_1 DEBUG
   virtual_price_fetcher_2:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -116,7 +124,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_2 DEBUG"
+    command: python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_2 DEBUG
   price_dispatcher:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -124,7 +132,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices"
+    command: python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices
   topic_data_dumper:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -132,7 +140,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 30 && python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper2 admin_queries,web_authenticator,admin_events,registrations,web_server INFO"
+    command: python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper2 price_subscriptions,binance_price_subscriptions INFO
   sync_data_provider:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -140,7 +148,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 20 && python3 ./SyncDataProvider/SyncDataProvider.py kafka_3:9092 SyncDataProvider DEBUG"
+    command: python3 ./SyncDataProvider/SyncDataProvider.py kafka_3:9092 SyncDataProvider DEBUG
   admin_data_provider:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -148,5 +156,5 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: bash -c "sleep 10 && python3 ./AdminDataProvider/AdminDataProvider.py kafka_1:9092,kafka_2:9092,kafka_3:9092 admin_data_provider DEBUG"
+    command: python3 ./AdminDataProvider/AdminDataProvider.py kafka_1:9092,kafka_2:9092,kafka_3:9092 admin_data_provider DEBUG
 
