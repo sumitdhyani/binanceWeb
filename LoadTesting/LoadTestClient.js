@@ -1,9 +1,12 @@
+const winston = require('winston')
 const { launch, subUnsub } = require('../ClientLayerLibrary/ClientInterface')
 const prompt = require("prompt-async");
 const fs = require('fs');
 const readline = require('readline');
 const CommonUtils = require("../CommonUtils")
 const symbolDict = new Map()
+
+logger = CommonUtils.createFileLogger("LoadTestClient", 'debug')
 
 function sleep(ms) {
     return new Promise((resolve, reject) => {
@@ -32,25 +35,21 @@ async function loadSymbols() {
 }
 
 function onData(data){
-    console.log(`Received data: ${JSON.stringify(data)}`)
+    //console.log(`Received data: ${JSON.stringify(data)}`)
 }
 
-launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, (msg)=>{/*console.log(msg)*/})
-
-function actionForVirtualSymbol(action, asset, currency, bridge)
-{
-    subUnsub({action : action,
-              asset : asset,
-              currency : currency, 
-              bridge : bridge})
-}
-
+launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, (msg)=>{logger.info(msg)})
 
 async function actionForNormalSymbol(action, symbol)
 {
-    subUnsub({action : action,
-              symbol : symbol,
-              exchange : "BINANCE"})
+    try{
+        subUnsub({action : action,
+                symbol : symbol,
+                exchange : "BINANCE"})
+    }
+    catch(err){
+        logger.warn(`Error while ${action} for ${symbol}, details: ${err.message}`)
+    }
 }
 
 //This is the entry point of the application, this method is passed to the start method as you will see below
@@ -60,6 +59,7 @@ async function mainLoop()
     mid = parseInt(process.argv[3])
     high = parseInt(process.argv[4])
     delay = parseInt(process.argv[5])
+
     const localSymbols = []
     await loadSymbols()
     let i = 0
@@ -72,15 +72,15 @@ async function mainLoop()
 
     symbolDict.clear()
 
+    for(i = 0; i < high; i++){
+        //console.log(localSymbols[i])
+        await sleep(delay)
+        actionForNormalSymbol("subscribe", localSymbols[i])
+    }
+
+    //console.log("###############################################")
+
     while(true){
-        for(i = 0; i < high; i++){
-            //console.log(localSymbols[i])
-            await sleep(delay)
-            actionForNormalSymbol("subscribe", localSymbols[i])
-        }
-
-        //console.log("###############################################")
-
         for(i = high - 1; i >= mid; i--){
             //console.log(localSymbols[i])
             await sleep(delay)
@@ -90,7 +90,6 @@ async function mainLoop()
         //console.log("###############################################")
 
         for(i = mid; i < high; i++){
-            //console.log(localSymbols[i])
             await sleep(delay)
             actionForNormalSymbol("subscribe", localSymbols[i])
         }

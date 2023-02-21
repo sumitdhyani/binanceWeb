@@ -1,12 +1,27 @@
 const { io } = require('socket.io-client')
+const appSpecificErrors = require('../../appSpecificErrors')
 
 let sock = null
 
+subscriptionBook = new Set()
+
 function subscribe(symbol, exchange){
+    const key = [symbol, exchange].toString()
+    if(subscriptionBook.has(key)){
+        throw new appSpecificErrors.DuplicateSubscription()
+    }
+
+    subscriptionBook.add(key)
     sock.emit('subscribe', symbol, exchange)
 }
 
 function unsubscribe(symbol, exchange){
+    const key = [symbol, exchange].toString()
+    if(subscriptionBook.has(key)){
+        throw new appSpecificErrors.SpuriousUnsubscription()
+    }
+    
+    subscriptionBook.delete(key)
     sock.emit('unsubscribe', symbol, exchange)
 }
 

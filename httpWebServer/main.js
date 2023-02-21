@@ -71,18 +71,18 @@ async function mainLoop(logger){
 
         socket.on('disconnect', ()=> {
             sendWebserverEvent(WebserverEvents.Disconnection).then(()=>{}).catch((err)=>{
-                console.log(`Error whle sending Disconnection event, details: ${err.message}`)
+                console.log(`Error whlie sending Disconnection event, details: ${err.message}`)
             })
             logger.warn(`Disconnection, id: ${socket.id}, cancelling all subscriptions`)
 
-            for(let key of subscriptions){
-                const [symbol, exchange] = key
+            for(const key of subscriptions){
+                const [symbol, exchange] = JSON.parse(key)
                 subscriptionHandler.unsubscribe(symbol, exchange, normalPriceCallBack).
                 then(()=>{
-                    logger.info(`Subscription cancelled for connection id: ${socket.id}, symbol: ${symbol}, exchange: ${exchange} upon disconnection`)
+                    logger.info(`Subscription cancelled for connection id: ${socket.id}, symbol: ${key} upon disconnection`)
                 }).
                 catch((err)=>{
-                    logger.info(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${symbol}, exchange: ${exchange}, details: ${err.message}`)
+                    logger.info(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
                 })
             }
             
@@ -102,7 +102,7 @@ async function mainLoop(logger){
         })
 
         socket.on('subscribe', (symbol, exchange)=> {
-                const key = [symbol, exchange].toString()
+                const key = JSON.stringify([symbol, exchange])
                 subscriptionHandler.subscribe(symbol, exchange, normalPriceCallBack).
                 then(()=>{
                     socket.emit('subscriptionSuccess', key)
@@ -121,7 +121,7 @@ async function mainLoop(logger){
         })
 
         socket.on('unsubscribe', (symbol, exchange)=> {
-            const key = [symbol, exchange].toString()
+            const key = JSON.stringify([symbol, exchange])
             subscriptionHandler.unsubscribe(symbol, exchange, normalPriceCallBack).
             then(()=>{
                 socket.emit('unsubscriptionSuccess', key)

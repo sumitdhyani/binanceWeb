@@ -113,7 +113,14 @@ class FSM
 
     processSingleEvent(evtName, evtData){
         this.smBusy = true
-        let transition = this.currState.react(evtName, evtData)
+        let transition = null
+        try{
+            transition = this.currState.react(evtName, evtData)
+        }
+        finally{
+            this.smBusy = false
+        }
+
         this.smBusy = false
         if(transition instanceof State){
             this.currState = transition
