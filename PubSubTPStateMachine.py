@@ -1,5 +1,5 @@
 import asyncio
-from AsyncFSM import AFSM, AFSMState, SpecialEvents
+from AsyncFSM import AFSM, AFSMState, SpecialEvents, FinalityReachedException
 from enum import Enum
 
 class SubscriptionAction(Enum):
@@ -48,7 +48,14 @@ class Syncing(AFSMState):
         self.subscriptionKeys = set()
         async def retryDownload():
             await asyncio.sleep(5)
-            await selfStateMachine.handleEvent("RetryDownLoad")
+            try:
+                await selfStateMachine.handleEvent("RetryDownLoad")
+            except FinalityReachedException as ex:
+                self.logger.warn("received an event after reaching a final state which is: %s", str(type(selfStateMachine.currState)) )
+            except Exception as ex:
+                self.logger.warn("Exception received while processing RetryDownLoad evt details: %s", str(ex))
+
+            
         self.retryFunc = retryDownload
     
     async def after_entry(self):
@@ -58,7 +65,7 @@ class Syncing(AFSMState):
         await asyncio.wait([asyncio.sleep(0), self.retryFunc()], return_when=asyncio.FIRST_COMPLETED)
     
     async def on_SyncData(self, symbolRelatedSubscriptionParams, destTopics):
-        self.logger.info("on_SyncData in Syncing state, partition: %s", str(self.partition))
+        self.logger.debug("on_SyncData in Syncing state, partition: %s", str(self.partition))
         for destTopic in destTopics:
             appParams = symbolRelatedSubscriptionParams + [destTopic]
             if await self.appSubMethod(*appParams) is not None:
@@ -73,10 +80,10 @@ class Syncing(AFSMState):
                            self.logger)
 
     async def on_RetryDownLoad(self):
-        self.logger.info("on_RetryDownLoad in Syncing state, partition: %s", str(self.partition))
+        self.logger.warn("on_RetryDownLoad in Syncing state, partition: %s", str(self.partition))
         await self.syncdataRequestor(self.partition)
         await asyncio.wait([asyncio.sleep(0), self.retryFunc()], return_when=asyncio.FIRST_COMPLETED)
-        self.logger.info("Syncing state, partition: %s, sent sync request", str(self.partition))
+        self.logger.warn("Syncing state, partition: %s, sent sync request", str(self.partition))
 
     async def on_DownloadEnd(self):
         self.logger.info("on_DownloadEnd in Syncing state, partition: %s", str(self.partition))
@@ -125,6 +132,7 @@ class Downloading(AFSMState):
             appParams = symbolRelatedSubscriptionParams + [destTopic]
             if await self.appSubMethod(*appParams) is not None:
                 self.subscriptionKeys.add(tuple(symbolRelatedSubscriptionParams))
+                
     async def on_Revoked(self):
         return SpecialEvents.defer
 
@@ -167,7 +175,7 @@ class Operational(AFSMState):
         self.logger.info("Entered Operational state, partition: %s", str(self.partition))
     
     async def on_ExternalSubUnsub(self, msgDict):
-        self.logger.info("on_ExternalSubUnsub in Operational state, partition: %s", str(self.partition))
+        self.logger.debug("on_ExternalSubUnsub in Operational state, partition: %s", str(self.partition))
         subParams = await self.appMsghandler(msgDict)
         if subParams is not None:
             self.subscriptionKeys.add(subParams)

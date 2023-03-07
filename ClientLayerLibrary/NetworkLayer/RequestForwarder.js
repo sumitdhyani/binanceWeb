@@ -17,7 +17,7 @@ function subscribe(symbol, exchange){
 
 function unsubscribe(symbol, exchange){
     const key = [symbol, exchange].toString()
-    if(subscriptionBook.has(key)){
+    if(!subscriptionBook.has(key)){
         throw new appSpecificErrors.SpuriousUnsubscription()
     }
     

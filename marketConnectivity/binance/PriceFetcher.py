@@ -11,7 +11,8 @@ from NetworkComplaintHandler import NetworkComplaintHandler
 from CommonUtils import getLoggingLevel, getLogger, Timer
 from CommunicationLayer import produce
 import PubSubService
-totalMessages = 0
+totalIncommingMessages = 0
+totalOutGoingMessages = 0
 
 broker = sys.argv[1]
 #broker = re.split(",", sys.argv[1])
@@ -22,6 +23,8 @@ logger = getLogger(loggingLevel, appId)
 subscriptionBook = {}
 
 async def onPrice(depth):
+    global totalOutGoingMessages
+    totalOutGoingMessages += 1
     bids = depth.get_bids()
     asks = depth.get_asks()
     bidLen = min(5, len(bids))
@@ -72,8 +75,8 @@ def unregisterSubscription(unsubscriptionFunc, symbol, destinationTopic):
         logger.warn("Unsubscription attempted for %s topic %s which is not an active listener for this symbol", symbol, destinationTopic)
 
 async def onSubMsg(msgDict, subscriptionFunc, unsubscriptionFunc):
-    global totalMessages
-    totalMessages += 1
+    global totalIncommingMessages
+    totalIncommingMessages += 1
     symbol = msgDict["symbol"]
     action = msgDict["action"]
     dest_topic = msgDict["destination_topic"]
@@ -104,10 +107,16 @@ async def onSubMsg(msgDict, subscriptionFunc, unsubscriptionFunc):
 #                               None)
 
 async def run():
-    logger.debug("Started mock version of mkt gwy")
+    global totalIncommingMessages
+    global totalOutGoingMessages
+    logger.info("Started mock version of mkt gwy")
     ddp = MockDepthDataProvider(logger)
     timer = Timer()
-    await timer.setTimer(1, lambda : logger.info("Total throughput: %s", str(totalMessages)))
+
+    async def dummyFunc():
+        logger.warn("Total in: %s, total out: %s, totalSunscriptions: %s", str(totalIncommingMessages), str(totalOutGoingMessages), str(len(subscriptionBook)))
+        
+    await timer.setTimer(1, dummyFunc)
     await PubSubService.start(broker,
                               "binance_price_subscriptions",
                               lambda msg : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),

@@ -36,8 +36,9 @@ class MockDepthDataProvider:
         while subscriptionPresent:
             self.logger.debug("Fetching %s", symbol)
             depth = MockDepth(symbol, 100)
-            await self.subscriberDictionary[symbol](depth)# async execution of all the callbacks
-            await asyncio.sleep(1)
+            if subscriptionPresent := symbol in self.subscriberDictionary.keys():
+                await self.subscriberDictionary[symbol](depth)# async execution of all the callbacks
+                await asyncio.sleep(1)
         self.logger.debug("No subscriptions are now active for %s", symbol)
 
     def unsubscribe(self, symbol, callback):

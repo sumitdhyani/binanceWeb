@@ -6,13 +6,14 @@ const logFormat = printf(({level, message, timestamp}) => {
     return `${timestamp} ${level}: ${message}`
 })
 
-function createFileLogger(file){
+function createFileLogger(file, level){
     return createLogger({
         //format : winston.format.simple(),
         format : combine(format.colorize(), 
                          timestamp({format : 'YYYY-MM-DD HH:mm:ss'}),
                          logFormat),
-        transports : [new transports.File({filename: file})]
+        transports : [new transports.File({filename: file})],
+        level : level
     })
 }
 

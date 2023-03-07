@@ -242,7 +242,9 @@ function launchHttpCommunicationEngine(app, apiLogger)
                       feed_server : currServer["hostPort"]})
         }
         else{
-            logger.info(`No feedserver found`)
+            res.send({success : false, 
+                      reason : `No feedserver found`})
+            logger.warn(`No feedserver found`)
         }
     });
 

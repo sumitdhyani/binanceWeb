@@ -34,18 +34,23 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
 
     try:
         admin = KafkaAdminClient(bootstrap_servers=brokers)
+        logger.info("Admin client created")
+
         try:
             for newTopic in topicsToCreate:
                 await createTopic(newTopic, 1, 1)
+                logger.warn("Topic %s created the new topic", newTopic)
         except TopicAlreadyExistsError as ex:
             logger.warn("Topic %s already exists, ignoring the attempt to create the new topic", newTopic)
 
         producer = aiokafka.AIOKafkaProducer(bootstrap_servers=brokers, acks="all")
+        logger.info("Producer created")
         await producer.start()
         groupConsumer = aiokafka.AIOKafkaConsumer(bootstrap_servers=brokers,
                                                   group_id=groupId,
                                                   client_id=groupId+clientId+"_group",
                                                   enable_auto_commit=False)
+        logger.info("Group consumer created")
         
         async def consumptionBatch(consumer, callbackDict):
             dict =  await consumer.getmany(timeout_ms=1000)
@@ -59,6 +64,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         groupConsumer.subscribe([topic for topic in coOrdinatedtopicsAndCallbacks.keys()],
                                 listener=rebalanceListener)
         await groupConsumer.start()
+        logger.info("Group consumer started")
 
         individualConsumer = None
         if unCoOrdinatedtopicsAndCallbacks:
@@ -66,14 +72,17 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                                                            group_id=clientId,
                                                            client_id=groupId+clientId,
                                                            enable_auto_commit=False)
+            logger.info("Individual consumer created")
             individualConsumer.subscribe([topic for topic in unCoOrdinatedtopicsAndCallbacks.keys()])
             await individualConsumer.start()
+            logger.info("Individual consumer started")
 
         timer = Timer()
         async def dummyFunc():
             await sendHeartbeat(clientId)
         await timer.setTimer(5, dummyFunc)
         await produce("registrations", json.dumps({"appId" : clientId, "appGroup" : groupId}), clientId)
+        logger.info("Component registration sent")
         while True:
             consumptionFunctions = None
             if individualConsumer is not None:
@@ -109,9 +118,15 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                                 logger.error("Unexpedted exception in the task loop, details %s, traceback: %s", str(ex), traceback.format_exc())
     except Exception as ex:
         logger.error("Unexpedted exception in the init phase loop, details %s, traceback: %s", str(ex), traceback.format_exc())
-        await producer.stop()
-        admin.close()
-        await groupConsumer.stop()
+        if producer is not None:
+            await producer.stop()
+
+        if admin is not None:
+            admin.close()
+
+        if groupConsumer is not None:
+            await groupConsumer.stop()
+
         if indiVidualConsumer is not None:
             await indiVidualConsumer.stop()
             

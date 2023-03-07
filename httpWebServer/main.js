@@ -79,10 +79,10 @@ async function mainLoop(logger){
                 const [symbol, exchange] = JSON.parse(key)
                 subscriptionHandler.unsubscribe(symbol, exchange, normalPriceCallBack).
                 then(()=>{
-                    logger.info(`Subscription cancelled for connection id: ${socket.id}, symbol: ${key} upon disconnection`)
+                    logger.debug(`Subscription cancelled for connection id: ${socket.id}, symbol: ${key} upon disconnection`)
                 }).
                 catch((err)=>{
-                    logger.info(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
+                    logger.warn(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
                 })
             }
             
@@ -90,7 +90,7 @@ async function mainLoop(logger){
                 const [asset, currency, bridge] = disintegrateVirtualTradingPairName(virtualSymbol)
                 subscriptionHandler.unsubscribeVirtual(asset, currency, bridge, virtualPriceCallBack).
                 then(()=>{
-                    logger.info(`Subscription cancelled for connection id: ${socket.id}, symbol: ${virtualSymbol}, upon disconnection`)
+                    logger.debug(`Subscription cancelled for connection id: ${socket.id}, symbol: ${virtualSymbol}, upon disconnection`)
                 }).
                 catch((err)=>{
                     logger.info(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${virtualSymbol}, details: ${err.message}`)
@@ -107,7 +107,7 @@ async function mainLoop(logger){
                 then(()=>{
                     socket.emit('subscriptionSuccess', key)
                     subscriptions.add(key)
-                    logger.info(`Subscription successsful for connection id: ${socket.id}, symbol: ${key}`)
+                    logger.debug(`Subscription successsful for connection id: ${socket.id}, symbol: ${key}`)
                 }).
                 catch((err)=>{
                     if(err instanceof DuplicateSubscription){
@@ -126,7 +126,7 @@ async function mainLoop(logger){
             then(()=>{
                 socket.emit('unsubscriptionSuccess', key)
                 subscriptions.delete(key)
-                logger.info(`Unsubscription successsful for connection id: ${socket.id}, symbol: ${key}`)
+                logger.debug(`Unsubscription successsful for connection id: ${socket.id}, symbol: ${key}`)
             }).
             catch((err)=>{
                 if(err instanceof SpuriousUnsubscription){

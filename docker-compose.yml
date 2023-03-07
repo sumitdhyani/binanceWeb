@@ -54,7 +54,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: python3 ./marketConnectivity/RequestRouter.py kafka_1:9092,kafka_2:9092,kafka_3:9092 request_router_1 '{"${exch_binance}":"binance_price_subscriptions"}' DEBUG
+    command: python3 ./marketConnectivity/RequestRouter.py kafka_1:9092,kafka_2:9092,kafka_3:9092 request_router_1 '{"${exch_binance}":"binance_price_subscriptions"}' ${logging_level}
   binance_mkt_gateway_1:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -62,7 +62,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_1 DEBUG
+    command: python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_1 ${logging_level}
   binance_mkt_gateway_2:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -70,7 +70,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_2 DEBUG
+    command: python3 ./marketConnectivity/binance/PriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 MarketGateway_2 ${logging_level}
   node_package_installer:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -86,7 +86,7 @@ services:
       - LOCALIP=${LOCALIP}
     depends_on:
       - kafka_3
-    command: node ./httpWebServer/main.js kafka_3:9092 80 web_server
+    command: node ./httpWebServer/main.js kafka_3:9092 80 web_server ${logging_level}
     ports:
       - "80:80"
   web_authenticator:
@@ -98,7 +98,7 @@ services:
       - web_server
       - kafka_3
     #command: node ./httpWebServer/main.js kafka_3:9092 80 WebServer
-    command: node ./httpWebServer/WebAuthenticator.js kafka_3:9092 90 web_authenticator DEBUG
+    command: node ./httpWebServer/WebAuthenticator.js kafka_3:9092 90 web_authenticator ${logging_level}
     ports:
       - "90:90"
   data_dispatcher:
@@ -116,7 +116,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_1 DEBUG
+    command: python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_1 ${logging_level}
   virtual_price_fetcher_2:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -124,15 +124,15 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_2 DEBUG
-  price_dispatcher:
-    build: ./images/ubuntu_all_packages
-    volumes:
-      - .:/usr/src
-    working_dir: /usr/src
-    depends_on:
-      - kafka_3
-    command: python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices
+    command: python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py kafka_1:9092,kafka_2:9092,kafka_3:9092 Vpf_2 ${logging_level}
+  #price_dispatcher:
+  #  build: ./images/ubuntu_all_packages
+  #  volumes:
+  #    - .:/usr/src
+  #  working_dir: /usr/src
+  #  depends_on:
+  #    - kafka_3
+  #  command: python3 ./DataDispatcher/DataDispatcher.py kafka_3:9092 PriceDispatcher prices,virtual_prices
   topic_data_dumper:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -140,7 +140,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper2 price_subscriptions,binance_price_subscriptions INFO
+    command: python3 ./testFiles/DataDumper.py kafka_3:9092 DataDumper2 price_subscriptions,binance_price_subscriptions ${logging_level}
   sync_data_provider:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -148,7 +148,7 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: python3 ./SyncDataProvider/SyncDataProvider.py kafka_3:9092 SyncDataProvider DEBUG
+    command: python3 ./SyncDataProvider/SyncDataProvider.py kafka_3:9092 SyncDataProvider ${logging_level}
   admin_data_provider:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -156,5 +156,5 @@ services:
     working_dir: /usr/src
     depends_on:
       - kafka_3
-    command: python3 ./AdminDataProvider/AdminDataProvider.py kafka_1:9092,kafka_2:9092,kafka_3:9092 admin_data_provider DEBUG
+    command: python3 ./AdminDataProvider/AdminDataProvider.py kafka_1:9092,kafka_2:9092,kafka_3:9092 admin_data_provider ${logging_level}
 
