@@ -281,6 +281,7 @@ module.exports = {
         else {
             obj = { symbol: symbol, exchange : exchange, action: "unsubscribe" }
             await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol + ":" + exchange)
+            logger.info(`Forwarded unsubsccription for: ${key}, futher in the pipeline`)
         }
     },
 
