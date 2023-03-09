@@ -3,7 +3,7 @@ const Authenticating = require('./AllStates.js').Authenticating
 
 class ClientLayerFSM extends FSM{
     constructor(params){
-        super(()=>{ return new Authenticating(params)})
+        super(()=>{ return new Authenticating(params)}, params.logger)
     }
 }
 

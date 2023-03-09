@@ -58,7 +58,8 @@ async function mainLoop(logger){
         sendWebserverEvent(WebserverEvents.NewConnection).then(()=>{}).catch((err)=>{
             console.log(`Error whle sending NewConnection event, details: ${err.message}`)
         })
-        console.log(`New connection, id: ${socket.id}`)
+        //console.log(`New connection, id: ${socket.id}`)
+        logger.info(`New connection, id: ${socket.id}`)
         subscriptions = new Set()
         virtualSubscriptions = new Set()
         const normalPriceCallBack = function(depth){
@@ -69,11 +70,11 @@ async function mainLoop(logger){
             socket.emit('virtualDepth', depth)
         }
 
-        socket.on('disconnect', ()=> {
+        socket.on('disconnect', (reason)=> {
             sendWebserverEvent(WebserverEvents.Disconnection).then(()=>{}).catch((err)=>{
                 console.log(`Error whlie sending Disconnection event, details: ${err.message}`)
             })
-            logger.warn(`Disconnection, id: ${socket.id}, cancelling all subscriptions`)
+            logger.warn(`Disconnection, id: ${socket.id}, reason: ${reason} cancelling all subscriptions(${subscriptions.size})`)
 
             for(const key of subscriptions){
                 const [symbol, exchange] = JSON.parse(key)
@@ -82,7 +83,7 @@ async function mainLoop(logger){
                     logger.debug(`Subscription cancelled for connection id: ${socket.id}, symbol: ${key} upon disconnection`)
                 }).
                 catch((err)=>{
-                    logger.warn(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
+                    logger.warn(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${key}, details: ${err.message}`)
                 })
             }
             
@@ -111,7 +112,8 @@ async function mainLoop(logger){
                 }).
                 catch((err)=>{
                     if(err instanceof DuplicateSubscription){
-                        socket.emit('subscriptionFailure', key, `Duplicate subscription request for symbol: ${key}`)
+                    logger.warn(`Error for connection id: ${socket.id}, while subscribing ${key}, ${err.message}`)
+                    socket.emit('subscriptionFailure', key, `Duplicate subscription request for symbol: ${key}`)
                     }
                     else if(err instanceof InvalidSymbol){
                         socket.emit('subscriptionFailure', key, `Invalid symbol: ${key}`)
@@ -132,7 +134,7 @@ async function mainLoop(logger){
                 if(err instanceof SpuriousUnsubscription){
                     socket.emit('unsubscriptionFailure', key, `The symbol ${key} currently not subscribed for this client`)
                 }
-                logger.info(`Error while unsubscription for connection id: ${socket.id}, symbol: ${key}, details: ${err.message}`)
+                logger.warn(`Error while unsubscription for connection id: ${socket.id}, symbol: ${key}, details: ${err.message}`)
             })
         })
 

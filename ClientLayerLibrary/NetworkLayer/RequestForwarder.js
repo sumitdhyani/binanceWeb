@@ -38,8 +38,10 @@ function forward(intent){
     if(0 == action.localeCompare("subscribe")){
         forwardSubscription(intent)
     }
-    else{
+    else if(0 == action.localeCompare("unsubscribe")){
         forwardUnsubscription(intent)
+    }else if(0 == action.localeCompare("disconnect")){
+        sock.disconnect()
     }
 }
 
@@ -65,10 +67,14 @@ function disconnect(){
 }
 
 function connect(serverAddress, callback, logger){//Server address <ip>:<port>
-    logger(`Connecting to the server ${serverAddress}`)
+    logger.debug(`Connecting to the server ${serverAddress}`)
     sock = io(serverAddress)
     sock.on('connect', ()=>{
-        logger(`Connected by id: ${sock.id}`)
+        logger.debug(`Connected by id: ${sock.id}`)
+    })
+
+    sock.on('disconnect', (reason)=>{
+        logger.warn(`Disconnection, id: ${sock.id}, reason: ${reason}`)
     })
 
     sock.on('depth', (depth)=>{
@@ -76,39 +82,39 @@ function connect(serverAddress, callback, logger){//Server address <ip>:<port>
     })
 
     sock.on('virtualDepth', (depth)=>{
-        logger(`Virtual depth recieved: ${depth}`)
+        logger.debug(`Virtual depth recieved: ${depth}`)
     })
 
     sock.on('subscriptionSuccess', (symbol)=>{
-        logger(`subscriptionSuccess for: ${symbol}`)
+        logger.debug(`subscriptionSuccess for: ${symbol}`)
     })
 
     sock.on('subscriptionFailure', (symbol, reason)=>{
-        logger(`subscriptionFailure for: ${symbol}, reason: ${reason}`)
+        logger.warn(`subscriptionFailure for: ${symbol}, reason: ${reason}`)
     })
 
     sock.on('unsubscriptionSuccess', (symbol)=>{
-        logger(`unsubscriptionSuccess for: ${symbol}`)
+        logger.debug(`unsubscriptionSuccess for: ${symbol}`)
     })
 
     sock.on('unsubscriptionFailure', (symbol, reason)=>{
-        logger(`unsubscriptionFailure for: ${symbol}, reason: ${reason}`)
+        logger.warn(`unsubscriptionFailure for: ${symbol}, reason: ${reason}`)
     })
 
     sock.on('virtualSubscriptionSuccess', (asset, currency, bridge)=>{
-        logger(`virtualSubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
+        logger.debug(`virtualSubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
     })
 
     sock.on('virtualSubscriptionFailure', (asset, currency, bridge, reason)=>{
-        logger(`virtualSubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
+        logger.warn(`virtualSubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
     })
 
     sock.on('virtualUnsubscriptionSuccess', (asset, currency, bridge)=>{
-        logger(`virtualUnsubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
+        logger.debug(`virtualUnsubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
     })
 
     sock.on('virtualUnsubscriptionFailure', (asset, currency, bridge, reason)=>{
-        logger(`virtualUnsubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
+        logger.warn(`virtualUnsubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
     })
 }
 

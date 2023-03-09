@@ -17,11 +17,11 @@ function start(auth_params, data_callback, logger){
                                                                         });
                                                                         res.on('end', () => {
                                                                           data = JSON.parse(data)
-                                                                          logger(data);
+                                                                          logger.debug(data);
                                                                           fsm.handleEvent("auth_response", {success: true, conn_params : "http://" + data.feed_server})
                                                                       })
                                                                       }).on('error', err => {
-                                                                        logger(err.message);
+                                                                        logger.warn(err.message)
                                                                       })},
                               feed_server_conn_method : NetworkServices.connect,
                               connection_layer_termination_method : NetworkServices.disconnect,

@@ -4,13 +4,16 @@ const prompt = require("prompt-async");
 const fs = require('fs');
 const readline = require('readline');
 const CommonUtils = require("../CommonUtils")
-const lockfile = require('proper-lockfile')
+const lockfile = require('proper-lockfile');
+const { constants } = require('buffer');
+const { uptime } = require('os');
 const symbolDict = new Map()
 
 logger = CommonUtils.createFileLogger("LoadTestClient", 'warn')
 let msgTotal = 0
+let msgThisInterval = 0
 const testRunDuration = parseInt(process.argv[6]) * 1000
-
+let uniqueSymbolsRecd = new Set()
 function sleep(ms) {
     if(0 < ms)
         return
@@ -41,11 +44,15 @@ async function loadSymbols() {
 }
 
 function onData(data){
+    dict = JSON.parse(data)
+    //logger.warn(dict["symbol"])
+    uniqueSymbolsRecd.add(dict["symbol"])
     msgTotal++
+    msgThisInterval++
     //console.log(`Received data: ${JSON.stringify(data)}`)
 }
 
-launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, (msg)=>{logger.debug(msg)})
+launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, logger)
 
 async function actionForNormalSymbol(action, symbol)
 {
@@ -55,7 +62,8 @@ async function actionForNormalSymbol(action, symbol)
                 exchange : "BINANCE"})
     }
     catch(err){
-        logger.warn(`Error while ${action} for ${symbol}, details: ${err.message}`)
+        let temp = new Error()
+        logger.warn(`Error while ${action} for ${symbol}, details: ${err.message}, stack: ${temp.stack}`)
     }
 }
 
@@ -82,7 +90,6 @@ async function mainLoop()
     high = parseInt(process.argv[4])
     delay = parseInt(process.argv[5])
 
-    let msgTotalPrevInterval = 0
     let numIntervals = 0;
     const interval = 1000
     const localSymbols = []
@@ -97,13 +104,18 @@ async function mainLoop()
 
     let statBook = []
     symbolDict.clear()
-    let totalMessages = 0
+
+    let intervalId = setInterval(()=>{
+        numIntervals++
+        const totalThroughPut = msgTotal/numIntervals
+        statBook.push([msgThisInterval, Math.floor(Date.now() / 1000)])
+        logger.debug(`Interval length(ms): ${interval} Total: ${msgTotal}, this interval throughput: ${msgThisInterval}, net throughput: ${totalThroughPut}`)
+        msgThisInterval = 0
+    }, interval)
 
     setTimeout(()=>{
-        for(let symbol of localSymbols){
-            actionForNormalSymbol("unsubscribe", symbol)
-            sleep(delay)
-        }
+        clearInterval(intervalId)
+        subUnsub({action : "disconnect"})
         
         let min = 1000000
         let max = 0
@@ -115,8 +127,6 @@ async function mainLoop()
             if(numMessages < min){
                 min = numMessages
             }
-
-            totalMessages += numMessages
         }
 
         (freqBook = []).length = max + 1
@@ -144,14 +154,16 @@ async function mainLoop()
                       statBook[Math.floor(statBook.length - 1 / 2)][0]) / 2
         }
 
-        const mean = totalMessages / statBook.length
+        const mean = msgTotal / statBook.length
         const summary = { duration : statBook.length,
-                          totalMessagesRecd : totalMessages,
+                          totalMessagesRecd : msgTotal,
                           high : max,
                           low : min,
                           mean : mean,
                           median : median,
-                          mode : mode//,
+                          mode : mode,
+                          unique_symbols : uniqueSymbolsRecd.size,
+                          up_time : process.uptime()
                           //statBook : statBook,
                           //freqBook : freqBook,
         }
@@ -183,15 +195,7 @@ async function mainLoop()
         
     }, testRunDuration)
 
-    setInterval(()=>{
-                        numIntervals++
-                        const totalThroughPut = msgTotal/numIntervals
-                        msgThisInterval =  msgTotal - msgTotalPrevInterval
-                        msgTotalPrevInterval = msgTotal
-                        statBook.push([msgThisInterval, Math.floor(Date.now() / 1000)])
-                        logger.debug(`Interval length(ms): ${interval} Total: ${msgTotal}, this interval throughput: ${msgThisInterval}, net throughput: ${totalThroughPut}`)
-                    }, 
-                interval)
+    
     for(i = 0; i < high; i++){
         //console.log(localSymbols[i])
         await sleep(delay)

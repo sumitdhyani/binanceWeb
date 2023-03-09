@@ -63,7 +63,7 @@ class ConnectingToFeedServer extends State{
                                             logger: this.logger})
         }
         catch(err){
-            this.logger(err.message)
+            this.logger.warn(err.message)
             return new Authenticating(this.authentication_params)
         }
 
@@ -114,7 +114,7 @@ class Exiting extends State{
     }
 
     onEntry(){
-        this.logger(`Exiting the library layer, reason: ${this.reason}`)
+        this.logger.info(`Exiting the library layer, reason: ${this.reason}`)
         this.connection_layer_termination_method()
     }
 }

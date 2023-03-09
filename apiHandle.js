@@ -250,6 +250,7 @@ module.exports = {
             subscriptionBook.set(key, callback)
             obj = { symbol : symbol, exchange : exchange, action : "subscribe"}
             await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol + ":" + exchange)
+            logger.info(`Forwarded subsccription for: ${key}, futher in the pipeline`)
         }
     },
 

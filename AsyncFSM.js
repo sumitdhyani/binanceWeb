@@ -87,7 +87,7 @@ class State
 
 class FSM
 {
-	constructor(startStateFetcher, logger = (message)=>{ console.log(message) } )
+	constructor(startStateFetcher, logger)
 	{
         this.currState = startStateFetcher()
         this.logger = logger
@@ -156,7 +156,7 @@ class FSM
                 this.processSingleEvent(evtName, evtData)
             }
             catch(err){
-                this.logger(`Error while processing deferral queue: ${err.message}`)
+                logger.warn(`Error while processing deferral queue: ${err.message}, stack: ${err.stack}`)
             }
             finally{
                 local.pop()
@@ -175,10 +175,11 @@ class CompositeState extends State
 {
 	constructor(startStateFetcher, 
                 evtProcessorDictionary,
-                 isFinal = false)
+                logger,
+                isFinal = false)
 	{
         super(evtProcessorDictionary, isFinal)
-        this.fsm = new FSM(startStateFetcher)
+        this.fsm = new FSM(startStateFetcher, logger)
         this.fsm.start()
     }
 
