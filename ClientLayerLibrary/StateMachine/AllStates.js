@@ -36,6 +36,10 @@ class Authenticating extends State{
                             logger : this.logger})
         }
     }
+
+    on_client_intent(intent){
+        return SpecialTransition.deferralTransition
+    }
 }
 
 class ConnectingToFeedServer extends State{
@@ -64,6 +68,10 @@ class ConnectingToFeedServer extends State{
         }
 
     }
+
+    on_client_intent(intent){
+            return SpecialTransition.deferralTransition
+    }
 }
 
 class SyncingSubscriptions extends State{
@@ -90,6 +98,10 @@ class SyncingSubscriptions extends State{
             this.logger(`Error in syncing phase, details: ${err.message}`)
             return FSM.Specialtransition.nullTransition
         }
+    }
+
+    on_client_intent(intent){
+            return SpecialTransition.deferralTransition
     }
 }
 

@@ -144,7 +144,7 @@ class FSM
             return
         }
 
-		local = []
+		let local = []
         let temp = local
         local = this.deferralQueue
         this.deferralQueue = temp

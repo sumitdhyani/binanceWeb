@@ -30,18 +30,21 @@ async def onHeartbeat(msg):
     msgDict = json.loads(msg)
     otherApp = msgDict["appId"]
     if otherApp not in heartbeatBook.keys():
-        heartbeatBook[otherApp] = 0
-        async def dummyFunc():
-            await increaseMissedHeartBeats(otherApp, dummyFunc)
-        await timer.setTimer(5, dummyFunc)
+        logger.warn("hearbeat received for unregistered app, app_id: %s", otherApp)
     else:
         heartbeatBook[otherApp] -= 1
     
 async def onRegistration(msg):
     msgDict = json.loads(msg)
-    appMetadata[msgDict["appId"]] = msgDict.copy()
+    app_id = msgDict["appId"]
+    appMetadata[app_id] = msgDict.copy()
     msgDict["evt"] = "app_up"
     await produce("admin_events", json.dumps(msgDict), msgDict["appId"])
+    if app_id not in heartbeatBook.keys():
+        heartbeatBook[app_id] = 0
+        async def dummyFunc():
+            await increaseMissedHeartBeats(app_id, dummyFunc) 
+        await timer.setTimer(5, dummyFunc)
 
 async def onAdminQuery(msg):
     msgDict = json.loads(msg)
