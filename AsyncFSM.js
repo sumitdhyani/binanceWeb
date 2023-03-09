@@ -144,22 +144,17 @@ class FSM
             return
         }
 
-		let local = []
-        let temp = local
-        local = this.deferralQueue
-        this.deferralQueue = temp
-		
-		while (0 < local.length){
+		let local = this.deferralQueue
+        this.deferralQueue = []
+
+		for (let i = 0; i < local.length; i++){
             try{
                 this.checkIfFSMReadyToHandleEvt()
-                let [evtName, evtData] = local[0]
+                let [evtName, evtData] = local[i]
                 this.processSingleEvent(evtName, evtData)
             }
             catch(err){
-                logger.warn(`Error while processing deferral queue: ${err.message}, stack: ${err.stack}`)
-            }
-            finally{
-                local.pop()
+                logger.warn(`Error while processing deferral queue: ${err.message}`)
             }
 		}
 	}

@@ -8,7 +8,7 @@ subscriptionBook = new Set()
 function subscribe(symbol, exchange){
     const key = [symbol, exchange].toString()
     if(subscriptionBook.has(key)){
-        throw new appSpecificErrors.DuplicateSubscription()
+        throw new appSpecificErrors.DuplicateSubscription(`Duplicate subscription for ${key}`)
     }
 
     subscriptionBook.add(key)
