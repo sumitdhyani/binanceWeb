@@ -17,7 +17,13 @@ class Authenticating extends State{
     }
 
     onEntry(){
+        this.logger.info(`Entered Authenticating state`)
         this.authentication_method(this.auth_params)
+    }
+
+    on_disconnect(reason){
+        this.logger.warn(`Disconnection evt received in Authenticating state, reason: ${reason}`)
+        return SpecialTransition.nullTransition
     }
 
     on_auth_response(response){
@@ -60,7 +66,8 @@ class ConnectingToFeedServer extends State{
             return new SyncingSubscriptions({intent_handler : this.intent_handler,
                                             data_callback: this.data_callback,
                                             subscription_dictionary : this.subscription_dictionary,
-                                            logger: this.logger})
+                                            authentication_params : this.authentication_params,
+                                            logger : this.logger})
         }
         catch(err){
             this.logger.warn(err.message)
@@ -80,24 +87,24 @@ class SyncingSubscriptions extends State{
         this.intent_handler = params.intent_handler
         this.subscription_dictionary = params.subscription_dictionary
         this.data_callback = params.data_callback
+        this.authentication_params = params.authentication_params
         this.logger = params.logger
     }
 
     on_launch(){
-        try{
-            for (let params of this.subscription_dictionary){
-                this.intent_handler(params)
+        for (let params of this.subscription_dictionary){
+            try{
+                this.intent_handler(JSON.parse(params))
+            }catch(err){
+                this.logger.warn(`Error in syncing phase, details: ${err.message}`)
             }
+        }
 
-            return new Operational({intent_handler : this.intent_handler,
-                                    data_callback: this.data_callback,
-                                    subscription_dictionary : this.subscription_dictionary,
-                                    logger: this.logger})
-        }
-        catch(err){
-            this.logger(`Error in syncing phase, details: ${err.message}`)
-            return FSM.Specialtransition.nullTransition
-        }
+        return new Operational({intent_handler : this.intent_handler,
+                                data_callback: this.data_callback,
+                                subscription_dictionary : this.subscription_dictionary,
+                                authentication_params : this.authentication_params,
+                                logger: this.logger})
     }
 
     on_client_intent(intent){
@@ -124,17 +131,24 @@ class Operational extends State{
         super()
         this.intent_handler = params.intent_handler
         this.subscription_dictionary = params.subscription_dictionary
+        this.authentication_params = params.authentication_params
         this.logger = params.logger
     }
 
     on_client_intent(intent){
         this.intent_handler(intent)
+        this.subscription_dictionary.add(JSON.stringify(intent))
         return SpecialTransition.nullTransition
     }
 
     on_price_data(data){
         this.data_callback(data)
         return SpecialTransition.nullTransition
+    }
+
+    on_disconnect(reason){
+        this.logger.warn(`Disconnection evt received, reason: ${reason}`)
+        return new Authenticating(this.authentication_params)
     }
 }
 

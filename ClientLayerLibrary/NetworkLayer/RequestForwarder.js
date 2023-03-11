@@ -4,6 +4,7 @@ const appSpecificErrors = require('../../appSpecificErrors')
 let sock = null
 
 subscriptionBook = new Set()
+let disconnectionHandler = null
 
 function subscribe(symbol, exchange){
     const key = [symbol, exchange].toString()
@@ -75,6 +76,11 @@ function connect(serverAddress, callback, logger){//Server address <ip>:<port>
 
     sock.on('disconnect', (reason)=>{
         logger.warn(`Disconnection, id: ${sock.id}, reason: ${reason}`)
+        callback(JSON.stringify({ message_type : "disconnection", reason : reason}))
+        subscriptionBook.clear()
+        if(null !== disconnectionHandler){
+            setTimeout(()=>disconnectionHandler(reason), 0);
+        }
     })
 
     sock.on('depth', (depth)=>{
@@ -118,6 +124,11 @@ function connect(serverAddress, callback, logger){//Server address <ip>:<port>
     })
 }
 
+function setDisconnectionHandler(callback){
+    disconnectionHandler = callback
+}
+
 module.exports.connect = connect
 module.exports.forward = forward
 module.exports.disconnect = disconnect
+module.exports.setDisconnectionHandler = setDisconnectionHandler

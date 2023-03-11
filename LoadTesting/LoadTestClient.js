@@ -10,8 +10,11 @@ const { uptime } = require('os');
 const symbolDict = new Map()
 
 logger = CommonUtils.createFileLogger("LoadTestClient", 'warn')
+let numDisconnections = 0
 let msgTotal = 0
 let msgThisInterval = 0
+let firstReceiveInterval = 0
+let numIntervals = 0
 const testRunDuration = parseInt(process.argv[6]) * 1000
 let uniqueSymbolsRecd = new Set()
 function sleep(ms) {
@@ -45,14 +48,21 @@ async function loadSymbols() {
 
 function onData(data){
     dict = JSON.parse(data)
+    if(dict["message_type"].localeCompare("disconnection") == 0){
+        numDisconnections++
+        return
+    }
     //logger.warn(dict["symbol"])
     uniqueSymbolsRecd.add(dict["symbol"])
     msgTotal++
     msgThisInterval++
+    if( 0 == firstReceiveInterval){
+        firstReceiveInterval = numIntervals
+    }
     //console.log(`Received data: ${JSON.stringify(data)}`)
 }
 
-launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, logger)
+launch({auth_server : "http://206.81.18.17:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, logger)
 
 async function actionForNormalSymbol(action, symbol)
 {
@@ -90,7 +100,6 @@ async function mainLoop()
     high = parseInt(process.argv[4])
     delay = parseInt(process.argv[5])
 
-    let numIntervals = 0;
     const interval = 1000
     const localSymbols = []
     await loadSymbols()
@@ -163,6 +172,8 @@ async function mainLoop()
                           median : median,
                           mode : mode,
                           unique_symbols : uniqueSymbolsRecd.size,
+                          numDisconnections : numDisconnections,
+                          firstReceiveInterval : firstReceiveInterval,
                           up_time : process.uptime()
                           //statBook : statBook,
                           //freqBook : freqBook,
