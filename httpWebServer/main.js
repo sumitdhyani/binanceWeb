@@ -60,8 +60,8 @@ async function mainLoop(logger){
         })
         //console.log(`New connection, id: ${socket.id}`)
         logger.info(`New connection, id: ${socket.id}`)
-        subscriptions = new Set()
-        virtualSubscriptions = new Set()
+        let subscriptions = new Set()
+        let virtualSubscriptions = new Set()
         const normalPriceCallBack = function(depth){
             socket.emit('depth', depth)
         }
