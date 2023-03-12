@@ -160,7 +160,7 @@ async function mainLoop()
         }
         else{
             median = (statBook[Math.floor(statBook.length / 2)][0] +
-                      statBook[Math.floor(statBook.length - 1 / 2)][0]) / 2
+                      statBook[Math.floor(statBook.length / 2) - 1][0]) / 2
         }
 
         const mean = msgTotal / statBook.length
@@ -175,7 +175,7 @@ async function mainLoop()
                           numDisconnections : numDisconnections,
                           firstReceiveInterval : firstReceiveInterval,
                           up_time : process.uptime()
-                          //statBook : statBook,
+                          //statBook : statBook
                           //freqBook : freqBook,
         }
         
