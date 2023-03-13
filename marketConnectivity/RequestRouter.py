@@ -15,12 +15,12 @@ logger = getLogger(loggingLevel, appId)
 
 async def onData(topic, partition, key, msg):
     try:
-        msg = json.loads(msg)
-        await produce(exchangeToTopicDictionary.get(msg["exchange"]), json.dumps(msg), key)
+        msgDict = json.loads(msg)
+        await produce(exchangeToTopicDictionary.get(msgDict["exchange"]), msg, key)
     except KeyError:
-        logger.info("Exchange not supported: %s", msg["exchange"])
+        logger.info("Exchange not supported: %s", msgDict["exchange"])
     except Exception as ex:
-        logger.info("Unexpected exception while routing the request: %s, details: %s", json.dumps(msg), str(ex))        
+        logger.info("Unexpected exception while routing the request: %s, details: %s", msg, str(ex))        
 
 async def run():
     await startCommunication({"price_subscriptions" : onData},

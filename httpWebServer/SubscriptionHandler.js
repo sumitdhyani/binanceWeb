@@ -25,7 +25,7 @@ class SubscriptionHandler
     }
 
     async subscribe(symbol, exchange, callback){
-        const key = [symbol, exchange].toString()
+        const key = JSON.stringify([symbol, exchange])
         let evt = this.normalSubscriptionBook.get(key)
 
         if(undefined === evt){
@@ -55,7 +55,7 @@ class SubscriptionHandler
     }
 
     async unsubscribe(symbol, exchange, callback){
-        const key = [symbol, exchange].toString()
+        const key = JSON.stringify([symbol, exchange])
         const evt = this.normalSubscriptionBook.get(key)
         if(undefined !== evt){
             evt.unregisterCallback(callback)
@@ -84,7 +84,7 @@ class SubscriptionHandler
     }
 
     onDepth(symbol, exchange, depth){
-        const key = [symbol, exchange].toString()
+        const key = JSON.stringify([symbol, exchange])
         const evt = this.normalSubscriptionBook.get(key)
         if(undefined !== evt){
             evt.raise(depth)

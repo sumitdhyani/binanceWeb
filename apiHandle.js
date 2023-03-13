@@ -102,7 +102,7 @@ const WinstonLogCreator = (logLevel, fileName) => {
 }
 
 function onNormalPriceData(dict, raw) {
-    const key = [dict["symbol"], dict["exchange"]].toString()
+    const key = JSON.stringify([dict["symbol"], dict["exchange"]])
     const callback = subscriptionBook.get(key)
     if (undefined !== callback) {
         callback(raw)
@@ -131,7 +131,7 @@ async function loadSymbols() {
         dict = JSON.parse(line)
         const desc = dict["baseAsset"] + " vs " + dict["quoteAsset"]
         dict["description"] = desc
-        const key =  [dict["symbol"], "BINANCE"].toString()
+        const key =  JSON.stringify([dict["symbol"], "BINANCE"])
         symbolDict[key] = dict
     }
 }
@@ -239,7 +239,7 @@ module.exports = {
     },
 
     subscribePrice: async function (symbol, exchange, callback) {
-        const key = [symbol, exchange].toString()
+        const key = JSON.stringify([symbol, exchange])
         if (undefined === symbolDict[key]) {
             throw new appSpecificErrors.InvalidSymbol(`Invalid instrument, symbol: ${key}`)
         }
@@ -249,7 +249,7 @@ module.exports = {
         else {
             subscriptionBook.set(key, callback)
             obj = { symbol : symbol, exchange : exchange, action : "subscribe"}
-            await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol + ":" + exchange)
+            await enqueueSubscriptionRequest(obj, "price_subscriptions", JSON.stringify([symbol, exchange]))
             logger.info(`Forwarded subsccription for: ${key}, futher in the pipeline`)
         }
     },
@@ -274,13 +274,13 @@ module.exports = {
     },
 
     unsubscribePrice: async function (symbol, exchange) {
-        const key = [symbol, exchange].toString()
+        const key = JSON.stringify([symbol, exchange])
         if (!subscriptionBook.delete(key)) {
             throw new appSpecificErrors.SpuriousUnsubscription()
         }
         else {
             obj = { symbol: symbol, exchange : exchange, action: "unsubscribe" }
-            await enqueueSubscriptionRequest(obj, "price_subscriptions", symbol + ":" + exchange)
+            await enqueueSubscriptionRequest(obj, "price_subscriptions", JSON.stringify([symbol, exchange]))
             logger.info(`Forwarded unsubsccription for: ${key}, futher in the pipeline`)
         }
     },

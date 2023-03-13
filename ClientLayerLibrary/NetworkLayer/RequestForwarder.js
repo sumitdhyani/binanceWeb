@@ -7,7 +7,7 @@ subscriptionBook = new Set()
 let disconnectionHandler = null
 
 function subscribe(symbol, exchange){
-    const key = [symbol, exchange].toString()
+    const key = JSON.stringify([symbol, exchange])
     if(subscriptionBook.has(key)){
         throw new appSpecificErrors.DuplicateSubscription(`Duplicate subscription for ${key}`)
     }
@@ -17,7 +17,7 @@ function subscribe(symbol, exchange){
 }
 
 function unsubscribe(symbol, exchange){
-    const key = [symbol, exchange].toString()
+    const key = JSON.stringify([symbol, exchange])
     if(!subscriptionBook.has(key)){
         throw new appSpecificErrors.SpuriousUnsubscription()
     }
