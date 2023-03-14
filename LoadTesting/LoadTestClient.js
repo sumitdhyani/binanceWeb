@@ -1,5 +1,5 @@
 const winston = require('winston')
-const { launch, subUnsub, download_instruments} = require('../ClientLayerLibrary/ClientInterface')
+const { launch, raise_request, download_instruments} = require('../ClientLayerLibrary/ClientInterface')
 const prompt = require("prompt-async");
 const fs = require('fs');
 const readline = require('readline');
@@ -44,12 +44,10 @@ function onData(data){
     //console.log(`Received data: ${JSON.stringify(data)}`)
 }
 
-launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, logger)
-
 async function actionForNormalSymbol(action, symbol)
 {
     try{
-        subUnsub({action : action,
+        raise_request({action : action,
                 symbol : symbol,
                 exchange : "BINANCE"})
     }
@@ -77,6 +75,7 @@ process.on('SIGKILL', ()=> {
 //This is the entry point of the application, this method is passed to the start method as you will see below
 async function mainLoop(symbolDict)
 {
+    launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, logger)
     low = parseInt(process.argv[2])
     mid = parseInt(process.argv[3])
     high = parseInt(process.argv[4])
@@ -105,7 +104,7 @@ async function mainLoop(symbolDict)
 
     setTimeout(()=>{
         clearInterval(intervalId)
-        subUnsub({action : "disconnect"})
+        raise_request({action : "disconnect"})
         
         let min = 1000000
         let max = 0

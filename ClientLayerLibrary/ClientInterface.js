@@ -66,5 +66,5 @@ async function download_instruments(){
 }
 
 module.exports.launch = start
-module.exports.subUnsub = executeIntent
+module.exports.raise_request = executeIntent
 module.exports.download_instruments = download_instruments
