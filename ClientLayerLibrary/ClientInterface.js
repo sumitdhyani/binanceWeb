@@ -2,7 +2,7 @@ const https = require('http')
 const { ClientLayerFSM } = require("./StateMachine/ClientLayerFSM")
 const Validator = require("./ValidatorLayer/Validator")
 const NetworkServices = require("./NetworkLayer/RequestForwarder")
-
+const fs = require('fs')
 let fsm = null
 
 function start(auth_params, data_callback, logger){
@@ -50,5 +50,21 @@ function executeIntent(intent){
     fsm.handleEvent("client_intent", intent)
 }
 
+async function download_instruments(){
+  const symbolDict = new Map()
+  const data = fs.readFileSync('symbols.txt', {encoding:'utf8', flag:'r'})
+    instrumentList = data.split(/\r\n|\r|\n/)
+    for(let instrument of instrumentList){
+        dict = JSON.parse(instrument)
+        const desc = dict["baseAsset"] + " vs " + dict["quoteAsset"]
+        dict["description"] = desc
+        symbol = dict["symbol"]
+        symbolDict.set(symbol, dict)
+    }
+    
+    return symbolDict
+}
+
 module.exports.launch = start
 module.exports.subUnsub = executeIntent
+module.exports.download_instruments = download_instruments

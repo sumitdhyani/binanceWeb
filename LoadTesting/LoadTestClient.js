@@ -1,5 +1,5 @@
 const winston = require('winston')
-const { launch, subUnsub } = require('../ClientLayerLibrary/ClientInterface')
+const { launch, subUnsub, download_instruments} = require('../ClientLayerLibrary/ClientInterface')
 const prompt = require("prompt-async");
 const fs = require('fs');
 const readline = require('readline');
@@ -7,13 +7,12 @@ const CommonUtils = require("../CommonUtils")
 const lockfile = require('proper-lockfile');
 const { constants } = require('buffer');
 const { uptime } = require('os');
-const symbolDict = new Map()
 
 logger = CommonUtils.createFileLogger("LoadTestClient", 'warn')
-let numDisconnections = 0
+let numDisconnections = -1
 let msgTotal = 0
 let msgThisInterval = 0
-let firstReceiveInterval = 0
+let firstReceiveInterval = -1
 let numIntervals = 0
 const testRunDuration = parseInt(process.argv[6]) * 1000
 let uniqueSymbolsRecd = new Set()
@@ -29,23 +28,6 @@ function sleep(ms) {
     })
 }  
 
-async function loadSymbols() {
-    const fileStream = fs.createReadStream('symbols.txt')
-
-    const rl = readline.createInterface({
-        input: fileStream,
-        crlfDelay: Infinity
-    });
-
-    for await (const line of rl) {
-        dict = JSON.parse(line)
-        const desc = dict["baseAsset"] + " vs " + dict["quoteAsset"]
-        dict["description"] = desc
-        symbol = dict["symbol"]
-        symbolDict.set(symbol, dict)
-    }
-}
-
 function onData(data){
     dict = JSON.parse(data)
     if(dict["message_type"].localeCompare("disconnection") == 0){
@@ -56,13 +38,13 @@ function onData(data){
     uniqueSymbolsRecd.add(dict["symbol"])
     msgTotal++
     msgThisInterval++
-    if( 0 == firstReceiveInterval){
+    if( -1 == firstReceiveInterval){
         firstReceiveInterval = numIntervals
     }
     //console.log(`Received data: ${JSON.stringify(data)}`)
 }
 
-launch({auth_server : "http://206.81.18.17:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, logger)
+launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, logger)
 
 async function actionForNormalSymbol(action, symbol)
 {
@@ -93,7 +75,7 @@ process.on('SIGKILL', ()=> {
 });
 
 //This is the entry point of the application, this method is passed to the start method as you will see below
-async function mainLoop()
+async function mainLoop(symbolDict)
 {
     low = parseInt(process.argv[2])
     mid = parseInt(process.argv[3])
@@ -102,7 +84,6 @@ async function mainLoop()
 
     const interval = 1000
     const localSymbols = []
-    await loadSymbols()
     let i = 0
     for(const [symbol, obj] of symbolDict){
         localSymbols.push(symbol)
@@ -233,4 +214,7 @@ async function mainLoop()
     }
 }
 
-mainLoop().then(()=>{})
+download_instruments()
+.then((dict)=>{
+    mainLoop(dict).then(()=>{})
+})
