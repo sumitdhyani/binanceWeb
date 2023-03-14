@@ -160,6 +160,7 @@ class FSM
 	}
 	
 	handleStateEntry(state){
+        this.logger.info(`Entered "${state.constructor.name}" state`)
 		state.onEntry()
         this.handleEvent("launch")
 		this.processDeferralQueue()

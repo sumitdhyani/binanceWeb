@@ -17,7 +17,6 @@ class Authenticating extends State{
     }
 
     onEntry(){
-        this.logger.info(`Entered Authenticating state`)
         this.authentication_method(this.auth_params)
     }
 

@@ -75,7 +75,6 @@ function connect(serverAddress, callback, logger){//Server address <ip>:<port>
     })
 
     sock.on('disconnect', (reason)=>{
-        logger.warn(`Disconnection, id: ${sock.id}, reason: ${reason}`)
         callback(JSON.stringify({ message_type : "disconnection", reason : reason}))
         subscriptionBook.clear()
         if(null !== disconnectionHandler){
