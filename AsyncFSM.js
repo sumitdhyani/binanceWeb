@@ -44,6 +44,8 @@ class RecursiveEventException extends AFSMError
 const SpecialTransition = 
 {
 	nullTransition : "nullTransition",
+    undefined : "nullTransition",
+    null : "nullTransition",
 	deferralTransition : "deferralTransition"
 };
 
@@ -154,7 +156,7 @@ class FSM
                 this.processSingleEvent(evtName, evtData)
             }
             catch(err){
-                logger.warn(`Error while processing deferral queue: ${err.message}`)
+                this.logger.warn(`Error while processing deferral queue: ${err.message}`)
             }
 		}
 	}

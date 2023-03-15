@@ -22,7 +22,6 @@ class Authenticating extends State{
 
     on_disconnect(reason){
         this.logger.warn(`Disconnection evt received in Authenticating state, reason: ${reason}`)
-        return SpecialTransition.nullTransition
     }
 
     on_auth_response(response){
@@ -137,12 +136,10 @@ class Operational extends State{
     on_client_intent(intent){
         this.intent_handler(intent)
         this.subscription_dictionary.add(JSON.stringify(intent))
-        return SpecialTransition.nullTransition
     }
 
     on_price_data(data){
         this.data_callback(data)
-        return SpecialTransition.nullTransition
     }
 
     on_disconnect(reason){
