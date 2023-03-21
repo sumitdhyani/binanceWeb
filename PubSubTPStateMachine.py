@@ -99,7 +99,7 @@ class Syncing(AFSMState):
     async def on_Revoked(self):
         return SpecialEvents.defer
     
-    async def on_ExternalSubUnsub(self, msgDict):
+    async def on_ExternalSubUnsub(self, msg, meta):
         self.logger.warning("Deferring on_ExternalSubUnsub event, partition: %s", str(self.partition))
         return SpecialEvents.defer
 
@@ -136,7 +136,7 @@ class Downloading(AFSMState):
     async def on_Revoked(self):
         return SpecialEvents.defer
 
-    async def on_ExternalSubUnsub(self, msgDict):
+    async def on_ExternalSubUnsub(self, msg, meta):
         self.logger.warning("Deferring on_ExternalSubUnsub event, partition: %s", str(self.partition))
         return SpecialEvents.defer
         
@@ -174,12 +174,12 @@ class Operational(AFSMState):
     async def after_entry(self):
         self.logger.info("Entered Operational state, partition: %s", str(self.partition))
     
-    async def on_ExternalSubUnsub(self, msgDict):
+    async def on_ExternalSubUnsub(self, msg, meta):
         self.logger.debug("on_ExternalSubUnsub in Operational state, partition: %s", str(self.partition))
-        subParams = await self.appMsghandler(msgDict)
+        subParams = await self.appMsghandler(msg, meta)
         if subParams is not None:
             self.subscriptionKeys.add(subParams)
-            await self.syncdataProducer(self.partition, subParams, msgDict)
+            await self.syncdataProducer(self.partition, subParams, msg, meta)
             
     async def on_Revoked(self):
         self.logger.info("on_Revoked in Operational state, partition: %s", str(self.partition))

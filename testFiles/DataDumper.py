@@ -12,8 +12,8 @@ loggingLevel = getLoggingLevel(sys.argv[4]) if(len(sys.argv) >= 5) else getLoggi
 logger = getLogger(loggingLevel, appId)
 
 
-async def onData(topic, partition, key, msg):
-     logger.info("Topic: %s, partition: %s, key: %s, data: %s", topic, partition, key, msg)
+async def onData(topic, partition, key, msg, meta):
+     logger.info("Topic: %s, partition: %s, key: %s, data: %s, meta: %s", topic, partition, key, msg, str(meta))
 
 async def run():
     dict = {}

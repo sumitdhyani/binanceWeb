@@ -18,7 +18,7 @@ class PerCurrencyConversiondataProvider:
         self.priceTable = {}
 
 
-    async def subscribe(self, asset, currency, callback): 
+    async def subscribe(self, asset, currency, callback, meta): 
         #Subscription table, keeps track of subscribers to this pair
         subscriberPairIdentifier = asset + currency
         if subscriberPairIdentifier not in self.subscriberDictionary.keys():
@@ -49,9 +49,9 @@ class PerCurrencyConversiondataProvider:
 
         #subscribe in open market if needed
         if needToSubscribeSource:
-            await self.subscriberFunc(self.tradingpairNameGenerator(asset, self.bridge), self.onDepth)
+            await self.subscriberFunc(self.tradingpairNameGenerator(asset, self.bridge), self.onDepth, meta)
         if needToSubscribeDest:
-            await self.subscriberFunc(self.tradingpairNameGenerator(currency, self.bridge), self.onDepth)
+            await self.subscriberFunc(self.tradingpairNameGenerator(currency, self.bridge), self.onDepth, meta)
 
     def getPricesForTradingPair(self, asset, currency):
         sourceMktPair = self.tradingpairNameGenerator(asset, self.bridge)
@@ -75,7 +75,7 @@ class PerCurrencyConversiondataProvider:
 
         return ((bidLevel, askLevel))
         
-    async def onDepth(self, depth):
+    async def onDepth(self, depth, meta):
         symbol = depth["symbol"]
         baseSymbol = self.tradingPairNameDisintegrator(symbol, self.bridge)
         if not(baseSymbol in self.convertedDictionary.keys() or baseSymbol in self.converteeDictionary.keys()):#The symbol was unsubscribed before this update was recieved
@@ -93,13 +93,13 @@ class PerCurrencyConversiondataProvider:
 
         if baseSymbol in self.convertedDictionary.keys():
             for convertee in self.convertedDictionary[baseSymbol].keys():
-                await self.subscriberDictionary[baseSymbol + convertee](self.getPricesForTradingPair(baseSymbol, convertee), baseSymbol, convertee, self.bridge)
+                await self.subscriberDictionary[baseSymbol + convertee](self.getPricesForTradingPair(baseSymbol, convertee), baseSymbol, convertee, self.bridge, meta)
 
         if baseSymbol in self.converteeDictionary.keys():
             for converted in self.converteeDictionary[baseSymbol].keys():
-                await self.subscriberDictionary[converted + baseSymbol](self.getPricesForTradingPair(converted, baseSymbol), converted, baseSymbol, self.bridge)
+                await self.subscriberDictionary[converted + baseSymbol](self.getPricesForTradingPair(converted, baseSymbol), converted, baseSymbol, self.bridge, meta)
     
-    async def unsubscribe(self, source, dest, callback):
+    async def unsubscribe(self, source, dest, callback, meta):
         tradingPair = source + dest
         if tradingPair not in self.subscriberDictionary.keys():
             return
@@ -114,13 +114,13 @@ class PerCurrencyConversiondataProvider:
                     self.convertedDictionary.pop(source)
                     if source not in self.converteeDictionary.keys():
                         mktTradingPair = self.tradingpairNameGenerator(source, self.bridge)
-                        await self.unsubscriberFunc(mktTradingPair, self.onDepth)
+                        await self.unsubscriberFunc(mktTradingPair, self.onDepth, meta)
                         self.priceTable.pop(mktTradingPair)
                 if 0 == len(self.converteeDictionary[dest]):
                     self.converteeDictionary.pop(dest)
                     if dest not in self.convertedDictionary.keys():
                         mktTradingPair = self.tradingpairNameGenerator(dest, self.bridge)
-                        await self.unsubscriberFunc(mktTradingPair, self.onDepth)
+                        await self.unsubscriberFunc(mktTradingPair, self.onDepth, meta)
                         self.priceTable.pop(mktTradingPair)
             else:
                 self.convertedDictionary[source][dest] -= 1
@@ -139,15 +139,20 @@ class ConversiondataProvider:
         self.logger = logger
         self.perCurrencyConversiondataProvider = {}
     
-    async def subscribe(self, asset, currency, bridge, callback):
+    async def subscribe(self, asset, currency, bridge, callback, meta):
         if bridge not in self.perCurrencyConversiondataProvider.keys():
-            self.perCurrencyConversiondataProvider[bridge] = PerCurrencyConversiondataProvider(bridge, self.tradingpairNameGenerator, self.tradingPairNameDisintegrator, self.subscriberFunc, self.unsubscriberFunc, self.logger)
-        await self.perCurrencyConversiondataProvider[bridge].subscribe(asset, currency, callback)
+            self.perCurrencyConversiondataProvider[bridge] = PerCurrencyConversiondataProvider(bridge, 
+                                                                                               self.tradingpairNameGenerator,
+                                                                                               self.tradingPairNameDisintegrator,
+                                                                                               self.subscriberFunc,
+                                                                                               self.unsubscriberFunc,
+                                                                                               self.logger)
+        await self.perCurrencyConversiondataProvider[bridge].subscribe(asset, currency, callback, meta)
 
-    async def unsubscribe(self, asset, currency, bridge, callback):
+    async def unsubscribe(self, asset, currency, bridge, callback, meta):
         if bridge in self.perCurrencyConversiondataProvider.keys():
             conversionDataProvider = self.perCurrencyConversiondataProvider[bridge]
-            await conversionDataProvider.unsubscribe(asset, currency, callback)
+            await conversionDataProvider.unsubscribe(asset, currency, callback, meta)
             if conversionDataProvider.empty():
                 self.perCurrencyConversiondataProvider.pop(bridge)
 ###############################################################################################

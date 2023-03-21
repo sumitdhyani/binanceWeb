@@ -8,7 +8,7 @@ const lockfile = require('proper-lockfile');
 const { constants } = require('buffer');
 const { uptime } = require('os');
 
-logger = CommonUtils.createFileLogger("LoadTestClient", 'warn')
+logger = CommonUtils.createFileLogger("LoadTestClient", 'debug')
 let numDisconnections = -1
 let msgTotal = 0
 let msgThisInterval = 0

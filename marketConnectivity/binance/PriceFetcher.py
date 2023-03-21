@@ -1,4 +1,4 @@
-import os, sys, json, inspect, asyncio, binance, aiokafka, re
+import os, sys, json, inspect, asyncio, binance, aiokafka, re, traceback
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
@@ -39,7 +39,7 @@ async def onPrice(depth):
                    "asks" : asks[0:askLen],
                    "destination_topics" : destinations
                    }
-        await produce("prices", json.dumps(msgDict), depth.symbol)
+        await produce("prices", json.dumps(msgDict), depth.symbol, None)
     else:
         logger.warn("Price recieved for unsubscribed symbol: %s", depth.symbol)
         
@@ -74,7 +74,8 @@ def unregisterSubscription(unsubscriptionFunc, symbol, destinationTopic):
     except KeyError:
         logger.warn("Unsubscription attempted for %s topic %s which is not an active listener for this symbol", symbol, destinationTopic)
 
-async def onSubMsg(msgDict, subscriptionFunc, unsubscriptionFunc):
+async def onSubMsg(msg, subscriptionFunc, unsubscriptionFunc):
+    msgDict = json.loads(msg)
     global totalIncommingMessages
     totalIncommingMessages += 1
     symbol = msgDict["symbol"]
@@ -119,7 +120,7 @@ async def run():
     await timer.setTimer(1, dummyFunc)
     await PubSubService.start(broker,
                               "binance_price_subscriptions",
-                              lambda msg : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
+                              lambda msg, meta : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
                               "price_fetcher",
                               appId,
                               lambda symbol, destTopic : registerSubscription(ddp.subscribe, symbol, destTopic),

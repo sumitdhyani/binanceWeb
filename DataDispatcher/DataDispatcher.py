@@ -11,11 +11,11 @@ inboundTopics = re.split(',', sys.argv[3])
 loggingLevel = getLoggingLevel(sys.argv[4]) if(len(sys.argv) >= 5) else getLoggingLevel("")
 logger = getLogger(loggingLevel, appId)
 
-async def dispatchData(topic, partition, key, msg):
+async def dispatchData(topic, partition, key, msg, meta):
     dict = json.loads(msg)
     if "destination_topics" in dict.keys():
         destination_topics = dict["destination_topics"]
-        await asyncio.gather(*[produce(destination_topic, msg, key) for destination_topic in destination_topics])
+        await asyncio.gather(*[produce(destination_topic, msg, key, meta) for destination_topic in destination_topics])
     else:
         logger.error("Message with missing destination tag received, content: %s", msg)        
 

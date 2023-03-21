@@ -20,26 +20,26 @@ class VanillaPriceFetcher:
     def __init__(self):
         self.subscriptionBook = {}
 
-    async def subscribe(self, symbol, callback):
+    async def subscribe(self, symbol, callback, meta):
         if symbol not in self.subscriptionBook.keys():
             self.subscriptionBook[symbol] = callback
             msgDict = { "symbol": symbol, "action" : "subscribe", "destination_topic" : appId }
-            await produce("price_subscriptions", json.dumps(msgDict), symbol)
+            await produce("price_subscriptions", json.dumps(msgDict), symbol, meta)
         else:
             logger.warn("Internally Duplicate subscription for %s", symbol)
 
-    async def unsubscribe(self, symbol, callback):
+    async def unsubscribe(self, symbol, callback, meta):
         try:
             self.subscriptionBook.pop(symbol)
             msgDict = { "symbol": symbol, "action" : "unsubscribe", "destination_topic" : appId }
-            await produce("price_subscriptions", json.dumps(msgDict), symbol)
+            await produce("price_subscriptions", json.dumps(msgDict), symbol, meta)
         except KeyError:
             logger.warn("Internally spurious unsubscription for %s", symbol)
     
-    async def onDepth(self, depth):
+    async def onDepth(self, depth, meta):
         symbol = depth["symbol"]
         if symbol in self.subscriptionBook.keys():
-            await self.subscriptionBook[symbol](depth)
+            await self.subscriptionBook[symbol](depth, meta)
         else:
             logger.warn("Internally Depth received for unsubscribed symbol %s", symbol)
 
@@ -60,7 +60,7 @@ async def cancelAllSubscriptions(unsubscriptionFunc, asset, currency, bridge):
     else:
         logger.warn("In cancelAllSubscriptions, %s which has no active subscriptions", virtualSymbol)
         
-async def onPrice(depth, asset, currency, bridge):
+async def onPrice(depth, asset, currency, bridge, meta):
     virtualSymbol = generateVirtualTradingPairName(asset, currency, bridge)
     if (depth[0][0] is not None and 
         depth[1][0] is not None and
@@ -75,15 +75,15 @@ async def onPrice(depth, asset, currency, bridge):
                     "bids" : [depth[0]],
                     "asks" : [depth[1]],
                     "destination_topics" : destinations}
-        await produce("virtual_prices", json.dumps(msgDict), virtualSymbol)
+        await produce("virtual_prices", json.dumps(msgDict), virtualSymbol, meta)
     else:
         logger.warn("Price recieved for unsubscribed virtual symbol: %s", virtualSymbol)
 
-async def registerSubscription(subscriptionFunc, asset, currency, bridge, destinationTopic):
+async def registerSubscription(subscriptionFunc, asset, currency, bridge, destinationTopic, meta):
     virtualSymbol = generateVirtualTradingPairName(asset, currency, bridge)
     if virtualSymbol not in subscriptionBook.keys():
         subscriptionBook[virtualSymbol] = set([destinationTopic])
-        await subscriptionFunc(asset, currency, bridge, onPrice)
+        await subscriptionFunc(asset, currency, bridge, onPrice, meta)
         logger.debug("Successful subscription for %s, destination topic: %s", virtualSymbol, destinationTopic)
         return (asset, currency, bridge)
     elif destinationTopic not in subscriptionBook[virtualSymbol]:
@@ -93,13 +93,13 @@ async def registerSubscription(subscriptionFunc, asset, currency, bridge, destin
     else:
         logger.warn("Duplicate subscription attempted for: %s destination topic: %s", virtualSymbol, destinationTopic)
 
-async def unregisterSubscription(unsubscriptionFunc, asset, currency, bridge, destinationTopic):
+async def unregisterSubscription(unsubscriptionFunc, asset, currency, bridge, destinationTopic, meta):
     virtualSymbol = generateVirtualTradingPairName(asset, currency, bridge)
     try:
         if virtualSymbol in subscriptionBook.keys():
             subscriptionBook[virtualSymbol].remove(destinationTopic)
             if 0 == len(subscriptionBook[virtualSymbol]):
-                await unsubscriptionFunc(asset, currency, bridge, onPrice)
+                await unsubscriptionFunc(asset, currency, bridge, onPrice, meta)
                 subscriptionBook.pop(virtualSymbol)
             return (asset, currency, bridge)
         else:
@@ -107,17 +107,19 @@ async def unregisterSubscription(unsubscriptionFunc, asset, currency, bridge, de
     except KeyError:
         logger.warn("Unsubscription attempted for %s, destination topic: %s which is not an active listener for this symbol", virtualSymbol, destinationTopic)
 
-async def onSubMsg(msgDict):
+async def onSubMsg(msg, meta):
+    msgDict = json.loads(msg)
     action = msgDict["action"]
     if "subscribe" == action:
-        return await registerSubscription(cdp.subscribe, msgDict["asset"], msgDict["currency"], msgDict["bridge"], msgDict["destination_topic"])
+        return await registerSubscription(cdp.subscribe, msgDict["asset"], msgDict["currency"], msgDict["bridge"], msgDict["destination_topic"], meta)
     else:
-        return await unregisterSubscription(cdp.unsubscribe, msgDict["asset"], msgDict["currency"], msgDict["bridge"], msgDict["destination_topic"])
+        return await unregisterSubscription(cdp.unsubscribe, msgDict["asset"], msgDict["currency"], msgDict["bridge"], msgDict["destination_topic"], meta)
 
-async def OnInBoundMsg(msgDict):
+async def OnInBoundMsg(msg, meta):
+    msgDict = json.loads(msg)
     msgType = msgDict["message_type"]
     if(msgType == "depth"):
-        await vanillaPriceFetcher.onDepth(msgDict)
+        await vanillaPriceFetcher.onDepth(msgDict, meta)
     else:
         logger.warn("Unrecognized message type: %s received", msgType)
 

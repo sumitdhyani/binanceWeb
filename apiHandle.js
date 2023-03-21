@@ -344,7 +344,7 @@ module.exports = {
                     const raw = message.value.toString()
                     const dict = JSON.parse(raw)
                     const messageType = dict["message_type"]
-                    logger.debug(`Data recieved: ${JSON.stringify(dict)}`)
+                    logger.debug(`Data recieved: ${raw}, header: ${message.headers}`)
                     if("depth" === messageType){
                         onNormalPriceData(dict, raw)
                     }

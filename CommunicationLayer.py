@@ -1,4 +1,5 @@
 from multiprocessing import dummy
+import time
 import asyncio, aiokafka, traceback, json
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
@@ -7,7 +8,7 @@ from aiokafka.structs import TopicPartition
 from CommonUtils import Timer
 
 async def sendHeartbeat(appId):
-    await produce("heartbeats", json.dumps({"evt":"HeartBeat", "appId":appId}), appId)
+    await produce("heartbeats", json.dumps({"evt":"HeartBeat", "appId":appId}), appId, None)
 
 producer = None
 admin = None
@@ -81,7 +82,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         async def dummyFunc():
             await sendHeartbeat(clientId)
         await timer.setTimer(5, dummyFunc)
-        await produce("registrations", json.dumps({"appId" : clientId, "appGroup" : groupId}), clientId)
+        await produce("registrations", json.dumps({"appId" : clientId, "appGroup" : groupId}), clientId, None)
         logger.info("Component registration sent")
         while True:
             consumptionFunctions = None
@@ -105,13 +106,20 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                         for kafkaMsg in kafkaMsgs:
                             msg = kafkaMsg.value.decode("utf-8")
                             key = kafkaMsg.key.decode("utf-8")
-                            logger.debug("Msg received: %s, offset :%s", msg, str(kafkaMsg.offset))
+                            send_timestamp = kafkaMsg.timestamp 
+                            headers = list(kafkaMsg.headers)
+                            indexToStartWith = len(headers)
+                            curr_time = int(time.time()*1000)
+                            logger.debug("Msg received: %s, offset :%s, header: %s", msg, str(kafkaMsg.offset), headers)
+                            headers += [(str(indexToStartWith), str(send_timestamp).encode('utf-8')), 
+                                        (str(indexToStartWith+1), str(curr_time).encode('utf-8'))]
+
                             try:
                                 callback = callbackDict.get(kafkaMsg.topic)
                                 if lowLevelListener:
-                                    await callback(topicPartition.topic, topicPartition.partition, key, msg)
+                                    await callback(topicPartition.topic, topicPartition.partition, key, msg, headers)
                                 else:
-                                    await callback(msg)
+                                    await callback(msg, headers)
                                 tp = TopicPartition(kafkaMsg.topic, kafkaMsg.partition)
                                 await consumer.commit({tp: kafkaMsg.offset + 1})
                             except Exception as ex:
@@ -130,11 +138,13 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         if indiVidualConsumer is not None:
             await indiVidualConsumer.stop()
             
-async def produce(topic, data, key):
+async def produce(topic, data, key, meta):
     global producer
     await producer.send_and_wait(topic,
                                  value=bytes(data, 'utf-8'),
-                                 key=bytes(key, 'utf-8'))
+                                 key=bytes(key, 'utf-8'),
+                                 headers= [] if meta is None else meta,
+                                 timestamp_ms=int(time.time()*1000))
 
 async def createTopic(queueId, numPartitions, replicationFactor):
     global admin

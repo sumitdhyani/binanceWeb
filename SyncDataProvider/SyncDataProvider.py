@@ -40,7 +40,7 @@ def onUnsub(group, key, destTopic):
             logger.warning("Attempt to unsubscribe the dest_topic %s for key %s which is not actively subscribed", destTopic, key)
 
 
-async def onSyncData(msg):
+async def onSyncData(msg, meta):
     msgDict = json.loads(msg)
     action = msgDict["action"]
     selectedFunc = onSub if action == "subscribe" else onUnsub
@@ -49,7 +49,7 @@ async def onSyncData(msg):
                  listToTuple,
                  msgDict["destination_topic"])
 
-async def onSyncDataRequest(msg):
+async def onSyncDataRequest(msg, meta):
     msgDict = json.loads(msg)
 
     group = msgDict["group"]
@@ -63,17 +63,17 @@ async def onSyncDataRequest(msg):
             dict["destination_topics"] = destination_topics
             content = json.dumps(dict)
             logger.info("Producing response to destination: %s, content: %s", destTopic, content)
-            await produce(destTopic, content, group)
+            await produce(destTopic, content, group, meta)
     else:
         logger.warning("Data requested for non-existent group: %s", group)
     
-    await produce(destTopic, json.dumps({"group" : group, "download_end" : "true"}), group)
+    await produce(destTopic, json.dumps({"group" : group, "download_end" : "true"}), group, meta)
     
 
 
 async def run():
-    await startCommunication({pubSubSyncdataRequests : onSyncDataRequest},
-                             {pubSubSyncdata: onSyncData},
+    await startCommunication({"pubSub_sync_data_requests" : onSyncDataRequest},
+                             {"pubSub_sync_data": onSyncData},
                              broker,
                              appId,
                              "sync_data_provider",

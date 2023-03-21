@@ -67,8 +67,8 @@ async def onPartitionRevoked(partition,
         logger.warning("Unexpected error while handling revokation for partition: %s, details: %s", str(partition), str(ex))
 
 
-async def onSyncData(message, logger):
-    msgDict = json.loads(message)
+async def onSyncData(msg, meta, logger):
+    msgDict = json.loads(msg)
     appGroup, topic, partition = generateComponentsFromGroupName(msgDict["group"])
     try:
         if "download_end" not in msgDict.keys():
@@ -86,29 +86,31 @@ async def sendSyncDataRequest(topic,
     group = generateTopicPartitionGroupId(serviceGroup, topic, partition)
     await produce(pubSubSyncdataRequests, 
                   json.dumps({"group" : group, "destination_topic" : recvTopic}),
-                  group
-                  )
+                  group,
+                  None)
 
 async def sendSycInfo(topic,
                       partition,
                       serviceGroup,
                       subscriptionParams,
-                      msgDict,
+                      msg,
+                      meta,
                       logger):
+    msgDict = json.loads(msg)
     logger.debug("Sending sync msg for: %s", str(subscriptionParams))
     group = generateTopicPartitionGroupId(serviceGroup, topic, partition)
     syncMsgDict = {"key" : subscriptionParams,
                    "group" : group,
                    "action" : msgDict["action"],
                    "destination_topic" : msgDict["destination_topic"]}
-    await produce(pubSubSyncdata, json.dumps(syncMsgDict), group)
+    await produce(pubSubSyncdata, json.dumps(syncMsgDict), group, meta)
 
 async def onSubMsg(partition,
                    msg,
+                   meta,
                    logger):
-    msgDict = json.loads(msg)
     try:
-        await tpBook[str(partition)].handleEvent("ExternalSubUnsub", msgDict)
+        await tpBook[str(partition)].handleEvent("ExternalSubUnsub", msg, meta)
     except Exception as ex:
         logger.error("Exceptin in Application code: %s", str(ex))
     
@@ -129,22 +131,23 @@ async def start(brokers,
                           appCallback,
                           appSubMethod,
                           appUnsubAllMethod,
-                          lambda partition, subscriptionparams, msgDict: sendSycInfo(reqTopic, 
+                          lambda partition, subscriptionparams, msg, meta: sendSycInfo(reqTopic, 
                                                                                      partition,
                                                                                      serviceGroup,
                                                                                      subscriptionparams,
-                                                                                     msgDict,
+                                                                                     msg,
+                                                                                     meta,
                                                                                      logger),
                           lambda partition : sendSyncDataRequest(reqTopic,
-                                                                 partition,
-                                                                 serviceGroup,
-                                                                 syncTopic),
+                                                                        partition,
+                                                                        serviceGroup,
+                                                                        syncTopic),
                           lambda partition : tpBook.pop(str(partition)),
                           logger)
-    individualConsumerDict = {syncTopic : lambda topic, partition, key, msg : onSyncData(msg, logger) }
+    individualConsumerDict = {syncTopic : lambda topic, partition, key, msg, meta : onSyncData(msg, meta, logger) }
     if isInternalService:
-        individualConsumerDict[serviceId] = lambda topic, partition, key, msg : inMsgCallBack(json.loads(msg))
-    await startCommunication({reqTopic : lambda topic, partition, key, msg : onSubMsg(partition, msg, logger)},
+        individualConsumerDict[serviceId] = lambda topic, partition, key, msg, meta : inMsgCallBack(msg, meta)
+    await startCommunication({reqTopic : lambda topic, partition, key, msg, meta : onSubMsg(partition, msg, meta, logger)},
                              individualConsumerDict,
                              brokers,
                              serviceId,

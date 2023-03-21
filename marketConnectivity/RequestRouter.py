@@ -13,10 +13,10 @@ loggingLevel = getLoggingLevel(sys.argv[4]) if(len(sys.argv) >= 5) else getLoggi
 logger = getLogger(loggingLevel, appId)
 
 
-async def onData(topic, partition, key, msg):
+async def onData(topic, partition, key, msg, meta):
     try:
         msgDict = json.loads(msg)
-        await produce(exchangeToTopicDictionary.get(msgDict["exchange"]), msg, key)
+        await produce(exchangeToTopicDictionary.get(msgDict["exchange"]), msg, key, meta)
     except KeyError:
         logger.info("Exchange not supported: %s", msgDict["exchange"])
     except Exception as ex:

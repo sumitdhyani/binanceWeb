@@ -21,12 +21,12 @@ timer = Timer()
 async def increaseMissedHeartBeats(otherApp, parentFunc):
     heartbeatBook[otherApp] += 1
     if heartbeatBook[otherApp] >= allowedMissedHeartbeats:
-        await produce("admin_events", json.dumps({"evt" : "app_down", "appId" : otherApp}), otherApp)
+        await produce("admin_events", json.dumps({"evt" : "app_down", "appId" : otherApp}), otherApp, None)
         heartbeatBook.pop(otherApp)
         appMetadata.pop(otherApp)
         await timer.unsetTimer(parentFunc)
         
-async def onHeartbeat(msg):
+async def onHeartbeat(msg, meta):
     msgDict = json.loads(msg)
     otherApp = msgDict["appId"]
     if otherApp not in heartbeatBook.keys():
@@ -34,19 +34,19 @@ async def onHeartbeat(msg):
     else:
         heartbeatBook[otherApp] -= 1
     
-async def onRegistration(msg):
+async def onRegistration(msg, meta):
     msgDict = json.loads(msg)
     app_id = msgDict["appId"]
     appMetadata[app_id] = msgDict.copy()
     msgDict["evt"] = "app_up"
-    await produce("admin_events", json.dumps(msgDict), msgDict["appId"])
+    await produce("admin_events", json.dumps(msgDict), msgDict["appId"], meta)
     if app_id not in heartbeatBook.keys():
         heartbeatBook[app_id] = 0
         async def dummyFunc():
             await increaseMissedHeartBeats(app_id, dummyFunc) 
         await timer.setTimer(5, dummyFunc)
 
-async def onAdminQuery(msg):
+async def onAdminQuery(msg, meta):
     msgDict = json.loads(msg)
     destTopic = msgDict["destination_topic"] 
     responseDict = {"message_type" : "admin_query_response"}
@@ -61,9 +61,9 @@ async def onAdminQuery(msg):
                    
     responseDict["results"] = results
     logger.info("Received admin query: %s, current metadata: %s, result: %s", msg, str(appMetadata), str(responseDict))
-    await produce(destTopic, json.dumps(responseDict), destTopic)
+    await produce(destTopic, json.dumps(responseDict), destTopic, meta)
 
-async def onAdminEvent(msg):
+async def onAdminEvent(msg, meta):
     msgDict = json.loads(msg)
     evt = msgDict["evt"]
     if "app_up" == evt:
