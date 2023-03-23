@@ -48,7 +48,7 @@ services:
       - ./docker.sock:/var/run/docker.sock
       - ./kafka_3:/kafka
   request_router:
-    image: ubuntu_all_packages
+    build: ./images/ubuntu_all_packages
     volumes:
       - .:/usr/src
     working_dir: /usr/src

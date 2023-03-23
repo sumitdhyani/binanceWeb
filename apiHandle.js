@@ -101,11 +101,13 @@ const WinstonLogCreator = (logLevel, fileName) => {
     }
 }
 
-function onNormalPriceData(dict, raw) {
+function onNormalPriceData(dict, raw, headers) {
     const key = JSON.stringify([dict["symbol"], dict["exchange"]])
+    headers[Object.keys(headers).length] = Date.now()
+    dict["timestamps"] = headers
     const callback = subscriptionBook.get(key)
     if (undefined !== callback) {
-        callback(raw)
+        callback(JSON.stringify(dict))
     }
 }
 
@@ -341,18 +343,32 @@ module.exports = {
         kafkaReaderLoop = consumer.run(
             {
                 eachMessage: async ({ topic, partition, message }) => {
-                    const raw = message.value.toString()
-                    const dict = JSON.parse(raw)
-                    const messageType = dict["message_type"]
-                    logger.debug(`Data recieved: ${raw}, header: ${message.headers}`)
-                    if("depth" === messageType){
-                        onNormalPriceData(dict, raw)
-                    }
-                    else if("virtual_depth" == messageType){
-                        onVirtualPriceData(dict, raw)
-                    }
-                    else if("component_enquiry" == messageType){
-                        await onComponentEnquiry(dict)
+                    try{
+                        const recvTime = Date.now()
+                        let headers = message.headers
+                        const keys =  Object.keys(headers)
+                        keys.forEach( key=>{
+                            headers[key] = parseInt(headers[key])
+                        })
+                        const numKeys = keys.length
+                        headers[numKeys] = parseInt(message.timestamp)
+                        headers[numKeys+1] = recvTime
+
+                        const raw = message.value.toString()
+                        const dict = JSON.parse(raw)
+                        const messageType = dict["message_type"]
+                        
+                        if("depth" === messageType){    
+                            onNormalPriceData(dict, raw, headers)
+                        }
+                        else if("virtual_depth" == messageType){
+                            onVirtualPriceData(dict, raw)
+                        }
+                        else if("component_enquiry" == messageType){
+                            await onComponentEnquiry(dict)
+                        }
+                    }catch(err){
+                        logger.warn(`Error in reader loop: ${err.message}`)
                     }
                 },
             })
