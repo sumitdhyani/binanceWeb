@@ -8,7 +8,7 @@ const lockfile = require('proper-lockfile');
 const { constants } = require('buffer');
 const { uptime } = require('os');
 
-logger = CommonUtils.createFileLogger("LoadTestClient", 'debug')
+logger = CommonUtils.createFileLogger("LoadTestClient", 'info')
 let numDisconnections = -1
 let msgTotal = 0
 let msgThisInterval = 0
@@ -16,6 +16,7 @@ let firstReceiveInterval = -1
 let numIntervals = 0
 const testRunDuration = parseInt(process.argv[6]) * 1000
 let uniqueSymbolsRecd = new Set()
+let latency_array = []
 function sleep(ms) {
     if(0 < ms)
         return
@@ -26,10 +27,82 @@ function sleep(ms) {
         resolve(ms)
       }, ms )
     })
-}  
+}
+
+function calcMinMax(arr){
+    if(0 == arr.length){
+        return [-1, -1]
+    }
+    
+    return arr.reduce((prev, item)=>{
+        let [currMin, currMax] = prev
+        return[item < currMin? item : currMin,
+               currMax < item? item : currMax]
+    }, [1000000, 0])
+}
+
+function calcAverage(arr){
+    if(0 == arr.length){
+        return 0
+    }
+    
+    return arr.reduce((prev, item)=>{
+        return prev + item
+    }, 0)/arr.length
+}
+
+function calcMedian(arr){
+    if(0 == arr.length){
+        return 0
+    }
+    
+    arrCopy = JSON.parse(JSON.stringify(arr));
+    arrCopy.sort((n1, n2) => n1 - n2)
+    const len = arrCopy.length
+    if(len % 2 == 1){
+        return arrCopy[Math.floor(len/2)]
+    }
+    else{
+        return (arrCopy[Math.floor(len / 2)] +
+                arrCopy[Math.floor(len / 2) - 1]) / 2
+    }
+}
+
+function calcMode(arr){
+    if(0 === arr.length){
+        return [0, []]
+    }
+    
+    let [min, max] = calcMinMax(arr)
+    let freqBook = []
+    freqBook.length = max + 1
+    freqBook.fill(0)
+    res = arr.reduce((prev, item)=>{
+        let [prevFreq, prevModes] = prev
+        freqBook[item]++
+        let thisItemsFreq = freqBook[item]
+        if(0 == prevModes.size ||
+           (thisItemsFreq == prevFreq)) {
+            prevModes.add(item)
+            return [thisItemsFreq, prevModes]
+        }else if(thisItemsFreq > prevFreq) {
+            return [thisItemsFreq, new Set([item])]
+        }else {
+            return [prevFreq, prevModes]
+        }
+    }, [0, new Set()])
+
+    return [res[0], Array.from(res[1])]
+}
 
 function onData(data){
     dict = JSON.parse(data)
+    let timestamps = dict["timestamps"]
+
+    if(undefined !== timestamps){
+        latency_array.push(Date.now() - timestamps[0])
+    }
+    
     if(dict["message_type"].localeCompare("disconnection") == 0){
         numDisconnections++
         return
@@ -106,55 +179,21 @@ async function mainLoop(symbolDict)
         clearInterval(intervalId)
         raise_request({action : "disconnect"})
         
-        let min = 1000000
-        let max = 0
-        for(let [numMessages, time] of statBook){
-            if(numMessages > max){
-                max = numMessages
-            }
-
-            if(numMessages < min){
-                min = numMessages
-            }
-        }
-
-        (freqBook = []).length = max + 1
-        freqBook.fill(0)
-        for(let [numMessages, time] of statBook){
-            freqBook[numMessages]++
-        }
-
-        let maxFreq = 0
-        let mode = 0
-        for(let i = 0; i < freqBook.length; i++){
-            if(freqBook[i] > maxFreq){
-                maxFreq = freqBook[i]
-                mode = i
-            }
-        }
-
-        statBook.sort((n1, n2) => n1[0] - n2[0])
-        let median = 0
-        if(statBook.length % 2 == 1){
-            median = statBook[Math.floor(statBook.length/2)][0]
-        }
-        else{
-            median = (statBook[Math.floor(statBook.length / 2)][0] +
-                      statBook[Math.floor(statBook.length / 2) - 1][0]) / 2
-        }
-
-        const mean = msgTotal / statBook.length
+        //min and max
+        let throughputArr = statBook.map(item=> item[0])
         const summary = { duration : statBook.length,
                           totalMessagesRecd : msgTotal,
-                          high : max,
-                          low : min,
-                          mean : mean,
-                          median : median,
-                          mode : mode,
+                          throughput : {low_high : calcMinMax(throughputArr),
+                                        mean : calcAverage(throughputArr),
+                                        median : calcMedian(throughputArr),
+                                        mode : calcMode(throughputArr)},
                           unique_symbols : uniqueSymbolsRecd.size,
                           numDisconnections : numDisconnections,
                           firstReceiveInterval : firstReceiveInterval,
-                          up_time : process.uptime()
+                          up_time : process.uptime(),
+                          latency : {low_high : calcMinMax(latency_array),
+                                     mean : calcAverage(latency_array),
+                                     median : calcMedian(latency_array)}
                           //statBook : statBook
                           //freqBook : freqBook,
         }
