@@ -63,7 +63,7 @@ async function mainLoop(logger){
         let subscriptions = new Set()
         let virtualSubscriptions = new Set()
         const normalPriceCallBack = function(depth){
-            socket.emit('depth', depth)
+            socket.volatile.emit('depth', depth)
         }
 
         const virtualPriceCallBack = function(depth){
