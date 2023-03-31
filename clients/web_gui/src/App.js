@@ -1,28 +1,32 @@
 import logo from './logo.svg';
+import {useState, useEffect} from 'react'
 import start from './InputTaker'
 import './App.css';
 
-let dataStoreArray = []
-function dataCallback(data){
-  dataStoreArray = [...data.values()]
-}
-
-start(dataCallback).then(()=>{})
 
 
-
-function MyComponent() {
+function MyComponent(props) {
 
   return (
-    dataStoreArray.map(data => <h1>Data: {JSON.stringify(data)}</h1>)
+    props.store.map((data) => <h1>Data: {data}</h1>)
   );
 }
 
-
+let started = false
 function App() {
+  const [dataArray, setDataArray] = useState([])
+
+  if(!started){
+    start((data) => {
+      setDataArray([...data.values()])
+    }).then(()=>{})
+
+    started = true
+  }
+
   return (
     <div className="App">
-      <MyComponent />
+      <MyComponent store={dataArray}/>
     </div>
   );
 }
