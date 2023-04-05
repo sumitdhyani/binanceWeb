@@ -5,7 +5,6 @@ const fs = require('fs');
 const readline = require('readline');
 const CommonUtils = require("../CommonUtils")
 const lockfile = require('proper-lockfile');
-const { constants } = require('buffer');
 const { uptime } = require('os');
 
 logger = CommonUtils.createFileLogger("LoadTestClient", 'info')

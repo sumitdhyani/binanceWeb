@@ -1,106 +1,80 @@
 //const prompt = require("prompt-async");
-//function clearAndPrint(str){
-//    console.clear()
-//    console.log(str)
-//}
-//
-//function print(str){
-//    console.log(str)
-//}
-//
-//let dataStore = new Map()
-//
-//async function addData(key, callback){
-//    if(dataStore.has(key)){
-//        clearAndPrint(`Error! Key: ${key} is already there`)
-//        return
-//    }
-//
-//    const promptText = "Enter the content for key"
-//    const data = (await prompt.get([promptText]))[promptText]
-//    dataStore.set(key, data)
-//    callback(dataStore)
-//}
-//
-//async function removeData(key, callback){
-//    if(!dataStore.has(key)){
-//        clearAndPrint(`Error! Key: ${key} not found`)
-//        return
-//    }
-//
-//    dataStore.delete(key)
-//    callback(dataStore)
-//}
-//
-//async function updateData(key, callback){
-//    if(!dataStore.has(key)){
-//        clearAndPrint(`Error! Key: ${key} not found`)
-//        return
-//    }
-//
-//    const promptText = "Enter the updated content for key"
-//    const data = (await prompt.get([promptText]))[promptText]
-//    dataStore.set(key, data)
-//    callback(dataStore)
-//}
-//
-//async function displayData(key){
-//    if(!dataStore.has(key)){
-//        clearAndPrint(`Error! Key: ${key} not found`)
-//        return
-//    }
-//
-//    clearAndPrint(`data for ${key} : ${dataStore.get(key)}`)
-//}
-//
-//async function performNextAction(callback)
-//{
-//    prompt.start()
-//    const {action, key} = await prompt.get(["action", "key"])
-//    if(0 === action.localeCompare("add"))
-//        await addData(JSON.stringify(key), callback)
-//    else if(0 === action.localeCompare("delete"))
-//        await removeData(JSON.stringify(key), callback)
-//    else if(0 === action.localeCompare("update"))
-//        await updateData(JSON.stringify(key), callback)
-//    else if(0 === action.localeCompare("display"))
-//        await displayData(JSON.stringify(key))
-//    else
-//        await clearAndPrint("Invalid action!")
-//}
-//
-//async function mainLoop(callback)
-//{
-//        clearAndPrint("Started console input")
-//        while(true)
-//            await performNextAction(callback)
-//}
-//
-////mainLoop((data) => { print('callback received')}).then(()=>{})
-//async function start(callback){
-//    mainLoop(callback).then(()=>{})
-//}
-
+let a = null
+const { launch, raise_request, download_instruments} = require('./root/ClientLayerLibrary/ClientInterface')
 let dataStore = new Map()
 
-function makeid(length) {
-    let result = '';
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const charactersLength = characters.length;
-    let counter = 0;
-    while (counter < length) {
-      result += characters.charAt(Math.floor(Math.random() * charactersLength));
-      counter += 1;
-    }
-    return result;
+
+
+const logger = { 
+    debug : str =>console.log(str),
+    info : str =>console.log(str),
+    warn : str =>console.log(str),
+    error : str =>console.log(str)
 }
 
-async function start(callback){
-    console.log(`Loop started`)
-    setInterval(()=>{
-        dataStore.set(Math.floor(Math.random()*10) % 5, makeid(50))
-        callback(dataStore)
-    }, 1000)
+function onData(data, callback){
+    let update = JSON.parse(data)
+    dataStore.set(JSON.stringify([update.symbol, update.exchange]), update)
+    callback(dataStore)
 }
+
+function actionForNormalSymbol(action, symbol){
+    try{
+        raise_request({action : action,
+                symbol : symbol,
+                exchange : "BINANCE"})
+    }
+    catch(err){
+        let temp = new Error()
+        logger.warn(`Error while ${action} for ${symbol}, details: ${err.message}, stack: ${temp.stack}`)
+    }
+}
+
+async function mainLoop(symbolDict, callback){
+    launch({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}}, (update)=> onData(update, callback), logger)   
+    let numInstruments = 10
+    const cyclicalFunc = (symbol)=>{
+        setTimeout(()=> {
+            actionForNormalSymbol("subscribe", symbol)
+            setTimeout(()=>{
+                actionForNormalSymbol("unsubscribe", symbol)
+                cyclicalFunc(symbol)
+            }, 10000)
+        }, 5000)
+    }
+
+    let i = 0
+    for(const [symbol, obj] of symbolDict){
+        cyclicalFunc(symbol)
+        if(++i === numInstruments){
+            break
+        }
+    }
+}
+
+const start = (callback)=>download_instruments()
+.then((dict)=>{
+    mainLoop(dict, callback).then(()=>{})
+})
+
+//function makeid(length) {
+//    let result = '';
+//    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+//    const charactersLength = characters.length;
+//    let counter = 0;
+//    while (counter < length) {
+//      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+//      counter += 1;
+//    }
+//    return result;
+//}
+//
+//async function start(callback){
+//    console.log(`Loop started`)
+//    setInterval(()=>{
+//        dataStore.set(Math.floor(Math.random()*10) % 5, makeid(50))
+//        callback(dataStore)
+//    }, 1000)
+//}
 
 export default start
