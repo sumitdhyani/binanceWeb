@@ -3,12 +3,16 @@ import {useState, useEffect} from 'react'
 import start from './InputTaker'
 import './App.css';
 
-
+function depthComponent(levels){
+  return (
+    levels.map((level) => <h1>Price: {level[0]}, Qty: {level[1]}</h1>)
+  );
+}
 
 function MyComponent(props) {
 
   return (
-    props.store.map((data) => <h1>Data: {data}</h1>)
+    props.store.map((data) => <h1>Id: {JSON.stringify([data.symbol, data.exchange])}, Bids: {depthComponent(data.bids)}, Asks: {depthComponent(data.asks)}</h1>)
   );
 }
 

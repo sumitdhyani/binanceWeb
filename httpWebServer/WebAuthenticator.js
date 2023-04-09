@@ -6,6 +6,10 @@ const api = require('../apiHandle')
 const process = require('process')
 const express = require('express')
 const app = express()
+const cors = require('cors')
+app.use(cors({
+    origin: '*'
+}))
 const httpHandle = require('http')
 const { json } = require('express')
 //const { isAsyncFunction } = require('util/types')

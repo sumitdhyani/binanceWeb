@@ -1,4 +1,4 @@
-import os, sys, inspect, asyncio
+import os, sys, inspect, asyncio, random
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
@@ -8,8 +8,12 @@ class MockDepth:
     def __init__(self, symbol, avgPrice):
         self.symbol = symbol
         self.avgPrice = avgPrice
-        self.bids = [[100,10],[99,10]]
-        self.asks = [[101,10],[102,10]]
+        self.bids = [[100 - (random.randint(0,9) + 1)/10, 10 + random.randint(0,9)],
+                     [99 - (random.randint(0,9) + 1)/10, 10 + random.randint(0,9)]
+                    ]
+        self.asks = [[100 + (random.randint(0,9) + 1)/10, 10 + random.randint(0,9)],
+                     [101 - (random.randint(0,9) + 1)/10, 10 + random.randint(0,9)]
+                    ]
     
     def get_bids(self):
         return self.bids
