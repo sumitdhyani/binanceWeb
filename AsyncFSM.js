@@ -75,7 +75,6 @@ class State
         }
         
         if (transition instanceof State){
-            this.beforeExit()
             return transition
         }
         else if (SpecialTransition[transition] != undefined){
@@ -125,6 +124,7 @@ class FSM
 
         this.smBusy = false
         if(transition instanceof State){
+            this.currState.beforeExit()
             this.currState = transition
             this.handleStateEntry(this.currState)
         }
@@ -172,32 +172,39 @@ class FSM
 class CompositeState extends State
 {
 	constructor(startStateFetcher, 
-                evtProcessorDictionary,
                 logger,
                 isFinal = false)
 	{
-        super(evtProcessorDictionary, isFinal)
+        super(isFinal)
         this.fsm = new FSM(startStateFetcher, logger)
-        this.fsm.start()
     }
 
     react(name, evtData)
     {
+        let transition = null
         try{
+            
             transition = super.react(name, evtData)
-            if(transition instanceof State){
-                this.fsm.currState.beforeExit()
-                return transition
-            }
         }
         catch(err){
             if(!(err instanceof UnhandledEvtException)){
                 throw err
             }
+        }finally{
+            if(0 == name.localeCompare('launch')){
+                this.fsm.start()
+                if(transition instanceof State){
+                    this.fsm.currState.beforeExit()
+                    return transition
+                }
+            }else if(transition instanceof State){
+                this.fsm.currState.beforeExit()
+                return transition
+            }
         }
 
         try{
-            this.fsm.handleEvent(evt)
+            this.fsm.handleEvent(name, evtData)
         }
         catch(err){
             if(!(err instanceof FinalityReachedException)){
