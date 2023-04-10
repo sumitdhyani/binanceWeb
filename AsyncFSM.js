@@ -179,6 +179,14 @@ class CompositeState extends State
         this.fsm = new FSM(startStateFetcher, logger)
     }
 
+    initiateExit(){
+        if(this.fsm.currState instanceof CompositeState){
+            this.fsm.currState.initiateExit()
+        }
+        
+        this.fsm.currState.beforeExit()
+    }
+
     react(name, evtData)
     {
         let transition = null
@@ -194,11 +202,12 @@ class CompositeState extends State
             if(0 == name.localeCompare('launch')){
                 this.fsm.start()
                 if(transition instanceof State){
-                    this.fsm.currState.beforeExit()
+                    this.initiateExit()
                     return transition
                 }
+                return
             }else if(transition instanceof State){
-                this.fsm.currState.beforeExit()
+                this.initiateExit()
                 return transition
             }
         }
