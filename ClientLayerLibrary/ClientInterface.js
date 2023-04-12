@@ -1963,7 +1963,7 @@ async function download_instruments(){
         const desc = dict["baseAsset"] + " vs " + dict["quoteAsset"]
         dict["description"] = desc
         symbol = dict["symbol"]
-        symbolDict.set(symbol, dict)
+        symbolDict.set(JSON.stringify([symbol, "BINANCE"]), dict)
     }
     
     return symbolDict

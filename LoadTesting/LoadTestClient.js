@@ -157,7 +157,7 @@ async function mainLoop(symbolDict)
     const localSymbols = []
     let i = 0
     for(const [symbol, obj] of symbolDict){
-        localSymbols.push(symbol)
+        localSymbols.push(JSON.parse(symbol)[0])
         if(++i == high){
             break
         }

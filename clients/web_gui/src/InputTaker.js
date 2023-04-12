@@ -1,11 +1,10 @@
 //const prompt = require("prompt-async");
-let a = null
 const { launch, raise_request, download_instruments} = require('./root/ClientLayerLibrary/ClientInterface')
 let dataStore = new Map()
 
 
 
-const logger = { 
+const logger = {
     debug : str =>console.log(str),
     info : str =>console.log(str),
     warn : str =>console.log(str),
@@ -45,7 +44,7 @@ async function mainLoop(symbolDict, callback){
 
     let i = 0
     for(const [symbol, obj] of symbolDict){
-        cyclicalFunc(symbol)
+        cyclicalFunc(JSON.parse(symbol)[0])
         if(++i === numInstruments){
             break
         }
