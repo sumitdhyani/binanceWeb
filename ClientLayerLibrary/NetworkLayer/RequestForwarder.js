@@ -47,21 +47,11 @@ function forward(intent){
 }
 
 function forwardSubscription(subscription){
-    if(undefined == subscription.asset){
-        subscribe(subscription.symbol, subscription.exchange)
-    }
-    else{
-        subscribeVirtual(subscription.asset, subscription.currency, subscription.bridge, subscription.exchange)
-    }
+    subscribe(subscription.symbol, subscription.exchange)
 }
 
 function forwardUnsubscription(subscription){
-    if(undefined == subscription.asset){
-        unsubscribe(subscription.symbol, subscription.exchange)
-    }
-    else{
-        unsubscribeVirtual(subscription.asset, subscription.currency, subscription.bridge, subscription.exchange)
-    }
+    unsubscribe(subscription.symbol, subscription.exchange)
 }
 
 function disconnect(){

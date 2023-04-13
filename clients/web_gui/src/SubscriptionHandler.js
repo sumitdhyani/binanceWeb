@@ -7,8 +7,7 @@ class SubscriptionHandler
 {
     constructor(depthSubscriber, 
                 depthUnsubscriber,
-                logger
-                ){
+                logger){
         this.depthSubscriber = depthSubscriber
         this.depthUnsubscriber = depthUnsubscriber
         this.logger = logger
@@ -22,12 +21,10 @@ class SubscriptionHandler
         if(undefined === evt){
             evt = new Event()
             this.subscriptionBook.set(key, evt)
-            this.depthSubscriber(symbol, exchange, (depth)=>{
-                this.onDepth(symbol, exchange, depth)
-            })
+            this.depthSubscriber(symbol, exchange)
         }
 
-        evt.registerCallback(callback)  
+        evt.registerCallback(callback) 
     }
 
     unsubscribe(symbol, exchange, callback){
