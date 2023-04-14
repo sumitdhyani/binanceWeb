@@ -5,7 +5,7 @@ const logger = {  debug : str =>console.log(str),
     error : (str) =>console.log(str)
  }
 
-init({auth_server : "http://206.81.18.17:90", credentials : {user : "test_user", password : "test_pwd"}},
+init({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}},
      logger,
      mainLoop)
 
@@ -54,21 +54,19 @@ function mainLoop(symbolDict){
 
     const cyclicalFuncForVirtual = (asset, currency, bridge)=>{
         setTimeout(()=> {
-            console.log(`Params: ${[asset, currency, bridge]}`)
             actionForVirtualSymbol("subscribe", asset, currency, bridge)
             setTimeout(()=>{
-                console.log(`Params now: ${[asset, currency, bridge]}`)
                 actionForVirtualSymbol("unsubscribe", asset, currency, bridge)
-                //cyclicalFunc(asset, currency, bridge)
+                cyclicalFuncForVirtual(asset, currency, bridge)
             }, 10000)
         }, 5000)
     }
-    let i = 0
+    
     const numInstruments = 2
     const allowedBridgeCurrency = "USDT"
     const filteredSymbols = [...symbolDict.values()].filter( obj=> 0 === obj.quoteAsset.localeCompare(allowedBridgeCurrency))
-    for(i = 0; i < numInstruments; i++){
-        //cyclicalFunc(filteredSymbols[i].symbol)
+    for(let i = 0; i < numInstruments; i++){
+        cyclicalFunc(filteredSymbols[i].symbol)
         cyclicalFuncForVirtual(filteredSymbols[i].baseAsset, filteredSymbols[i+1].baseAsset, allowedBridgeCurrency)
     }
 }   

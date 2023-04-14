@@ -6,22 +6,20 @@ let subscriptionHandler = null
 let virtualSubscriptionHandler = null
 let libLogger = null
 function subscribe(symbol , exchange, callback){
+    libLogger.debug(`subscribe, arguments: ${JSON.stringify(arguments)}`)
     subscriptionHandler.subscribe(symbol , exchange, callback)
 }
 
 function unsubscribe(symbol , exchange, callback){
+    libLogger.debug(`unsubscribe, arguments: ${JSON.stringify(arguments)}`)
     subscriptionHandler.unsubscribe(symbol , exchange, callback)
 }
 
-let exchangeSymbolNameGenerators = {BINANCE : (asset, currency, exchange)=> {
-    const symbol = asset.concat(currency)
-    libLogger.debug(`Generated name: ${symbol}`)    
-    return symbol   
-}}
+let exchangeSymbolNameGenerators = {BINANCE : (asset, currency, exchange)=> asset.concat(currency)}
 
 
 function subscribeVirtual(asset, currency, bridge, exchange, callback){
-
+    libLogger.debug(`subscribeVirtual, arguments: ${JSON.stringify(arguments)}`)
     let exchangeSymbolNameGenerator = exchangeSymbolNameGenerators[exchange]
     if(undefined !== exchangeSymbolNameGenerator){
         virtualSubscriptionHandler.subscribe(asset,
@@ -36,7 +34,7 @@ function subscribeVirtual(asset, currency, bridge, exchange, callback){
 }
 
 function unsubscribeVirtual(asset, currency, bridge, exchange, callback){
-
+    libLogger.debug(`unsubscribeVirtual, arguments: ${JSON.stringify(arguments)}`)
     virtualSubscriptionHandler.unsubscribe(asset,
                                          currency,
                                          bridge,
@@ -54,7 +52,6 @@ function init(auth_params, logger, staticDataCallback){
         libLogger = logger
         libLogger.debug(JSON.stringify(dict))
         subscriptionHandler = new SubscriptionHandler( (symbol, exchange)=>{
-                                                        console.log(`Intent: ${JSON.stringify([symbol, exchange])}`)
                                                         raise_request({
                                                                 action : "subscribe",
                                                                 symbol : symbol,
@@ -68,8 +65,8 @@ function init(auth_params, logger, staticDataCallback){
                                                         },
                                                         libLogger)
 
-        virtualSubscriptionHandler = new VirtualSubscriptionHandler(subscriptionHandler.subscribe,
-                                                                    subscriptionHandler.unsubscribe,
+        virtualSubscriptionHandler = new VirtualSubscriptionHandler(subscriptionHandler.subscribe.bind(subscriptionHandler),
+                                                                    subscriptionHandler.unsubscribe.bind(subscriptionHandler),
                                                                     libLogger)
         launch(auth_params, onPriceUpdate, libLogger)
         staticDataCallback(dict)
