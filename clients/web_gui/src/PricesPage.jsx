@@ -1,10 +1,3 @@
-logger = {
-    debug : str => console.log(str),
-    info : str => console.log(str),
-    error : str => console.log(str),
-    warn : str => console.log(str)
-}
-
 class MarketsTab
 {
     constructor(sunUnsubFuncs){
@@ -56,40 +49,23 @@ class MarketsTab
 }
 
 class PricesPage{
-    constructor(subUnsubFuncs){
+    constructor(subUnsubFuncs, tabs){
         this.subUnsubFuncs = subUnsubFuncs
-        this.marketsTab = new MarketsTab(this.subUnsubFuncs)
-        this.curr_tab = this.marketsTab
-
-        const dummyTabInteface = {
-            content : ()=> <h1>UNDEF!</h1>
-        }
-        
-        this.tabsProvider = {markets : {content : () => this.marketsTab.content()},
-                             virtuals : dummyTabInteface,
-                             baskets : dummyTabInteface,
-                             alerts : dummyTabInteface,
-                             dummy : dummyTabInteface}
+        this.notification_method = null
+        this.tabs = tabs
+        this.curr_tab = this.vanilla_prices
     }
 
-    onEntry(){
+    on_entry(){
         this.curr_tab.onEntry()
     }
 
-    onLeaving(){
+    before_exit(){
         this.curr_tab.onLeaving()
     }
 
-    ontabSwitch(newTabName){
-        const newTab = this.tabs[newTabName]
-        if(undefined == newTab){
-            logger.error(`Undefined tab name: ${tabName}`)
-            return this.tabsProvider.dummy
-        }
-
-        this.curr_tab.onLeaving()
-        this.curr_tab = newTab
-        return this.curr_tab
+    content(){
+        <d></>
     }
 
     content(){
@@ -98,5 +74,3 @@ class PricesPage{
 }
 
 module.exports.PricesPageContent = PricesPage
-module.exports.InitPricesPage = subUnsubFuncs => PricesPage.sunUnsubFuncs = subUnsubFuncs
-
