@@ -3,10 +3,27 @@
 }
 
 .App-logo {
-  height: 40vmin;
-  text-align: left;
+  height: 4%;
+  width: 4%;
+  text-align: center;
   pointer-events: none;
+  align-items: center;
 }
+
+.All-generic_components {
+  display: flex;
+}
+
+.Top-tabs {
+  width: 5%;
+  height: 5%;
+  margin: 0;
+  display: flex;
+ }
+
+ .All-generic_components.Top-tabs {
+  display: flex;
+ }
 
 @media (prefers-reduced-motion: no-preference) {
   .App-logo {

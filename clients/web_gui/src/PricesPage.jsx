@@ -9,21 +9,19 @@ class MarketsTab
     }
 
     onUpdate(update){
-        let update = JSON.parse(data)
-        updateBook.set(JSON.stringify([update.symbol, update.exchange]), update)
     }
 
-    onEntry(){
+    after_entry(){
         if(0 != this.unsubscriptionTimerId){
             clearTimeout(this.unsubscriptionTimerId)
             this.unsubscriptionTimerId = 0
         }
     }
 
-    onLeaving(){
+    before_exit(){
         this.unsubscriptionTimerId =  setTimeout(()=>{
             [...this.subscriptionBook].forEach((item)=>{
-                [symbol, exchange] = JSON.parse(item)
+                let [symbol, exchange] = JSON.parse(item)
                 this.sunUnsubFuncs.unsubscribe(symbol, exchange, this.onUpdate)
             })
             this.unsubscriptionTimerId = 0
@@ -40,18 +38,12 @@ class MarketsTab
         this.sunUnsubFuncs.unsubscribe(symbol, exchange, this.onUpdate)
     }
 
-    content(){
-        return ([...this.updateBook.values()].map( data=> 
-                                                    <h1>Id: {JSON.stringify([data.symbol, data.exchange])}, Bids: {depthComponent(data.bids)}, Asks: {depthComponent(data.asks)}</h1>
-                                                 )
-               )
-    }
+    visual(){}
 }
 
 class PricesPage{
     constructor(subUnsubFuncs, tabs){
         this.subUnsubFuncs = subUnsubFuncs
-        this.notification_method = null
         this.tabs = tabs
         this.curr_tab = this.vanilla_prices
     }
@@ -64,13 +56,11 @@ class PricesPage{
         this.curr_tab.onLeaving()
     }
 
-    content(){
-        <d></>
-    }
-
-    content(){
-        return this.curr_tab.content()
+    visual(){
+        return(
+            <div>Prices Page Content!</div>
+        )
     }
 }
 
-module.exports.PricesPageContent = PricesPage
+export default PricesPage

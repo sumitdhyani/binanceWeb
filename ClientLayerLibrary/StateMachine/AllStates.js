@@ -146,6 +146,9 @@ class Operational extends State{
         this.logger.warn(`Disconnection evt received, reason: ${reason}`)
         return new Authenticating(this.authentication_params)
     }
+
+    on_auth_response(response){
+    }
 }
 
 module.exports.Authenticating = Authenticating

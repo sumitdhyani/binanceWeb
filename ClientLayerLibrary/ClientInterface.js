@@ -6,20 +6,23 @@ const NetworkServices = require("./NetworkLayer/RequestForwarder")
 let fsm = null
 
 function start(auth_params, data_callback, logger){
-
     fsm = new ClientLayerFSM({auth_params : auth_params,
                               authentication_method : (auth_params)=>{ 
                                                                       let retryInterval = 1
                                                                       func = ()=>{
                                                                         const url = auth_params.auth_server + "/auth/" + JSON.stringify(auth_params.credentials)
                                                                         https.get(url).then(data => {
-                                                                          logger.debug(JSON.stringify(data))
+                                                                          logger.debug(`Response from auth_server: ${JSON.stringify(data)}`)
                                                                           //data = JSON.parse(res)
                                                                           //logger.debug(data)
-                                                                          if(data.success){
-                                                                            fsm.handleEvent("auth_response", {success: true, conn_params : "http://" + data.feed_server})
-                                                                          }else{
-                                                                            fsm.handleEvent("auth_response", data)
+                                                                          try{
+                                                                            if(data.success){
+                                                                              fsm.handleEvent("auth_response", {success: true, conn_params : "http://" + data.feed_server})
+                                                                            }else{
+                                                                              fsm.handleEvent("auth_response", data)
+                                                                            }
+                                                                          }catch(err){
+                                                                            logger.warn(`Exceptions while handling auth_response, details: ${err.message}`)
                                                                           }
                                                                         })
                                                                         //.err(err =>{ 
