@@ -11,15 +11,24 @@
 }
 
 .All-generic_components {
-  display: flex;
+  display: inline-block;
+  text-align: left;
 }
 
-.Top-tabs {
-  width: 5%;
-  height: 5%;
-  margin: 0;
+.horizontal_tabs {
+  margin: 0 auto; /* center the container */
   display: flex;
- }
+  max-width: 75%;
+  align-items: center;
+  overflow-x: auto; /* allow horizontal scrolling */
+}
+
+.horizontal_tab {
+  flex: 1 0 auto; /* allow tabs to grow and shrink as needed */
+  white-space: nowrap; /* prevent text from wrapping */
+  text-align: center; /* center tab content */
+  padding: 10px; /* add padding to make the tabs more visible */
+}
 
  .All-generic_components.Top-tabs {
   display: flex;

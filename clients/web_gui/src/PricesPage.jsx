@@ -1,3 +1,5 @@
+import './App.css'
+import { horizontal_tabs } from './CommonRenderingFunctions'
 class MarketsTab
 {
     constructor(sunUnsubFuncs){
@@ -57,9 +59,11 @@ class PricesPage{
     }
 
     visual(){
-        return(
-            <div>Prices Page Content!</div>
-        )
+        return(<>{horizontal_tabs([{title: "Vanilla Prices"},
+                                   {title: "Cross Prices"},
+                                   {title: "Baskets"}])
+                 }
+               </>)
     }
 }
 
