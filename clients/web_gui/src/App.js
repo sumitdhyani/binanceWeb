@@ -1,9 +1,7 @@
-import logo from './logo.svg';
-import {useState, useEffect} from 'react'
-import start from './InputTaker'
+import Visual from './ContentRoot'
+import {useEffect, useState} from 'react'
 import './App.css';
 const {init, subscribe, unsubscribe, subscribeVirtual, unsubscribeVirtual} = require('./Gui-Library-Interface')
-const {Visual, initRendering} = require('./ContentRoot')
 function depthComponent(levels){
   return (
     levels.map((level) => <h1>Price: {level[0]}, Qty: {level[1]}</h1>)
@@ -26,22 +24,23 @@ const logger = { debug : str => console.log(str),
 let instrumentStore = new Map()
 function App() {
   const [libraryInitialized, setLibraryInitialized] = useState(false)
-  const [firstRender, setFirstRender] = useState(true)
 
-  if(firstRender){
-    setFirstRender(false)
+  useEffect(()=>{
     logger.warn(`Initializing the library`)
     init({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}},
-      logger,
-      (symbolDict)=>{
-       logger.warn(`Downloaded symbols`)
-       instrumentStore = symbolDict
-       logger.warn(`Library initialized`)
-       initRendering()
-       setLibraryInitialized(true)})
-  }
+         logger,
+         (symbolDict)=>{
+          logger.warn(`Downloaded symbols`)
+          instrumentStore = symbolDict
+          logger.warn(`Library initialized`)
+          setLibraryInitialized(true)})
+    
+    return ()=>{}
+  })
+  
 
-  if(libraryInitialized){
+    console.log(`render Cycle, libraryInitialized : ${libraryInitialized}`)
+    if(libraryInitialized){
     return (
       <Visual />
     );
