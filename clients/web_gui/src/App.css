@@ -15,18 +15,25 @@
   text-align: left;
 }
 
-.vertical_tabs {
+.tab-container {
   margin: 0 auto; /* center the container */
-  display: block;
-  max-width: 75%;
+  display: flex;
+  flex-wrap: wrap;
+  width: 75%;
+  justify-content: center;
+  overflow-y: scroll;
   align-items: center;
+  overflow-x: auto; /* allow horizontal scrolling */
 }
 
-.vertical_tab {
-  white-space: nowrap; /* prevent text from wrapping */
-  text-align: center; /* center tab content */
-  padding: 10px; /* add padding to make the tabs more visible */
+.tab {
+  flex: 0 1 auto;
+  width: 75%; /* Change this to adjust the width of each tab */
+  height: 10%; /* Change this to adjust the height of each tab */
+  background-color: lightgray;
+  margin-right: 0; /* Change this to adjust the space between each tab */
 }
+
 
 .horizontal_tabs {
   margin: 0 auto; /* center the container */

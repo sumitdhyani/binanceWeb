@@ -14,11 +14,11 @@ export function horizontal_tabs(tabs) {
 
 export function vertical_tabs(tabs) {
   return (
-      <div className="vertical_tabs">
+      <div className="tab-container">
       {tabs.map((tab) => (
-        <tab className="horizontal_tab" onClick={ ()=>{ if(undefined !== tab.onClick){
+        <tab className="tab" onClick={ ()=>{ if(undefined !== tab.onClick){
           tab.onClick()
-        } }}>{tab.title}</tab>
+        } }}>{tab}</tab>
       ))}
     </div>
   );

@@ -68,7 +68,7 @@ import { horizontal_tabs, vertical_tabs } from './CommonRenderingFunctions'
 //                                    {title: "Cross Prices"},
 //                                    {title: "Baskets"}])
 //                  }
-//                </>)
+//                </>)6
 //     }
 // }
 function PricesPage(props){
@@ -84,10 +84,10 @@ function PricesPage(props){
     },
     [])
     console.log(`Cache: ${curr_tab.cache}`)
-    return(<>{[...[horizontal_tabs([{title: "Vanilla Prices"},
+    return(<>{[horizontal_tabs([{title: "Vanilla Prices"},
                                {title: "Cross Prices"},
-                               {title: "Baskets"}])
-              , vertical_tabs(curr_tab.cache)]]}
-               </>)
+                               {title: "Baskets"}]),
+                vertical_tabs(curr_tab.cache)]}
+            </>)
 }
 export default PricesPage

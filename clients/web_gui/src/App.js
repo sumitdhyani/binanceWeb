@@ -14,7 +14,7 @@ function App() {
 
   useEffect(()=>{
     logger.warn(`Initializing the library`)
-    init({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}},
+    init({auth_server : "http://206.81.18.17:90", credentials : {user : "test_user", password : "test_pwd"}},
          logger,
          (symbolDict)=>{
           logger.warn(`Downloaded symbols`)
