@@ -2,19 +2,6 @@ import Visual from './ContentRoot'
 import {useEffect, useState} from 'react'
 import './App.css';
 const {init, subscribe, unsubscribe, subscribeVirtual, unsubscribeVirtual} = require('./Gui-Library-Interface')
-function depthComponent(levels){
-  return (
-    levels.map((level) => <h1>Price: {level[0]}, Qty: {level[1]}</h1>)
-  );
-}
-
-function MyComponent(props) {
-
-  return (
-    props.store.map((data) => <h1>Id: {JSON.stringify([data.symbol, data.exchange])}, Bids: {depthComponent(data.bids)}, Asks: {depthComponent(data.asks)}</h1>)
-  );
-}
-
 const logger = { debug : str => console.log(str),
   info : str => {},
   warn : str => console.log(str),
@@ -34,15 +21,19 @@ function App() {
           instrumentStore = symbolDict
           logger.warn(`Library initialized`)
           setLibraryInitialized(true)})
-    
     return ()=>{}
-  })
+  },[])
   
 
     console.log(`render Cycle, libraryInitialized : ${libraryInitialized}`)
     if(libraryInitialized){
+      const context = { symbol_dict : instrumentStore,
+                        subscribe : subscribe,
+                        unsubscribe : unsubscribe,
+                        subscribeVirtual : subscribeVirtual,
+                        unsubscribeVirtual : unsubscribeVirtual}
     return (
-      <Visual />
+      <Visual context={context}/>
     );
   }else{
     return (
