@@ -15,6 +15,19 @@
   text-align: left;
 }
 
+.vertical_tabs {
+  margin: 0 auto; /* center the container */
+  display: block;
+  max-width: 75%;
+  align-items: center;
+}
+
+.vertical_tab {
+  white-space: nowrap; /* prevent text from wrapping */
+  text-align: center; /* center tab content */
+  padding: 10px; /* add padding to make the tabs more visible */
+}
+
 .horizontal_tabs {
   margin: 0 auto; /* center the container */
   display: flex;

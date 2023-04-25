@@ -1,6 +1,6 @@
 import './App.css'
 import { useEffect } from 'react'
-import { horizontal_tabs } from './CommonRenderingFunctions'
+import { horizontal_tabs, vertical_tabs } from './CommonRenderingFunctions'
 // class MarketsTab
 // {
 //     constructor(sunUnsubFuncs){
@@ -72,15 +72,22 @@ import { horizontal_tabs } from './CommonRenderingFunctions'
 //     }
 // }
 function PricesPage(props){
+    const context = props.context
+    if(undefined === context.curr_tab){
+        context.curr_tab = context.vanilla_prices
+    }
+    const curr_tab = context.curr_tab
+
     useEffect(()=>{
         console.log(`PricesPage render`)
         return ()=> console.log(`PricesPage un-render`)
     },
     [])
-    return(<>{horizontal_tabs([{title: "Vanilla Prices"},
+    console.log(`Cache: ${curr_tab.cache}`)
+    return(<>{[...[horizontal_tabs([{title: "Vanilla Prices"},
                                {title: "Cross Prices"},
                                {title: "Baskets"}])
-                 }
+              , vertical_tabs(curr_tab.cache)]]}
                </>)
 }
 export default PricesPage
