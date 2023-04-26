@@ -12,13 +12,15 @@ export function horizontal_tabs(tabs) {
     );
 }
 
-export function vertical_tabs(tabs) {
+export function vertical_tabs(data) {
   return (
-      <div className="tab-container">
-      {tabs.map((tab) => (
-        <tab className="tab" onClick={ ()=>{ if(undefined !== tab.onClick){
-          tab.onClick()
-        } }}>{tab}</tab>
+    <div className="container">
+      {data.map((item, index) => (
+        <div className="row" key={index}>
+          <button className="button">-</button>
+          <button className="button">&#9660;</button>
+          <tab className="tab">{item.content}</tab>
+        </div>
       ))}
     </div>
   );

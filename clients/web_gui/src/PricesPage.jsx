@@ -87,7 +87,7 @@ function PricesPage(props){
     return(<>{[horizontal_tabs([{title: "Vanilla Prices"},
                                {title: "Cross Prices"},
                                {title: "Baskets"}]),
-                vertical_tabs(curr_tab.cache)]}
+                vertical_tabs(curr_tab.cache.map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : item}}))]}
             </>)
 }
 export default PricesPage

@@ -15,23 +15,34 @@
   text-align: left;
 }
 
-.tab-container {
+.container {
   margin: 0 auto; /* center the container */
-  display: flex;
-  flex-wrap: wrap;
   width: 75%;
-  justify-content: center;
+  height: 300px;
   overflow-y: scroll;
+}
+
+.row {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
   align-items: center;
-  overflow-x: auto; /* allow horizontal scrolling */
+  height: 50px;
+  margin-bottom: 5px;
+}
+
+.button {
+  flex: 0 0 auto;
+  width: auto;
+  margin-right: 0;
+  white-space: nowrap;
 }
 
 .tab {
-  flex: 0 1 auto;
-  width: 75%; /* Change this to adjust the width of each tab */
-  height: 10%; /* Change this to adjust the height of each tab */
-  background-color: lightgray;
-  margin-right: 0; /* Change this to adjust the space between each tab */
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-left: 5px;
 }
 
 
