@@ -10,9 +10,10 @@ function Visual(props){
         useEffect(()=>{
             const context = props.context
             
-            context.prices_tab = [PricesPage, {vanilla_prices : {subscription_functions : context.subscription_functions, symbol_dict : context.symbol_dict, cache : ["BTCUSDT", "ETHUSDT"]},
-                                               virtual_prices : {subscription_functions : context.virtual_subscription_functions, symbol_dict : context.symbol_dict, cache : []},
-                                               baskets : {subscription_functions : context.virtual_subscription_functions, symbol_dict : context.symbol_dict, cache : []}}]
+            context.prices_tab = [PricesPage, {subscription_functions : context.subscription_functions,
+                                               virtual_subscription_functions : context.virtual_subscription_functions,
+                                               symbol_dict : context.symbol_dict}]
+                                               
             context.intro_tab = [IntroPage, {}]
             context.curr_tab = context.prices_tab
             console.log(`Main page on useEffect`)
