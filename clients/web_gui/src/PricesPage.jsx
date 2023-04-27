@@ -30,7 +30,7 @@ function CrossPricesTab(props){
 
 
 function PricesPage(props){
-    const [caches, setUpdateCount] = useState({vanilla_cache : new Set(), cross_cache : new Set(), basket_cache : new Set()})
+    const [caches, setCaches] = useState({vanilla_cache : new Set(), cross_cache : new Set(), basket_cache : new Set()})
 
     useEffect(()=>{
         console.log(`PricesPage render`)
@@ -42,7 +42,12 @@ function PricesPage(props){
     if(undefined === context.vanilla_prices){
         const subscriptionFunc = (symbol, exchange, callback)=>{
             context.subscription_functions.subscribe(symbol, exchange, callback)
-            caches.vanilla_cache.add(JSON.stringify([symbol, exchange]))
+            const symbolAndExchange = JSON.stringify([symbol, exchange]) 
+            if(!caches.vanilla_cache.has(symbolAndExchange))
+            {
+                caches.vanilla_cache.add(symbolAndExchange)
+                setCaches({...caches})
+            }
         }
 
         const unsubscriptionFunc = (symbol, exchange, callback)=>{
@@ -54,7 +59,7 @@ function PricesPage(props){
                                   cache : [...caches.vanilla_cache].map(item=> JSON.parse(item))
                                  }
     }
-    
+
     return(<div>
                 <HorizontalTabs tabs={[{title: "Vanilla Prices"}, {title: "Cross Prices"}, {title: "Baskets"}]}/>
                 <VanillaPricesTab context={context.vanilla_prices}/>
