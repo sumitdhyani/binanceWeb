@@ -1,53 +1,8 @@
 import './App.css'
 import PricesPage from './PricesPage'
 import IntroPage from './IntroPage'
-import { horizontal_tabs } from './CommonRenderingFunctions'
+import {HorizontalTabs} from './CommonRenderingFunctions'
 import { useEffect, useState } from 'react'
-
-//class RootComponent extends React.Component{
-//    constructor(props){
-//        super(props)
-//        this.pages = props.pages
-//        this.state = {
-//            count : 0,
-//        }
-//        //Each "_page" property will be an object haing the functions
-//        //with following property names:
-//        //content() -- Returns the gui component representing the data it holds
-//        this.current_page = this.pages.prices_page
-//    }
-//
-//    onTabSelected(name){
-//        console.log(`Tab selected: ${name}`)
-//        this.setState({ count: this.state.count + 1 })
-//    }
-//
-//    render(){
-//        return (<>{this.visual()}</>)
-//    }
-//
-//    visual(){
-//        console.log(`re-render`)
-//        return( <div>
-//                    <generic className="All-generic_components">
-//                        <h3><u><b>The Quant Hulk: {this.state.count}</b></u></h3>
-//                        <img src="Hulk.webp"/>
-//                    </generic>
-//                    {horizontal_tabs([{title: "Intro", onClick : ()=> this.onTabSelected(state.intro_page)   },
-//                                      {title: "Market Prices", onClick : ()=> this.onTabSelected(state.prices_page)}]
-//                                    )
-//                    }
-//                    {this.current_page.visual()}
-//                </div>)
-//    }
-//
-    //on_page_change(new_page){
-    //    this.current_page.notify_on_content_change(()=>{})
-    //    this.current_page = new_page
-    //    this.current_page.on_entry()
-    //    this.current_page.notify_on_content_change(()=>this.notification_method())
-    //}
-//}
 
 function Visual(props){
         const [updateCount, setUpdateCount] = useState(0)
@@ -74,16 +29,16 @@ function Visual(props){
         }
 
         console.log(`Rendering main page`)
-        if(undefined != props.context.curr_tab){
+        if(undefined !== props.context.curr_tab){
             const [Component, context] = props.context.curr_tab
             return(<div>
                       <generic className="All-generic_components">
                           <h3><u><b>The Quant Hulk: {updateCount.update_count}</b></u></h3>
                           <img src="Hulk.webp"/>
                       </generic>
-                      {horizontal_tabs([{title: "Intro", onClick : ()=> onTabSelected(props.context.intro_tab)},
-                                        {title: "Market Prices", onClick : ()=> onTabSelected(props.context.prices_tab)}])
-                      }
+                      <HorizontalTabs tabs={[{title: "Intro", onClick : ()=> onTabSelected(props.context.intro_tab)},
+                                             {title: "Market Prices", onClick : ()=> onTabSelected(props.context.prices_tab)}]}/>
+ 
                       <Component context={context}/>
                   </div>)
         }else{

@@ -1,6 +1,9 @@
+
 import './App.css'
 
-export function horizontal_tabs(tabs) {
+export function HorizontalTabs(props) {
+    const tabs = props.tabs
+    console.log(`Tabs: ${tabs}`)
     return (
         <div className="horizontal_tabs">
         {tabs.map((tab) => (
@@ -12,10 +15,11 @@ export function horizontal_tabs(tabs) {
     );
 }
 
-export function vertical_tabs(data) {
+export function VerticalTabs(props) {
+  const tabs = props.tabs
   return (
     <div className="container">
-      {data.map((item, index) => (
+      {tabs.map((item, index) => (
         <div className="row" key={index}>
           <button className="button">-</button>
           <button className="button">&#9660;</button>

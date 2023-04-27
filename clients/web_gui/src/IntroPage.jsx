@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import './App.css'
-import { horizontal_tabs } from './CommonRenderingFunctions'
+import { HorizontalTabs } from './CommonRenderingFunctions'
 function IntroPage(props){
     useEffect(()=>{
         console.log(`IntroPage render`)
@@ -8,6 +8,6 @@ function IntroPage(props){
     },
     [])
 
-    return(<>{horizontal_tabs([{title: "Intro Page"}])}</>)
+    return(<HorizontalTabs tabs={[{title: "Intro Page"}]}/>)
 }
 export default IntroPage
