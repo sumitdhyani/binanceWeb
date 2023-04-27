@@ -3,7 +3,7 @@ const winston = require('winston')
 const fs = require('fs');
 const readline = require('readline');
 const CommonUtils = require("./CommonUtils")
-const appSpecificErrors = require('./appSpecificErrors');
+const appSpecificErrors = require('./IndependentCommonUtils/appSpecificErrors');
 const process = require('process')
 const env = process.env
 

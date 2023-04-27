@@ -1963,10 +1963,10 @@ async function download_instruments(){
     const instrumentList = data.split(/\r\n|\r|\n/)
     for(let instrument of instrumentList){
         dict = JSON.parse(instrument)
-        const desc = dict["baseAsset"] + " vs " + dict["quoteAsset"]
-        dict["description"] = desc
-        symbol = dict["symbol"]
-        symbolDict.set(JSON.stringify([symbol, "BINANCE"]), dict)
+        const desc = dict.baseAsset + " vs " + dict.quoteAsset
+        dict.description = desc
+        dict.exchange = "BINANCE"
+        symbolDict.set(JSON.stringify([dict.symbol, "BINANCE"]), dict)
     }
     
     return symbolDict

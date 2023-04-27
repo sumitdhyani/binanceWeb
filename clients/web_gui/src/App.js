@@ -14,7 +14,7 @@ function App() {
 
   useEffect(()=>{
     logger.warn(`Initializing the library`)
-    init({auth_server : "http://206.81.18.17:90", credentials : {user : "test_user", password : "test_pwd"}},
+    init({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}},
          logger,
          (symbolDict)=>{
           logger.warn(`Downloaded symbols`)
@@ -24,14 +24,35 @@ function App() {
     return ()=>{}
   },[])
   
+  function getQuoteBasedDictionary(dict){
+    //return {}
+    const quoteBasedDictionary = new Map()
+    let arr = [...dict.values()]
+    arr.forEach(item =>{
+      const exchange = item.exchange
+      if(undefined === quoteBasedDictionary.get(exchange)){
+        quoteBasedDictionary.set(exchange, new Map())
+      }
+
+      const exchangeLevelBook = quoteBasedDictionary.get(exchange)
+      const quoteAsset = item.quoteAsset
+      if(undefined === exchangeLevelBook.get(quoteAsset)){
+        exchangeLevelBook.set(quoteAsset, new Set())
+      }
+
+      const symbolSet = exchangeLevelBook.get(quoteAsset)
+      symbolSet.add(item)
+    })
+  }
+
 
     console.log(`render Cycle, libraryInitialized : ${libraryInitialized}`)
     if(libraryInitialized){
-      const context = { symbol_dict : instrumentStore,
-                        subscribe : subscribe,
-                        unsubscribe : unsubscribe,
-                        subscribeVirtual : subscribeVirtual,
-                        unsubscribeVirtual : unsubscribeVirtual}
+      const context = { quote_level_dict : getQuoteBasedDictionary(instrumentStore),
+                        symbol_dict : instrumentStore,
+                        subscription_functions : {subscribe : subscribe, unsubscribe : unsubscribe},
+                        virtual_subscription_functions : {subscribe : subscribeVirtual, unsubscribe : unsubscribeVirtual}
+                      }
     return (
       <Visual context={context}/>
     );

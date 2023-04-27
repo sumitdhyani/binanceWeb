@@ -1,5 +1,5 @@
 const { io } = require('socket.io-client')
-const appSpecificErrors = require('../../appSpecificErrors')
+const appSpecificErrors = require('../../IndependentCommonUtils/appSpecificErrors')
 
 let sock = null
 
