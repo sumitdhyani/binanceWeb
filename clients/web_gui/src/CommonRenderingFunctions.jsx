@@ -1,6 +1,6 @@
 
 import './App.css'
-
+import { useState } from 'react';
 export function HorizontalTabs(props) {
     const tabs = props.tabs
     console.log(`Tabs: ${tabs}`)
@@ -27,5 +27,29 @@ export function VerticalTabs(props) {
         </div>
       ))}
     </div>
+  );
+}
+
+function EditableTextBox(props) {
+  const [value, setValue] = useState(props.initial_value);
+
+  const handleChange = (event) => {
+    setValue(event.target.value);
+  };
+
+  return (
+    <div>
+      <input type="text" className="right_aligned_row" value={value} onChange={handleChange} />
+    </div>
+  );
+}
+
+export function SearchBoxRow(props) {
+  const tabs = props.tabs
+  console.log(`Tabs: ${tabs}`)
+  return (
+      <div className="horizontal_tabs">
+        {tabs.map(tab => <EditableTextBox tabs={tabs}/>)}
+      </div>
   );
 }

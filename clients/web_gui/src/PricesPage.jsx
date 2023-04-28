@@ -1,6 +1,6 @@
 import './App.css'
 import { useState, useEffect } from 'react'
-import { HorizontalTabs, VerticalTabs } from './CommonRenderingFunctions'
+import { HorizontalTabs, VerticalTabs, SearchBoxRow} from './CommonRenderingFunctions'
 
 function VanillaPricesTab(props){
     const [updateCount, setUpdateCount] = useState(0)
@@ -62,6 +62,7 @@ function PricesPage(props){
 
     return(<div>
                 <HorizontalTabs tabs={[{title: "Vanilla Prices"}, {title: "Cross Prices"}, {title: "Baskets"}]}/>
+                <SearchBoxRow tabs={[{title : "search"}]}/>
                 <VanillaPricesTab context={context.vanilla_prices}/>
            </div>)
 }

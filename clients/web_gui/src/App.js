@@ -1,6 +1,7 @@
 import Visual from './ContentRoot'
 import {useEffect, useState} from 'react'
 import './App.css';
+import {MultiTrie} from './DataStructures.js'
 const {init, subscribe, unsubscribe, subscribeVirtual, unsubscribeVirtual} = require('./Gui-Library-Interface')
 const logger = { debug : str => console.log(str),
   info : str => {},
@@ -25,7 +26,6 @@ function App() {
   },[])
   
   function getQuoteBasedDictionary(dict){
-    //return {}
     const quoteBasedDictionary = new Map()
     let arr = [...dict.values()]
     arr.forEach(item =>{
@@ -58,7 +58,7 @@ function App() {
     );
   }else{
     return (
-      <>Before libInit</>
+      <>Before Init</>
     );
   }  
 }
