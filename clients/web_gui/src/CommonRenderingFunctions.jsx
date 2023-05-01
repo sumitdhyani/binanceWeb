@@ -1,7 +1,7 @@
 
 import './App.css'
 import constants from './Constants';
-import { useState } from 'react';
+import { useState, React } from 'react';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 
@@ -27,13 +27,20 @@ function GetWidget(props){
 
 function EditableDropdown(props) {
   const options = props.options
+  const className = (undefined !== props.className)? props.className : ""
   const onOptionSelected = (undefined !== props.onOptionSelected)? props.onOptionSelected : (evt, value)=>{}
+  const nameConverter = (undefined !== props.nameConverter)? props.nameConverter : orig=>orig
   return (
     <Autocomplete
+      className={className}
       options={options}
-      onChange={(evt, value)=>{ onOptionSelected(evt, value)} }
+      onChange={(evt, value)=>{ 
+        console.log(`Option selected: ${value}`)
+        onOptionSelected(evt, value)
+      }}
+      getOptionLabel={option=>nameConverter(option)}
       renderInput={(params) => (
-        <TextField {...params} variant="outlined" label="Dropdown" />
+        <TextField {...params} variant="outlined"/>
       )}
     />
   )
@@ -86,7 +93,7 @@ export function VerticalTabs(props) {
 
 export function SearchBoxRow(props) {
   const tabs = props.tabs
-  console.log(`Tabs: ${tabs}`)
+  //console.log(`Tabs: ${tabs}`)
   return (
     <div className="horizontal_tabs">
         {tabs.map((tab) => <GetWidget {...tab} 
@@ -101,12 +108,14 @@ export function SearchBoxRow(props) {
 
 export function EditableDropdownRow(props) {
   const tabs = props.tabs
+  const nameConverter = props.nameConverter
+
   console.log(`Tabs: ${tabs}`)
   return (
     <div className="horizontal_tabs">
         {tabs.map((tab) => <GetWidget {...tab}
+                              nameConverter = {nameConverter}
                               widget_id={constants.widget_ids.editable_drop_down}
-                              onSelectCapture={tab.onSelectCapture}
                               className="horizontal_tab"
                            />
                  )

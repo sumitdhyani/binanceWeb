@@ -17,17 +17,21 @@ function VanillaPricesTab(props){
 
     
     return (
-            [<EditableDropdownRow tabs={[{title : "search",
-                                         options : [...symbol_dict.keys()],
-                                         onOptionSelected : (evt, value) => {
-                                            const cache = state.cache
-                                            console.log(`Select Changed Handler, value: ${value}`)
-                                            if(!cache.has(value)){
-                                                cache.add(value)
-                                                setState({...state})
+            [<EditableDropdownRow   tabs={[ {   title : "search",
+                                                options : [...symbol_dict.keys()],
+                                                onOptionSelected : (evt, value) => {
+                                                   const cache = state.cache
+                                                   if(!cache.has(value)){
+                                                        console.log(`Select Changed Handler, value: ${value}`)
+                                                        cache.add(value)
+                                                        setState({...state})
+                                                   }
+                                                }
                                             }
+                                          ]
                                          }
-                                        }]}/>,
+                                    nameConverter = { key=> JSON.parse(key)[0] }
+            />,
              <VerticalTabs tabs={[...cache].map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : item}})}/>
             ]
     )
@@ -48,7 +52,7 @@ function CrossPricesTab(props){
 
 
 function PricesPage(props){
-    const [caches, setCaches] = useState({vanilla_cache : new Set(["BTCUSDT"]), cross_cache : new Set(), basket_cache : new Set()})
+    const [caches, setCaches] = useState({vanilla_cache : new Set(), cross_cache : new Set(), basket_cache : new Set()})
     const context = props.context
 
     useEffect(()=>{
