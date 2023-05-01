@@ -69,7 +69,7 @@ export function SearchBoxRow(props) {
   return (
     <div className="horizontal_tabs">
         {tabs.map((tab) => <GetWidget {...tab} 
-                              widget_id={constants.widget_ids.EditableTextBox}
+                              widget_id={constants.widget_ids.editable_text_box}
                               className="horizontal_tab"
                            />
                  )
