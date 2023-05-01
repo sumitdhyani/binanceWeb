@@ -1,7 +1,7 @@
 const { Kafka } = require('kafkajs')
 const winston = require('winston')
 const CommonUtils = require("../CommonUtils")
-const appSpecificErrors = require('../appSpecificErrors')
+const appSpecificErrors = require('../IndependentCommonUtils/appSpecificErrors')
 const api = require('../apiHandle')
 const process = require('process')
 const express = require('express')

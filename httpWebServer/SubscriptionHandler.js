@@ -1,7 +1,7 @@
 const CommonUtils = require('../CommonUtils')
 const api = require('../apiHandle')
 const Event = CommonUtils.Event
-const appSpecificErrors = require('../appSpecificErrors')
+const appSpecificErrors = require('../IndependentCommonUtils/appSpecificErrors')
 const SpuriousUnsubscription = appSpecificErrors.SpuriousUnsubscription
 const DuplicateSubscription = appSpecificErrors.DuplicateSubscription
 

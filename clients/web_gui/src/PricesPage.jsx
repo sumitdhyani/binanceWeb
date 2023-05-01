@@ -4,16 +4,34 @@ import { HorizontalTabs, VerticalTabs, SearchBoxRow, EditableDropdownRow} from '
 import constants from './Constants'
 
 function VanillaPricesTab(props){
-    const [updateCount, setUpdateCount] = useState(0)
+    const context = props.context
+    const cache = context.cache
+    const symbol_dict = context.symbol_dict
+    //console.log(`Set: ${JSON.stringify(cache)}, typeof cache: ${typeof cache}`)
+    const [state, setState] = useState({cache : cache})
     useEffect(()=>{
         console.log(`VanillaPricesTab render`)
         return ()=> console.log(`VanillaPricesTab un-render`)
     },
     [])
 
-    const context = props.context 
-    const cache = context.cache
-    return <VerticalTabs tabs={cache.map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : item}})}/>
+    
+    return (
+            [<EditableDropdownRow tabs={[{title : "search",
+                                         options : [...symbol_dict.keys()],
+                                         onSelectCapture : event => {
+                                            const value = event.target.value
+                                            const cache = state.cache
+                                            console.log(`Select Changed Handler, value: ${value}`)
+                                            if(!cache.has(value)){
+                                                cache.add(value)
+                                                setState({...state})
+                                            }
+                                         }
+                                        }]}/>,
+             <VerticalTabs tabs={[...cache].map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : item}})}/>
+            ]
+    )
 }
 
 function CrossPricesTab(props){
@@ -31,16 +49,11 @@ function CrossPricesTab(props){
 
 
 function PricesPage(props){
-    const [caches, setCaches] = useState({vanilla_cache : new Set(), cross_cache : new Set(), basket_cache : new Set()})
+    const [caches, setCaches] = useState({vanilla_cache : new Set(["BTCUSDT"]), cross_cache : new Set(), basket_cache : new Set()})
+    const context = props.context
 
     useEffect(()=>{
         console.log(`PricesPage render`)
-        return ()=> console.log(`PricesPage un-render`)
-    },
-    [])
-
-    const context = props.context
-    if(undefined === context.vanilla_prices){
         const subscriptionFunc = (symbol, exchange, callback)=>{
             context.subscription_functions.subscribe(symbol, exchange, callback)
             const symbolAndExchange = JSON.stringify([symbol, exchange]) 
@@ -57,19 +70,22 @@ function PricesPage(props){
         }
 
         context.vanilla_prices = {subscription_functions : {subscribe : subscriptionFunc, unsubscribe : unsubscriptionFunc},
-                                  cache : [...caches.vanilla_cache].map(item=> JSON.parse(item))
+                                  cache : caches.vanilla_cache,
+                                  symbol_dict : context.symbol_dict
                                  }
-    }
+        return ()=> console.log(`PricesPage un-render`)
+    },[])
 
+   
+    console.log(`Prices page context: ${JSON.stringify(context)}`)
+    if(undefined === context.vanilla_prices){
+        return <></>
+    }
     return(<div>
                 <HorizontalTabs tabs={[{title: "Vanilla Prices", widget_id : constants.widget_ids.button},
                                        {title: "Cross Prices", widget_id : constants.widget_ids.button},
                                        {title: "Baskets", widget_id : constants.widget_ids.button}]}/>
-                <EditableDropdownRow tabs={[{title : "search",
-                                             options : ["abc", "abcd", "pqr", "xyz"],
-                                             value : "abc"
-                                            }]}/>
-                <VanillaPricesTab context={context.vanilla_prices}/>
+                <VanillaPricesTab context = {context.vanilla_prices}/>
            </div>)
 }
 

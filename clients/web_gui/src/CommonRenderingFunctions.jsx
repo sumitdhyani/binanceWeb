@@ -25,18 +25,19 @@ function EditableDropdown(props) {
   const dataListId = "options_" + Math.random().toString(36).substring(2, 9); // Generate a unique id for the datalist
   const [options, initialValue] = [props.options, props.value]
   const onChange = (undefined !== props.onChange)? props.onChange : event=>{}
+  const onSelectCapture = (undefined !== props.onSelectCapture)? props.onSelectCapture : event=>{}
   const [value, setValue] = useState(initialValue)
   return (
     <div>
       <input
         list={dataListId}
-        value={value}
+        value={value !== undefined? value : ""}
         onChange={(event) => {
                     setValue(event.target.value)
                     onChange(event.target.value)
                   }
         }
-        onSelectCapture={event=> console.log(`Dropdown selected to ${event.target.value}`)}
+        onBlur={event=> onSelectCapture(event)}
       />
       <datalist id={dataListId}>
         {options.map((option) => (
@@ -67,7 +68,7 @@ function EditableTextBox(props) {
 
 export function HorizontalTabs(props) {
     const tabs = props.tabs
-    console.log(`Tabs: ${tabs}`)
+    //console.log(`Tabs: ${tabs}`)
     return (
         <div className="horizontal_tabs">
         {tabs.map((tab) => <GetWidget {...tab} className="horizontal_tab"/>)}
@@ -114,6 +115,7 @@ export function EditableDropdownRow(props) {
     <div className="horizontal_tabs">
         {tabs.map((tab) => <GetWidget {...tab}
                               widget_id={constants.widget_ids.editable_drop_down}
+                              onSelectCapture={tab.onSelectCapture}
                               className="horizontal_tab"
                            />
                  )
