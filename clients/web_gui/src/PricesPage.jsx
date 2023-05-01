@@ -21,7 +21,7 @@ function VanillaPricesTab(props){
                                                 options : [...symbol_dict.keys()],
                                                 onOptionSelected : (evt, value) => {
                                                    const cache = state.cache
-                                                   if(!cache.has(value)){
+                                                   if(value && !cache.has(value)){
                                                         console.log(`Select Changed Handler, value: ${value}`)
                                                         cache.add(value)
                                                         setState({...state})
@@ -31,8 +31,8 @@ function VanillaPricesTab(props){
                                           ]
                                          }
                                     nameConverter = { key=> JSON.parse(key)[0] }
-            />,
-             <VerticalTabsForVanillaPrices tabs={[...cache].map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : item}})}/>
+             />,
+             <VerticalTabsForVanillaPrices tabs={[...cache].map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : symbol_dict.get(item).description}})}/>
             ]
     )
 }
