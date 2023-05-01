@@ -75,7 +75,7 @@ export function HorizontalTabs(props) {
     );
 }
 
-export function VerticalTabs(props) {
+export function VerticalTabsForVanillaPrices(props) {
   const tabs = props.tabs
   return (
     <div className="container">

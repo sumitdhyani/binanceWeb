@@ -1,6 +1,6 @@
 import './App.css'
 import { useState, useEffect } from 'react'
-import { HorizontalTabs, VerticalTabs, SearchBoxRow, EditableDropdownRow} from './CommonRenderingFunctions'
+import { HorizontalTabs, VerticalTabsForVanillaPrices, SearchBoxRow, EditableDropdownRow} from './CommonRenderingFunctions'
 import constants from './Constants'
 
 function VanillaPricesTab(props){
@@ -32,7 +32,7 @@ function VanillaPricesTab(props){
                                          }
                                     nameConverter = { key=> JSON.parse(key)[0] }
             />,
-             <VerticalTabs tabs={[...cache].map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : item}})}/>
+             <VerticalTabsForVanillaPrices tabs={[...cache].map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : item}})}/>
             ]
     )
 }
@@ -47,35 +47,39 @@ function CrossPricesTab(props){
 
     const context = props.context 
     const cache = context.cache
-    return <VerticalTabs tabs={cache.map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : item}})}/>
+    return <VerticalTabsForVanillaPrices tabs={cache.map(item=> {return {title1 : "unsubscribe", title2 : "expand", content : item}})}/>
 }
 
 
 function PricesPage(props){
-    const [caches, setCaches] = useState({vanilla_cache : new Set(), cross_cache : new Set(), basket_cache : new Set()})
     const context = props.context
+    const [caches, setCaches] = useState({vanilla_cache : (context.vanilla_prices !== undefined)? context.vanilla_prices.cache : new Set(),
+                                          cross_cache : (context.cross_prices !== undefined)? context.cross_prices : new Set(),
+                                          basket_cache : (context.basket_prices !== undefined)? context.basket_prices : new Set()})
 
     useEffect(()=>{
-        console.log(`PricesPage render`)
-        const subscriptionFunc = (symbol, exchange, callback)=>{
-            context.subscription_functions.subscribe(symbol, exchange, callback)
-            const symbolAndExchange = JSON.stringify([symbol, exchange]) 
-            if(!caches.vanilla_cache.has(symbolAndExchange))
-            {
-                caches.vanilla_cache.add(symbolAndExchange)
-                setCaches({...caches})
+            if(undefined === context.vanilla_prices){
+            console.log(`PricesPage render`)
+            const subscriptionFunc = (symbol, exchange, callback)=>{
+                context.subscription_functions.subscribe(symbol, exchange, callback)
+                const symbolAndExchange = JSON.stringify([symbol, exchange]) 
+                if(!caches.vanilla_cache.has(symbolAndExchange))
+                {
+                    caches.vanilla_cache.add(symbolAndExchange)
+                    setCaches({...caches})
+                }
             }
-        }
 
-        const unsubscriptionFunc = (symbol, exchange, callback)=>{
-            context.subscription_functions.unsubscribe(symbol, exchange, callback)
-            caches.vanilla_cache.delete(JSON.stringify([symbol, exchange]))
-        }
+            const unsubscriptionFunc = (symbol, exchange, callback)=>{
+                context.subscription_functions.unsubscribe(symbol, exchange, callback)
+                caches.vanilla_cache.delete(JSON.stringify([symbol, exchange]))
+            }
 
-        context.vanilla_prices = {subscription_functions : {subscribe : subscriptionFunc, unsubscribe : unsubscriptionFunc},
-                                  cache : caches.vanilla_cache,
-                                  symbol_dict : context.symbol_dict
-                                 }
+            context.vanilla_prices = {subscription_functions : {subscribe : subscriptionFunc, unsubscribe : unsubscriptionFunc},
+                                      cache : caches.vanilla_cache,
+                                      symbol_dict : context.symbol_dict
+                                     }
+        }
         return ()=> console.log(`PricesPage un-render`)
     },[])
 
