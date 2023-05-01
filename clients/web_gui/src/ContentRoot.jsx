@@ -3,6 +3,7 @@ import PricesPage from './PricesPage'
 import IntroPage from './IntroPage'
 import {HorizontalTabs} from './CommonRenderingFunctions'
 import { useEffect, useState } from 'react'
+import constants from './Constants'
 
 function Visual(props){
         const [updateCount, setUpdateCount] = useState(0)
@@ -37,8 +38,8 @@ function Visual(props){
                           <h3><u><b>The Quant Hulk: {updateCount.update_count}</b></u></h3>
                           <img src="Hulk.webp"/>
                       </generic>
-                      <HorizontalTabs tabs={[{title: "Intro", onClick : ()=> onTabSelected(props.context.intro_tab)},
-                                             {title: "Market Prices", onClick : ()=> onTabSelected(props.context.prices_tab)}]}/>
+                      <HorizontalTabs tabs={[{title: "Intro", widget_id : constants.widget_ids.button, onClick : ()=> onTabSelected(props.context.intro_tab)},
+                                             {title: "Market Prices", widget_id : constants.widget_ids.button, onClick : ()=> onTabSelected(props.context.prices_tab)}]}/>
  
                       <Component context={context}/>
                   </div>)
