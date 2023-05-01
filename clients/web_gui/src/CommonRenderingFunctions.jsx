@@ -2,11 +2,13 @@
 import './App.css'
 import constants from './Constants';
 import { useState } from 'react';
+import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
 
 function GetWidget(props){
   const onClick = (undefined !== props.onClick)? props.onClick : ()=>{}
   const onChange = (undefined !== props.onChange)? props.onChange : event=>{}
-  const className = (undefined != props.className)? props.className : ""
+  const className = (undefined !== props.className)? props.className : ""
   switch(props.widget_id) {
     case constants.widget_ids.button:
           return (<button className={className} onClick={onClick}>
@@ -18,40 +20,29 @@ function GetWidget(props){
       return <tab className={className}>{props.content}</tab>
     case constants.widget_ids.editable_drop_down:
       return (<EditableDropdown {...props} className={className}/>)
+    default:
+      break
   }
 }
 
 function EditableDropdown(props) {
-  const dataListId = "options_" + Math.random().toString(36).substring(2, 9); // Generate a unique id for the datalist
-  const [options, initialValue] = [props.options, props.value]
-  const onChange = (undefined !== props.onChange)? props.onChange : event=>{}
-  const onSelectCapture = (undefined !== props.onSelectCapture)? props.onSelectCapture : event=>{}
-  const [value, setValue] = useState(initialValue)
+  const options = props.options
+  const onOptionSelected = (undefined !== props.onOptionSelected)? props.onOptionSelected : (evt, value)=>{}
   return (
-    <div>
-      <input
-        list={dataListId}
-        value={value !== undefined? value : ""}
-        onChange={(event) => {
-                    setValue(event.target.value)
-                    onChange(event.target.value)
-                  }
-        }
-        onBlur={event=> onSelectCapture(event)}
-      />
-      <datalist id={dataListId}>
-        {options.map((option) => (
-          <option key={option} value={option} />
-        ))}
-      </datalist>
-    </div>
-  );
+    <Autocomplete
+      options={options}
+      onChange={(evt, value)=>{ onOptionSelected(evt, value)} }
+      renderInput={(params) => (
+        <TextField {...params} variant="outlined" label="Dropdown" />
+      )}
+    />
+  )
 }
 
 
 function EditableTextBox(props) {
   const onChange = (undefined !== props.onChange)? props.onChange : event=>{}
-  const className = (undefined != props.className)? props.className : ""
+  const className = (undefined !== props.className)? props.className : ""
   const [value, setValue] = useState(props.value);
 
   return (

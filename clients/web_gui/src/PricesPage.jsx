@@ -19,8 +19,7 @@ function VanillaPricesTab(props){
     return (
             [<EditableDropdownRow tabs={[{title : "search",
                                          options : [...symbol_dict.keys()],
-                                         onSelectCapture : event => {
-                                            const value = event.target.value
+                                         onOptionSelected : (evt, value) => {
                                             const cache = state.cache
                                             console.log(`Select Changed Handler, value: ${value}`)
                                             if(!cache.has(value)){
