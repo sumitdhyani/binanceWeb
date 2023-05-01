@@ -36,6 +36,7 @@ function EditableDropdown(props) {
                     onChange(event.target.value)
                   }
         }
+        onSelectCapture={event=> console.log(`Dropdown selected to ${event.target.value}`)}
       />
       <datalist id={dataListId}>
         {options.map((option) => (
