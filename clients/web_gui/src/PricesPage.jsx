@@ -1,6 +1,6 @@
 import './App.css'
 import { useState, useEffect } from 'react'
-import { HorizontalTabs, VerticalTabs, SearchBoxRow} from './CommonRenderingFunctions'
+import { HorizontalTabs, VerticalTabs, SearchBoxRow, EditableDropdownRow} from './CommonRenderingFunctions'
 import constants from './Constants'
 
 function VanillaPricesTab(props){
@@ -65,7 +65,10 @@ function PricesPage(props){
                 <HorizontalTabs tabs={[{title: "Vanilla Prices", widget_id : constants.widget_ids.button},
                                        {title: "Cross Prices", widget_id : constants.widget_ids.button},
                                        {title: "Baskets", widget_id : constants.widget_ids.button}]}/>
-                <SearchBoxRow tabs={[{title : "search"}]}/>
+                <EditableDropdownRow tabs={[{title : "search",
+                                             options : ["abc", "abcd", "pqr", "xyz"],
+                                             value : "abc"
+                                            }]}/>
                 <VanillaPricesTab context={context.vanilla_prices}/>
            </div>)
 }

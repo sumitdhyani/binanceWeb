@@ -16,8 +16,36 @@ function GetWidget(props){
       return (<EditableTextBox {...props}/>)            
     case constants.widget_ids.tab:
       return <tab className={className}>{props.content}</tab>
+    case constants.widget_ids.editable_drop_down:
+      return (<EditableDropdown {...props} className={className}/>)
   }
 }
+
+function EditableDropdown(props) {
+  const dataListId = "options_" + Math.random().toString(36).substring(2, 9); // Generate a unique id for the datalist
+  const [options, initialValue] = [props.options, props.value]
+  const onChange = (undefined !== props.onChange)? props.onChange : event=>{}
+  const [value, setValue] = useState(initialValue)
+  return (
+    <div>
+      <input
+        list={dataListId}
+        value={value}
+        onChange={(event) => {
+                    setValue(event.target.value)
+                    onChange(event.target.value)
+                  }
+        }
+      />
+      <datalist id={dataListId}>
+        {options.map((option) => (
+          <option key={option} value={option} />
+        ))}
+      </datalist>
+    </div>
+  );
+}
+
 
 function EditableTextBox(props) {
   const onChange = (undefined !== props.onChange)? props.onChange : event=>{}
@@ -70,6 +98,21 @@ export function SearchBoxRow(props) {
     <div className="horizontal_tabs">
         {tabs.map((tab) => <GetWidget {...tab} 
                               widget_id={constants.widget_ids.editable_text_box}
+                              className="horizontal_tab"
+                           />
+                 )
+        }
+    </div>
+  )
+}
+
+export function EditableDropdownRow(props) {
+  const tabs = props.tabs
+  console.log(`Tabs: ${tabs}`)
+  return (
+    <div className="horizontal_tabs">
+        {tabs.map((tab) => <GetWidget {...tab}
+                              widget_id={constants.widget_ids.editable_drop_down}
                               className="horizontal_tab"
                            />
                  )
