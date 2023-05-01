@@ -21,6 +21,7 @@ function GetWidget(props){
     case constants.widget_ids.editable_drop_down:
       return (<EditableDropdown {...props} className={className}/>)
     default:
+      console.log(`Unrecognized Widget Id: ${props.widget_id}`)
       break
   }
 }
@@ -80,8 +81,8 @@ export function VerticalTabs(props) {
     <div className="container">
       {tabs.map((item, index) => (
         <div className="row" key={index}>
-          <GetWidget {...props} className="button" title="-"/>
-          <GetWidget {...props} className="button" title="&#9660;"/>
+          <GetWidget {...props} className="button" title="-" widget_id={constants.widget_ids.button}/>
+          <GetWidget {...props} className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
           <tab className="tab">{item.content}</tab>
         </div>
       ))}
