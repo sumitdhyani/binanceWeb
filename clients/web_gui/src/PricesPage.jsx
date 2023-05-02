@@ -20,7 +20,7 @@ function VanillaPricesTab(props){
                                                 onOptionSelected : (evt, value) => {
                                                    if(value && !cache.has(value)){
                                                         console.log(`Select Changed Handler, value: ${value}`)
-                                                        cache.set(value, {})
+                                                        cache.set(value, undefined)
                                                         setUpdateCount(prev=>prev + 1)
                                                    }
                                                 }
@@ -34,13 +34,17 @@ function VanillaPricesTab(props){
                                                                             title2 : "expand",
                                                                             content : symbol_dict.get(key).description,
                                                                             rendering_action : (callback)=>{
-                                                                                cache.set(key, new CacheItemFsm(cache,
+                                                                                if(undefined === cache.get(key)){
+                                                                                    cache.set(key, new CacheItemFsm(cache,
                                                                                                                 key,
                                                                                                                 subscription_functions,
                                                                                                                 30000,
                                                                                                                 JSON.parse(key),
                                                                                                                 callback))
-                                                                                cache.get(key).start()
+                                                                                    cache.get(key).start()
+                                                                                }else{
+                                                                                    cache.get(key).handleEvent("subscribe", callback)
+                                                                                }
                                                                             },
                                                                             user_unsubscribe_action : (callback)=>{
                                                                                 cache.get(key).handleEvent("user_unsubscribe", callback)

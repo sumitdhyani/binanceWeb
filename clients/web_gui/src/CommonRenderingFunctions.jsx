@@ -11,7 +11,7 @@ function GetWidget(props){
   const className = (undefined !== props.className)? props.className : ""
   switch(props.widget_id) {
     case constants.widget_ids.button:
-          return (<button className={className} onClick={onClick} on>
+          return (<button className={className} onClick={onClick}>
                     {props.title}
                   </button>)
     case constants.widget_ids.editable_text_box:
