@@ -1,26 +1,47 @@
 const JSFSM = require('./root/AsyncFSM')
 const FSM = JSFSM.FSM
 const State = JSFSM.State
-const SpecialTransition = JSFSM.SpecialTransition
 
 class Init extends State{
-    constructor(cache, key, subscriptionFunctions, timeoutInterval, sm, clientCallback){
+    constructor(cache,
+                key,
+                subscriptionFunctions,
+                timeoutInterval,
+                sm,
+                params,
+                clientCallback)
+    {
         super()
         this.cache = cache
         this.key = key
         this.subscriptionFunctions = subscriptionFunctions
         this.timeoutInterval = timeoutInterval
         this.sm = sm
+        this.params = params
         this.clientCallback = clientCallback
     }
 
-    on_unsubscribe(clientCallback){
+    onEntry(){
+        this.subscriptionFunctions.subscribe(...this.params, callback)
+    }
+
+    on_user_unsubscribe(clientCallback){
+        if(this.clientCallback == clientCallback){
+            this.subscriptionFunctions.unsubscribe(...this.params, clientCallback)
+            this.cache.delete(this.key)
+        }else{
+            throw {message : "Unrecognized callback!"}
+        }
+    }
+
+    on_auto_unsubscribe(clientCallback){
         if(this.clientCallback == clientCallback){
             return new PendingUnsubscription(this.cache,
                                              this.key,
                                              this.subscriptionFunctions,
                                              this.timeoutInterval,
                                              this.sm,
+                                             this.params,
                                              clientCallback)
         }else{
             throw {message : "Unrecognized callback!"}
@@ -34,6 +55,7 @@ class PendingUnsubscription extends State{
                 subscriptionFunctions,
                 timeoutInterval,
                 sm,
+                params,
                 clientCallback){
         super()
         this.cache = cache
@@ -41,36 +63,54 @@ class PendingUnsubscription extends State{
         this.subscriptionFunctions = subscriptionFunctions
         this.timeoutInterval = timeoutInterval
         this.sm = sm
+        this.params = params
         this.clientCallback = clientCallback
         this.timerId = 0
-        this.nullCallback = 
+        this.nullCallback = update=>{}
     }
 
     onEntry(){
-        const nullCallback = update=>{}
-        const [symbol, exchange] = JSON.parse(this.key)
-        this.subscriptionFunctions.subscribe(symbol, exchange, nullCallback)
-        this.subscriptionFunctions.unsubscribe(symbol, exchange, this.clientCallback)
+        this.subscriptionFunctions.subscribe(...this.params, this.nullCallback)
+        this.subscriptionFunctions.unsubscribe(...this.params, this.clientCallback)
         this.timerId = setTimeout(()=>{
-            this.subscriptionFunctions.unsubscribe(symbol, exchange, nullCallback)
-            setImmediate(()=>this.sm.handleEvent("unsubscribed"))
+            this.subscriptionFunctions.unsubscribe(symbol, exchange, this.nullCallback)
+            this.timerId = 0
         }, this.timeoutInterval)
     }
 
-    on_subscription(callback){
-     c   
-    }
-
-    on_unsubscribed(){
-
+    on_subscribe(callback){
+        this.subscriptionFunctions.subscribe(...this.params, callback)
+        if(0 !== this.timerId){
+            clearTimeout(this.timerId)
+            this.subscriptionFunctions.unsubscribe(...this.params, this.nullCallback)
+        }
+        return Init(this.cache,
+                    this.key,
+                    this.subscriptionFunctions,
+                    this.timeoutInterval,
+                    this.sm,
+                    this.params,
+                    callback)
     }
 }
 
-class ClientLayerFSM extends FSM{
-    //ket is the JSON string for [symbol, exchange]
-    constructor(cache, key, subscriptionFunctions, timeoutInterval){
-        super(()=> new Init(cache, key, subscriptionFunctions, timeoutInterval))
+class CacheItemFsm extends FSM{
+    constructor(cache,
+                key,
+                subscriptionFunctions,
+                timeoutInterval,
+                sm,
+                params,
+                clientCallback)
+    {
+        super(()=> new Init(cache,
+                            key,
+                            subscriptionFunctions,
+                            timeoutInterval,
+                            sm,
+                            params,
+                            clientCallback))
     }
 }
 
-module.exports.ClientLayerFSM = ClientLayerFSM
+export default CacheItemFsm
