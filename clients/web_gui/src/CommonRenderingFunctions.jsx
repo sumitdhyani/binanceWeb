@@ -83,7 +83,7 @@ export function VerticalTabsForVanillaPrices(props) {
         <div className="row" key={index}>
           <GetWidget {...props} className="button" title="-" widget_id={constants.widget_ids.button}/>
           <GetWidget {...props} className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
-          <tab className="tab">{item.content}</tab>
+          <tab className="tab" on>{item.content}</tab>
         </div>
       ))}
     </div>

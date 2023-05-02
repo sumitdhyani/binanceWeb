@@ -21,7 +21,7 @@ class Init extends State{
         this.clientCallback = clientCallback
     }
 
-    on_user_subscribe(){
+    onEntry(){
         this.subscriptionFunctions.subscribe(...this.params, this.callback)
     }
 
@@ -99,7 +99,6 @@ class CacheItemFsm extends FSM{
                 key,
                 subscriptionFunctions,
                 timeoutInterval,
-                sm,
                 params,
                 clientCallback)
     {
@@ -107,7 +106,7 @@ class CacheItemFsm extends FSM{
                             key,
                             subscriptionFunctions,
                             timeoutInterval,
-                            sm,
+                            this,
                             params,
                             clientCallback))
     }

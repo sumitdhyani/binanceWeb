@@ -9,6 +9,7 @@ function VanillaPricesTab(props){
         context.cache = new Map()
     }
     const cache = context.cache
+    const subscription_functions = context.subscription_functions
 
     const symbol_dict = context.symbol_dict
     const [updateCount, setUpdateCount] = useState(0)
@@ -28,11 +29,27 @@ function VanillaPricesTab(props){
                                          }
                                     nameConverter = { key=> JSON.parse(key)[0] }
              />,
-             <VerticalTabsForVanillaPrices tabs={[...cache.keys()].map(item=> {
+             <VerticalTabsForVanillaPrices tabs={[...cache.keys()].map(key=> {
                                                                     return {title1 : "unsubscribe", 
                                                                             title2 : "expand",
-                                                                            content : symbol_dict.get(item).description,
-                                                                            renderingAction : {}}
+                                                                            content : symbol_dict.get(key).description,
+                                                                            rendering_action : (callback)=>{
+                                                                                cache.set(key, new CacheItemFsm(cache,
+                                                                                                                key,
+                                                                                                                subscription_functions,
+                                                                                                                30000,
+                                                                                                                JSON.parse(key),
+                                                                                                                callback))
+                                                                                cache.get(key).start()
+                                                                            },
+                                                                            user_unsubscribe_action : (callback)=>{
+                                                                                cache.get(key).handleEvent("user_unsubscribe", callback)
+                                                                            },
+                                                                            auto_unsubscribe_action : (callback)=>{
+                                                                                cache.get(key).handleEvent("auto_unsubscribe", callback)
+                                                                            }
+
+                                                                        }
                                                                 })}/>
             ]
     )
