@@ -88,7 +88,7 @@ function VerticalTabForVanillaPrices(props){
   },[])
   return (
     <div className="row" key={index}>
-      <GetWidget className="button" title="-" widget_id={constants.widget_ids.button}/>
+      <GetWidget className="button" title="-" widget_id={constants.widget_ids.button} onClick={()=>tab.user_unsubscribe_action(priceCallback)}/>
       <GetWidget className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
       <tab className="tab">{tab.content} {"=>"} {currUpdate? [currUpdate.bids[0][0], "|", currUpdate.bids[0][1],  "<==>", currUpdate.asks[0][0], "|", currUpdate.asks[0][1]] : ""}</tab>
     </div>

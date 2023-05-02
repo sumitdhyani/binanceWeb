@@ -33,8 +33,8 @@ class Operational extends State{
     }
 
     on_user_unsubscribe(clientCallback){
-        if(this.clientCallback === clientCallback){
-            this.subscriptionFunctions.unsubscribe(...this.params, clientCallback)
+        if(true){
+            this.subscriptionFunctions.unsubscribe(...this.params, this.updateFunc)
             this.cache.delete(this.key)
         }else{
             throw {message : "Unrecognized callback!"}
@@ -79,7 +79,7 @@ class PendingUnsubscription extends State{
     onEntry(){
         this.subscriptionFunctions.subscribe(...this.params, this.nullCallback)
         this.timerId = setTimeout(()=>{
-            console.log(`Timeout hit`)
+            //console.log(`Timeout hit`)
             this.subscriptionFunctions.unsubscribe(...this.params, this.nullCallback)
             this.timerId = 0
         }, this.timeoutInterval)
@@ -87,7 +87,7 @@ class PendingUnsubscription extends State{
 
     on_auto_subscribe(callback){
         if(0 !== this.timerId){
-            console.log(`Clearing timeout`)
+            //console.log(`Clearing timeout`)
             clearTimeout(this.timerId)
             this.timerId = 0
             setTimeout(()=>this.subscriptionFunctions.unsubscribe(...this.params, this.nullCallback))      
