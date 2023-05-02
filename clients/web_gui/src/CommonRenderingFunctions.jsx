@@ -1,7 +1,7 @@
 
 import './App.css'
 import constants from './Constants';
-import { useState, React } from 'react';
+import { useState, React, useEffect } from 'react';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 
@@ -11,7 +11,7 @@ function GetWidget(props){
   const className = (undefined !== props.className)? props.className : ""
   switch(props.widget_id) {
     case constants.widget_ids.button:
-          return (<button className={className} onClick={onClick}>
+          return (<button className={className} onClick={onClick} on>
                     {props.title}
                   </button>)
     case constants.widget_ids.editable_text_box:
@@ -75,20 +75,50 @@ export function HorizontalTabs(props) {
     );
 }
 
+function VerticalTabForVanillaPrices(props){
+  const [currUpdate, setCurrUpdate] = useState(null)
+  const [tab, index] = [props.tab, props.index]
+  function priceCallback(update){
+    //console.log(`Update received: ${JSON.stringify(update)}`)
+    setCurrUpdate(update)
+  }
+  useEffect(()=>{
+    tab.rendering_action(priceCallback)
+    return ()=>{ tab.auto_unsubscribe_action(priceCallback)}
+  },[])
+  return (
+    <div className="row" key={index}>
+      <GetWidget className="button" title="-" widget_id={constants.widget_ids.button}/>
+      <GetWidget className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
+      <tab className="tab">{tab.content} {"=>"} {currUpdate? [currUpdate.bids[0][0], "|", currUpdate.bids[0][1],  "<==>", currUpdate.asks[0][0], "|", currUpdate.asks[0][1]] : ""}</tab>
+    </div>
+  )
+
+}
+
 export function VerticalTabsForVanillaPrices(props) {
   const tabs = props.tabs
   return (
     <div className="container">
-      {tabs.map((item, index) => (
-        <div className="row" key={index}>
-          <GetWidget {...props} className="button" title="-" widget_id={constants.widget_ids.button}/>
-          <GetWidget {...props} className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
-          <tab className="tab" on>{item.content}</tab>
-        </div>
-      ))}
+      {tabs.map((tab, index) => <VerticalTabForVanillaPrices tab={tab} index={index}/>)}
     </div>
   );
 }
+
+// export function VerticalTabsForVanillaPrices(props) {
+//   const tabs = props.tabs
+//   return (
+//     <div className="container">
+//       {tabs.map((tab, index) => (
+//         <div className="row" key={index}>
+//           <GetWidget {...props} className="button" title="-" widget_id={constants.widget_ids.button}/>
+//           <GetWidget {...props} className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
+//           <tab className="tab" on>{tab.content}</tab>
+//         </div>
+//       ))}
+//     </div>
+//   );
+// }
 
 
 

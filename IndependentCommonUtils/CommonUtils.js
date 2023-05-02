@@ -55,3 +55,5 @@ class Event
         return true
     }
 }
+
+module.exports.Event = Event

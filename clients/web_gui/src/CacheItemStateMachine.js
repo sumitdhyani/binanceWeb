@@ -7,7 +7,6 @@ class Init extends State{
                 key,
                 subscriptionFunctions,
                 timeoutInterval,
-                sm,
                 params,
                 clientCallback)
     {
@@ -16,13 +15,12 @@ class Init extends State{
         this.key = key
         this.subscriptionFunctions = subscriptionFunctions
         this.timeoutInterval = timeoutInterval
-        this.sm = sm
         this.params = params
         this.clientCallback = clientCallback
     }
 
     onEntry(){
-        this.subscriptionFunctions.subscribe(...this.params, this.callback)
+        this.subscriptionFunctions.subscribe(...this.params, this.clientCallback)
     }
 
     on_user_unsubscribe(clientCallback){
@@ -40,7 +38,6 @@ class Init extends State{
                                              this.key,
                                              this.subscriptionFunctions,
                                              this.timeoutInterval,
-                                             this.sm,
                                              this.params,
                                              clientCallback)
         }else{
@@ -54,7 +51,6 @@ class PendingUnsubscription extends State{
                 key,
                 subscriptionFunctions,
                 timeoutInterval,
-                sm,
                 params,
                 clientCallback){
         super()
@@ -62,7 +58,6 @@ class PendingUnsubscription extends State{
         this.key = key
         this.subscriptionFunctions = subscriptionFunctions
         this.timeoutInterval = timeoutInterval
-        this.sm = sm
         this.params = params
         this.clientCallback = clientCallback
         this.timerId = 0
@@ -88,7 +83,6 @@ class PendingUnsubscription extends State{
                     this.key,
                     this.subscriptionFunctions,
                     this.timeoutInterval,
-                    this.sm,
                     this.params,
                     callback)
     }
@@ -106,9 +100,13 @@ class CacheItemFsm extends FSM{
                             key,
                             subscriptionFunctions,
                             timeoutInterval,
-                            this,
                             params,
-                            clientCallback))
+                            clientCallback),
+              {error : msg => console.log(msg),
+               warn : msg => console.log(msg),
+               info : msg => {},
+               debug : msg => {}}
+              )
     }
 }
 
