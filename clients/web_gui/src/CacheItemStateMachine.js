@@ -21,8 +21,8 @@ class Init extends State{
         this.clientCallback = clientCallback
     }
 
-    onEntry(){
-        this.subscriptionFunctions.subscribe(...this.params, callback)
+    on_user_subscribe(){
+        this.subscriptionFunctions.subscribe(...this.params, this.callback)
     }
 
     on_user_unsubscribe(clientCallback){
@@ -73,7 +73,7 @@ class PendingUnsubscription extends State{
         this.subscriptionFunctions.subscribe(...this.params, this.nullCallback)
         this.subscriptionFunctions.unsubscribe(...this.params, this.clientCallback)
         this.timerId = setTimeout(()=>{
-            this.subscriptionFunctions.unsubscribe(symbol, exchange, this.nullCallback)
+            this.subscriptionFunctions.unsubscribe(...this.params, this.nullCallback)
             this.timerId = 0
         }, this.timeoutInterval)
     }

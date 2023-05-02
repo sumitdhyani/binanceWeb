@@ -2,11 +2,11 @@ import './App.css'
 import { useState, useEffect } from 'react'
 import { HorizontalTabs, VerticalTabsForVanillaPrices, SearchBoxRow, EditableDropdownRow} from './CommonRenderingFunctions'
 import constants from './Constants'
-
+import CacheItemFsm from './CacheItemStateMachine'
 function VanillaPricesTab(props){
     const context = props.context
     if(undefined === context.cache){
-        context.cache = new Set()
+        context.cache = new Map()
     }
     const cache = context.cache
 
@@ -19,7 +19,7 @@ function VanillaPricesTab(props){
                                                 onOptionSelected : (evt, value) => {
                                                    if(value && !cache.has(value)){
                                                         console.log(`Select Changed Handler, value: ${value}`)
-                                                        cache.add(value)
+                                                        cache.set(value, {})
                                                         setUpdateCount(prev=>prev + 1)
                                                    }
                                                 }
@@ -28,7 +28,7 @@ function VanillaPricesTab(props){
                                          }
                                     nameConverter = { key=> JSON.parse(key)[0] }
              />,
-             <VerticalTabsForVanillaPrices tabs={[...cache].map(item=> {
+             <VerticalTabsForVanillaPrices tabs={[...cache.keys()].map(item=> {
                                                                     return {title1 : "unsubscribe", 
                                                                             title2 : "expand",
                                                                             content : symbol_dict.get(item).description,

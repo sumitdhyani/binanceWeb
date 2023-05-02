@@ -1,7 +1,7 @@
 import Visual from './ContentRoot'
 import {useEffect, useState} from 'react'
 import './App.css';
-import {MultiTrie} from './DataStructures.js'
+import constants from './Constants';
 const {init, subscribe, unsubscribe, subscribeVirtual, unsubscribeVirtual} = require('./Gui-Library-Interface')
 const logger = { debug : str => console.log(str),
   info : str => {},
@@ -15,7 +15,7 @@ function App() {
 
   useEffect(()=>{
     logger.warn(`Initializing the library`)
-    init({auth_server : "http://206.81.18.17:90", credentials : {user : "test_user", password : "test_pwd"}},
+    init({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}},
          logger,
          (symbolDict)=>{
           logger.warn(`Downloaded symbols`)
@@ -48,8 +48,7 @@ function App() {
 
     console.log(`render Cycle, libraryInitialized : ${libraryInitialized}`)
     if(libraryInitialized){
-      const context = { quote_level_dict : getQuoteBasedDictionary(instrumentStore),
-                        symbol_dict : instrumentStore,
+      const context = { symbol_dict : instrumentStore,
                         subscription_functions : {subscribe : subscribe, unsubscribe : unsubscribe},
                         virtual_subscription_functions : {subscribe : subscribeVirtual, unsubscribe : unsubscribeVirtual}
                       }
