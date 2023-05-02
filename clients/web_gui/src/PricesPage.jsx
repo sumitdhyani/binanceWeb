@@ -43,7 +43,7 @@ function VanillaPricesTab(props){
                                                                                                                 callback))
                                                                                     cache.get(key).start()
                                                                                 }else{
-                                                                                    cache.get(key).handleEvent("subscribe", callback)
+                                                                                    cache.get(key).handleEvent("auto_subscribe", callback)
                                                                                 }
                                                                             },
                                                                             user_unsubscribe_action : (callback)=>{

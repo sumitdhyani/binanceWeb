@@ -85,7 +85,7 @@ class PendingUnsubscription extends State{
         }, this.timeoutInterval)
     }
 
-    on_subscribe(callback){
+    on_auto_subscribe(callback){
         if(0 !== this.timerId){
             console.log(`Clearing timeout`)
             clearTimeout(this.timerId)
