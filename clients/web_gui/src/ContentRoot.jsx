@@ -34,10 +34,10 @@ function Visual(props){
         if(undefined !== props.context.curr_tab){
             const [Component, context] = props.context.curr_tab
             return(<div>
-                      <generic className="All-generic_components">
+                      <div className="All-generic_components">
                           <h3><u><b>The Quant Hulk{updateCount.update_count}</b></u></h3>
                           <img src="Hulk.webp"/>
-                      </generic>
+                      </div>
                       <HorizontalTabs tabs={[{title: "Intro", widget_id : constants.widget_ids.button, onClick : ()=> onTabSelected(props.context.intro_tab)},
                                              {title: "Market Prices", widget_id : constants.widget_ids.button, onClick : ()=> onTabSelected(props.context.prices_tab)}]}/>
  
