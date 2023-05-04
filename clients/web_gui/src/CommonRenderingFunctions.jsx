@@ -1,7 +1,7 @@
 
 import './App.css'
 import constants from './Constants';
-import { useState, React, useEffect } from 'react';
+import { useState, React, useEffect, useCallback } from 'react';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 
@@ -78,10 +78,11 @@ export function HorizontalTabs(props) {
 function VerticalTabForVanillaPrices(props){
   const [currUpdate, setCurrUpdate] = useState(null)
   const [tab, index] = [props.tab, props.index]
-  function priceCallback(update){
+  const priceCallback = useCallback((update)=>{
     //console.log(`Update received: ${JSON.stringify(update)}`)
     setCurrUpdate(update)
-  }
+  })
+  
   useEffect(()=>{
     tab.rendering_action(priceCallback)
     return ()=>{ tab.auto_unsubscribe_action(priceCallback)}
