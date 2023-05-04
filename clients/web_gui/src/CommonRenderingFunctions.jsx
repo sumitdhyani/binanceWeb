@@ -70,7 +70,7 @@ export function HorizontalTabs(props) {
     //console.log(`Tabs: ${tabs}`)
     return (
         <div className="horizontal_tabs">
-        {tabs.map((tab) => <GetWidget {...tab} className="horizontal_tab"/>)}
+        {tabs.map((tab, index) => <GetWidget {...tab} key={index} className="horizontal_tab"/>)}
       </div>
     );
 }
