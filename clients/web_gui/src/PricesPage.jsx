@@ -6,7 +6,7 @@ import CacheItemFsm from './CacheItemStateMachine'
 function VanillaPricesTab(props){
     const context = props.context
     if(undefined === context.cache){
-        context.cache = new Map()
+        context.cache = new Set()
     }
     const cache = context.cache
     const subscription_functions = context.subscription_functions
@@ -20,7 +20,7 @@ function VanillaPricesTab(props){
                                                 onOptionSelected : (evt, value) => {
                                                    if(value && !cache.has(value)){
                                                         console.log(`Select Changed Handler, value: ${value}`)
-                                                        cache.set(value, undefined)
+                                                        cache.add(value)
                                                         setUpdateCount(prev=>prev + 1)
                                                    }
                                                 }
@@ -28,37 +28,30 @@ function VanillaPricesTab(props){
                                           ]
                                          }
                                     nameConverter = { key=> JSON.parse(key)[0] }
+                                    key={0}
              />,
-             <VerticalTabsForVanillaPrices tabs={[...cache.keys()].map(key=> {
+             <VerticalTabsForVanillaPrices tabs={[...cache].map(key=> {
                                                                     return {title1 : "unsubscribe", 
                                                                             title2 : "expand",
                                                                             content : symbol_dict.get(key).description,
                                                                             rendering_action : (callback)=>{
-                                                                                if(undefined === cache.get(key)){
-                                                                                    cache.set(key, new CacheItemFsm(cache,
-                                                                                                                key,
-                                                                                                                subscription_functions,
-                                                                                                                30000,
-                                                                                                                JSON.parse(key),
-                                                                                                                callback))
-                                                                                    cache.get(key).start()
-                                                                                }else{
-                                                                                    cache.get(key).handleEvent("auto_subscribe", callback)
-                                                                                }
+                                                                                console.log(`rendering_action action for ${key}, callback: ${callback}`)
+                                                                                subscription_functions.subscribe(...JSON.parse(key), callback)
                                                                             },
                                                                             user_unsubscribe_action : (callback)=>{
-                                                                                cache.get(key).handleEvent("user_unsubscribe", callback)
+                                                                                console.log(`user_unsubscribe_action action for ${key}, callback: ${callback}`)
+                                                                                subscription_functions.unsubscribe(...JSON.parse(key), callback)
                                                                                 cache.delete(key)
                                                                                 setUpdateCount(prev=>prev+1)
                                                                             },
                                                                             auto_unsubscribe_action : (callback)=>{
-                                                                                if(undefined !== cache.get(key)){
-                                                                                    cache.get(key).handleEvent("auto_unsubscribe", callback)
+                                                                                if(cache.has(key)){
+                                                                                    subscription_functions.unsubscribe(...JSON.parse(key), callback)
                                                                                 }
                                                                             }
 
                                                                         }
-                                                                })}/>
+                                                                })} key={1}/>
             ]
     )
 }

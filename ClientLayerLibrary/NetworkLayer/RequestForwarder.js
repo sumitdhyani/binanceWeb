@@ -13,6 +13,7 @@ function subscribe(symbol, exchange){
     }
 
     subscriptionBook.add(key)
+    console.log(`Forwarded subscrition for:${key}`)
     sock.emit('subscribe', symbol, exchange)
 }
 
@@ -23,6 +24,7 @@ function unsubscribe(symbol, exchange){
     }
     
     subscriptionBook.delete(key)
+    console.log(`Forwarded unsubscrition for:${key}`)
     sock.emit('unsubscribe', symbol, exchange)
 }
 
@@ -81,19 +83,19 @@ function connect(serverAddress, callback, logger){//Server address <ip>:<port>
     })
 
     sock.on('subscriptionSuccess', (symbol)=>{
-        logger.debug(`subscriptionSuccess for: ${symbol}`)
+        logger.debug(`Forwarded subscriptionSuccess for: ${symbol}`)
     })
 
     sock.on('subscriptionFailure', (symbol, reason)=>{
-        logger.warn(`subscriptionFailure for: ${symbol}, reason: ${reason}`)
+        logger.warn(`Forwarded subscriptionFailure for: ${symbol}, reason: ${reason}`)
     })
 
     sock.on('unsubscriptionSuccess', (symbol)=>{
-        logger.debug(`unsubscriptionSuccess for: ${symbol}`)
+        logger.debug(`Forwarded unsubscriptionSuccess for: ${symbol}`)
     })
 
     sock.on('unsubscriptionFailure', (symbol, reason)=>{
-        logger.warn(`unsubscriptionFailure for: ${symbol}, reason: ${reason}`)
+        logger.warn(`Forwarded unsubscriptionFailure for: ${symbol}, reason: ${reason}`)
     })
 
     sock.on('virtualSubscriptionSuccess', (asset, currency, bridge)=>{

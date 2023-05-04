@@ -84,8 +84,12 @@ function VerticalTabForVanillaPrices(props){
   })
 
   useEffect(()=>{
+    console.log(`Mounting ${tab.content}`)
     tab.rendering_action(priceCallback)
-    return ()=>{ tab.auto_unsubscribe_action(priceCallback)}
+    return ()=>{ 
+      console.log(`UnMounting ${tab.content}`)
+      tab.auto_unsubscribe_action(priceCallback)
+    }
   },[])
   return (
     <div className="row" key={index}>
@@ -128,10 +132,11 @@ export function EditableDropdownRow(props) {
   console.log(`Tabs: ${tabs}`)
   return (
     <div className="horizontal_tabs">
-        {tabs.map((tab) => <GetWidget {...tab}
+        {tabs.map((tab, index) => <GetWidget {...tab}
                               nameConverter = {nameConverter}
                               widget_id={constants.widget_ids.editable_drop_down}
                               className="horizontal_tab"
+                              key={index}
                            />
                  )
         }
