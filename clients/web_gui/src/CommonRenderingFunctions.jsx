@@ -82,7 +82,7 @@ function VerticalTabForVanillaPrices(props){
     //console.log(`Update received: ${JSON.stringify(update)}`)
     setCurrUpdate(update)
   })
-  
+
   useEffect(()=>{
     tab.rendering_action(priceCallback)
     return ()=>{ tab.auto_unsubscribe_action(priceCallback)}
@@ -91,7 +91,7 @@ function VerticalTabForVanillaPrices(props){
     <div className="row" key={index}>
       <GetWidget className="button" title="-" widget_id={constants.widget_ids.button} onClick={()=>tab.user_unsubscribe_action(priceCallback)}/>
       <GetWidget className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
-      <tab className="tab">{tab.content} {"=>"} {currUpdate? [currUpdate.bids[0][0], "|", currUpdate.bids[0][1],  "<==>", currUpdate.asks[0][0], "|", currUpdate.asks[0][1]] : ""}</tab>
+      <h4 className="tab">{tab.content} {"=>"} {currUpdate? [currUpdate.bids[0][0], "|", currUpdate.bids[0][1],  "<==>", currUpdate.asks[0][0], "|", currUpdate.asks[0][1]] : ""}</h4>
     </div>
   )
 
@@ -101,27 +101,10 @@ export function VerticalTabsForVanillaPrices(props) {
   const tabs = props.tabs
   return (
     <div className="container">
-      {tabs.map((tab, index) => <VerticalTabForVanillaPrices tab={tab} index={index}/>)}
+      {tabs.map((tab, index) => <VerticalTabForVanillaPrices tab={tab} index={index} key={index}/>)}
     </div>
   );
 }
-
-// export function VerticalTabsForVanillaPrices(props) {
-//   const tabs = props.tabs
-//   return (
-//     <div className="container">
-//       {tabs.map((tab, index) => (
-//         <div className="row" key={index}>
-//           <GetWidget {...props} className="button" title="-" widget_id={constants.widget_ids.button}/>
-//           <GetWidget {...props} className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
-//           <tab className="tab" on>{tab.content}</tab>
-//         </div>
-//       ))}
-//     </div>
-//   );
-// }
-
-
 
 export function SearchBoxRow(props) {
   const tabs = props.tabs
