@@ -35,7 +35,6 @@ class Operational extends State{
     on_user_unsubscribe(clientCallback){
         if(true){
             this.subscriptionFunctions.unsubscribe(...this.params, this.updateFunc)
-            this.cache.delete(this.key)
         }else{
             throw {message : "Unrecognized callback!"}
         }
