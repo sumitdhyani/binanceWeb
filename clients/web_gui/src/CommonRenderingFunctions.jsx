@@ -1,7 +1,7 @@
 
 import './App.css'
 import constants from './Constants';
-import { useState, React, useEffect, useCallback } from 'react';
+import { useState, React, useEffect, useCallback, useRef } from 'react';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 
@@ -78,22 +78,22 @@ export function HorizontalTabs(props) {
 function VerticalTabForVanillaPrices(props){
   const [currUpdate, setCurrUpdate] = useState(null)
   const [tab, index] = [props.tab, props.index]
-  const priceCallback = useCallback((update)=>{
+  const priceCallback = useRef((update)=>{
     //console.log(`Update received: ${JSON.stringify(update)}`)
     setCurrUpdate(update)
   })
 
   useEffect(()=>{
     console.log(`Mounting ${tab.content}`)
-    tab.rendering_action(priceCallback)
+    tab.rendering_action(priceCallback.current)
     return ()=>{ 
       console.log(`UnMounting ${tab.content}`)
-      tab.auto_unsubscribe_action(priceCallback)
+      tab.auto_unsubscribe_action(priceCallback.current)
     }
   },[])
   return (
-    <div className="row" key={index}>
-      <GetWidget className="button" title="-" widget_id={constants.widget_ids.button} onClick={()=>tab.user_unsubscribe_action(priceCallback)}/>
+    <div className="row">
+      <GetWidget className="button" title="-" widget_id={constants.widget_ids.button} onClick={()=>tab.user_unsubscribe_action(priceCallback.current)}/>
       <GetWidget className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
       <h4 className="tab">{tab.content} {"=>"} {currUpdate? [currUpdate.bids[0][0], "|", currUpdate.bids[0][1],  "<==>", currUpdate.asks[0][0], "|", currUpdate.asks[0][1]] : ""}</h4>
     </div>

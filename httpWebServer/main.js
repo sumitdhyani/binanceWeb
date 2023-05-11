@@ -92,7 +92,7 @@ async function mainLoop(logger){
             then(()=>{
                 subscriptions.add(key)
                 logger.info(`Acknowledging Subscription successsful for ${key}`)
-                acknowledge({successs : true})
+                acknowledge({success : true})
             }).
             catch((err)=>{
                 const reason = (err instanceof DuplicateSubscription)?
@@ -100,7 +100,7 @@ async function mainLoop(logger){
                                (err instanceof InvalidSymbol)?
                                `Invalid symbol: ${key}` : ""
                 logger.warn(`Acknowledging Subscription failure for ${key}, reason: ${reason}`)
-                acknowledge({successs : false, reason : reason})
+                acknowledge({success : false, reason : reason})
             })
         })
 
@@ -111,13 +111,13 @@ async function mainLoop(logger){
             then(()=>{
                 subscriptions.delete(key)
                 logger.info(`Acknowledging unsubscription successsful for ${key}`)
-                acknowledge({successs : true})
+                acknowledge({success : true})
             }).
             catch((err)=>{
                 const reason = (err instanceof SpuriousUnsubscription)?
                                `The symbol ${key} currently not subscribed for this client` : ""
                 logger.warn(`Acknowledging unsubscription failure for ${key}, reason: ${reason}`)
-                acknowledge({successs : false, reason : reason})
+                acknowledge({success : false, reason : reason})
             })
         })
     })
