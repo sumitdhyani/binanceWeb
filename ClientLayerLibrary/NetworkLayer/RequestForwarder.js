@@ -7,13 +7,28 @@ subscriptionBook = new Set()
 let disconnectionHandler = null
 let requestSerializer = null
 
+class RequestSerializers{
+    constructor(){
+        this.serializers = new Map()
+    }
+
+    requestToSend(key, sock, event, ack, ...data){
+        let serializer = this.serializers.get(key)
+        if(undefined == serializer) {
+            serializer = new RequestSerializer()
+            this.serializers.set(key, serializer)
+        }
+        serializer.requestToSend(sock, event, ack, ...data)
+    }
+}
+
 function subscribe(symbol, exchange){
     const key = JSON.stringify([symbol, exchange])
     if(subscriptionBook.has(key)){
         throw new appSpecificErrors.DuplicateSubscription(`Duplicate subscription for ${key}`)
     }
 
-    requestSerializer.requestToSend(sock, 'subscribe', (result)=>{
+    requestSerializer.requestToSend(key, sock, 'subscribe', (result)=>{
         if(result.success) {
             subscriptionBook.add(key)
             logger.warn(`subscriptionSuccess for: ${symbol}`)
@@ -28,7 +43,7 @@ function unsubscribe(symbol, exchange){
     //if(!subscriptionBook.has(key)){
     //    throw new appSpecificErrors.SpuriousUnsubscription()
     //}
-    requestSerializer.requestToSend(sock, 'unsubscribe', (result)=>{
+    requestSerializer.requestToSend(key, sock, 'unsubscribe', (result)=>{
         if(result.success) {
             subscriptionBook.delete(key)
             logger.warn(`unsubscriptionSuccess for: ${symbol}`)
@@ -63,7 +78,7 @@ function disconnect(){
 
 function connect(serverAddress, callback, libLogger){//Server address <ip>:<port>
     logger = libLogger
-    requestSerializer = new RequestSerializer()
+    requestSerializer = new RequestSerializers()
     logger.debug(`Connecting to the server ${serverAddress}`)
     sock = io(serverAddress)
     sock.on('connect', ()=>{
