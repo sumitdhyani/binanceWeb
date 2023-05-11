@@ -309,6 +309,11 @@ module.exports = {
         const kafkFileName = "Kafka_" + appFileName
 
         logger = CommonUtils.createFileLogger("Logs/" + appFileName, enumToWinstomLogLevel(logLevel))
+        //logger = {debug : msg=>console.log(msg),
+        //          info : msg=>console.log(msg),
+        //          warn : msg=>console.log(msg),
+        //          error : msg=>console.log(msg)}
+
         await loadSymbols()
         kafka = new Kafka({
             clientId: apiHandleId,

@@ -1,10 +1,11 @@
 const { io } = require('socket.io-client')
 const appSpecificErrors = require('../../IndependentCommonUtils/appSpecificErrors')
-
+const { RequestSerializer } = require('./RequestSerializer')
 let sock = null
-
+let logger = null
 subscriptionBook = new Set()
 let disconnectionHandler = null
+let requestSerializer = null
 
 function subscribe(symbol, exchange){
     const key = JSON.stringify([symbol, exchange])
@@ -12,32 +13,33 @@ function subscribe(symbol, exchange){
         throw new appSpecificErrors.DuplicateSubscription(`Duplicate subscription for ${key}`)
     }
 
-    subscriptionBook.add(key)
-    console.log(`Forwarded subscrition for:${key}`)
-    sock.emit('subscribe', symbol, exchange)
+    requestSerializer.requestToSend(sock, 'subscribe', (result)=>{
+        if(result.success) {
+            subscriptionBook.add(key)
+            logger.warn(`subscriptionSuccess for: ${symbol}`)
+        }else {
+            logger.warn(`subscriptionFailure for: ${symbol}, reason: ${result.reason}`)
+        }
+    }, symbol, exchange)
 }
 
 function unsubscribe(symbol, exchange){
     const key = JSON.stringify([symbol, exchange])
-    if(!subscriptionBook.has(key)){
-        throw new appSpecificErrors.SpuriousUnsubscription()
-    }
-    
-    subscriptionBook.delete(key)
-    console.log(`Forwarded unsubscrition for:${key}`)
-    sock.emit('unsubscribe', symbol, exchange)
-}
-
-function subscribeVirtual(asset, currency, bridge, exchange){
-    sock.emit('subscribeVirtual', asset, currency, bridge)
-}
-
-function unsubscribeVirtual(asset, currency, bridge, exchange){
-    sock.emit('unsubscribeVirtual', asset, currency, bridge)
+    //if(!subscriptionBook.has(key)){
+    //    throw new appSpecificErrors.SpuriousUnsubscription()
+    //}
+    requestSerializer.requestToSend(sock, 'unsubscribe', (result)=>{
+        if(result.success) {
+            subscriptionBook.delete(key)
+            logger.warn(`unsubscriptionSuccess for: ${symbol}`)
+        }else {
+            logger.warn(`unsubscriptionFailure for: ${symbol}, reason: ${result.reason}`)
+        }
+    }, symbol, exchange)
 }
 
 function forward(intent){
-    let action = intent.action
+    const action = intent.action
     if(0 == action.localeCompare("subscribe")){
         forwardSubscription(intent)
     }
@@ -59,7 +61,9 @@ function forwardUnsubscription(subscription){
 function disconnect(){
 }
 
-function connect(serverAddress, callback, logger){//Server address <ip>:<port>
+function connect(serverAddress, callback, libLogger){//Server address <ip>:<port>
+    logger = libLogger
+    requestSerializer = new RequestSerializer()
     logger.debug(`Connecting to the server ${serverAddress}`)
     sock = io(serverAddress)
     sock.on('connect', ()=>{
@@ -76,42 +80,6 @@ function connect(serverAddress, callback, logger){//Server address <ip>:<port>
 
     sock.on('depth', (depth)=>{
         callback(depth)
-    })
-
-    sock.on('virtualDepth', (depth)=>{
-        logger.debug(`Virtual depth recieved: ${depth}`)
-    })
-
-    sock.on('subscriptionSuccess', (symbol)=>{
-        logger.debug(`Forwarded subscriptionSuccess for: ${symbol}`)
-    })
-
-    sock.on('subscriptionFailure', (symbol, reason)=>{
-        logger.warn(`Forwarded subscriptionFailure for: ${symbol}, reason: ${reason}`)
-    })
-
-    sock.on('unsubscriptionSuccess', (symbol)=>{
-        logger.debug(`Forwarded unsubscriptionSuccess for: ${symbol}`)
-    })
-
-    sock.on('unsubscriptionFailure', (symbol, reason)=>{
-        logger.warn(`Forwarded unsubscriptionFailure for: ${symbol}, reason: ${reason}`)
-    })
-
-    sock.on('virtualSubscriptionSuccess', (asset, currency, bridge)=>{
-        logger.debug(`virtualSubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
-    })
-
-    sock.on('virtualSubscriptionFailure', (asset, currency, bridge, reason)=>{
-        logger.warn(`virtualSubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
-    })
-
-    sock.on('virtualUnsubscriptionSuccess', (asset, currency, bridge)=>{
-        logger.debug(`virtualUnsubscriptionSuccess for: ${asset + "_" + currency + "_" + bridge}`)
-    })
-
-    sock.on('virtualUnsubscriptionFailure', (asset, currency, bridge, reason)=>{
-        logger.warn(`virtualUnsubscriptionFailure for: ${asset + "_" + currency + "_" + bridge}, reason: ${reason}`)
     })
 }
 

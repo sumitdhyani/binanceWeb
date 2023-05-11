@@ -58,16 +58,11 @@ async function mainLoop(logger){
         sendWebserverEvent(WebserverEvents.NewConnection).then(()=>{}).catch((err)=>{
             console.log(`Error whle sending NewConnection event, details: ${err.message}`)
         })
-        //console.log(`New connection, id: ${socket.id}`)
+        
         logger.info(`New connection, id: ${socket.id}`)
         let subscriptions = new Set()
-        let virtualSubscriptions = new Set()
-        const normalPriceCallBack = function(depth){
+        function normalPriceCallBack(depth){
             socket.volatile.emit('depth', depth)
-        }
-
-        const virtualPriceCallBack = function(depth){
-            socket.emit('virtualDepth', depth)
         }
 
         socket.on('disconnect', (reason)=> {
@@ -86,90 +81,43 @@ async function mainLoop(logger){
                     logger.warn(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${key}, details: ${err.message}`)
                 })
             }
-            
-            for(let virtualSymbol of virtualSubscriptions){
-                const [asset, currency, bridge] = disintegrateVirtualTradingPairName(virtualSymbol)
-                subscriptionHandler.unsubscribeVirtual(asset, currency, bridge, virtualPriceCallBack).
-                then(()=>{
-                    logger.debug(`Subscription cancelled for connection id: ${socket.id}, symbol: ${virtualSymbol}, upon disconnection`)
-                }).
-                catch((err)=>{
-                    logger.info(`Error while cleanup on disconnection for connection id: ${socket.id}, symbol: ${virtualSymbol}, details: ${err.message}`)
-                })
-            }
 
             subscriptions.clear()
-            virtualSubscriptions.clear()
         })
 
-        socket.on('subscribe', (symbol, exchange)=> {
-                const key = JSON.stringify([symbol, exchange])
-                subscriptionHandler.subscribe(symbol, exchange, normalPriceCallBack).
-                then(()=>{
-                    socket.emit('subscriptionSuccess', key)
-                    subscriptions.add(key)
-                    logger.debug(`Subscription successsful for connection id: ${socket.id}, symbol: ${key}`)
-                }).
-                catch((err)=>{
-                    if(err instanceof DuplicateSubscription){
-                    logger.warn(`Error for connection id: ${socket.id}, while subscribing ${key}, ${err.message}`)
-                    socket.emit('subscriptionFailure', key, `Duplicate subscription request for symbol: ${key}`)
-                    }
-                    else if(err instanceof InvalidSymbol){
-                        socket.emit('subscriptionFailure', key, `Invalid symbol: ${key}`)
-                    }
-                    logger.warn(`Error while subscription for connection id: ${socket.id}, symbol: ${key}, details: ${err.message}`)
-                })
-        })
-
-        socket.on('unsubscribe', (symbol, exchange)=> {
+        socket.on('subscribe', (symbol, exchange, acknowledge)=>{
             const key = JSON.stringify([symbol, exchange])
+            logger.info(`Received subscription for connection id: ${socket.id}, symbol: ${key}`)
+            subscriptionHandler.subscribe(symbol, exchange, normalPriceCallBack).
+            then(()=>{
+                subscriptions.add(key)
+                logger.info(`Acknowledging Subscription successsful for ${key}`)
+                acknowledge({successs : true})
+            }).
+            catch((err)=>{
+                const reason = (err instanceof DuplicateSubscription)?
+                               `Duplicate subscription request for symbol: ${key}`:
+                               (err instanceof InvalidSymbol)?
+                               `Invalid symbol: ${key}` : ""
+                logger.warn(`Acknowledging Subscription failure for ${key}, reason: ${reason}`)
+                acknowledge({successs : false, reason : reason})
+            })
+        })
+
+        socket.on('unsubscribe',(symbol, exchange, acknowledge)=>{
+            const key = JSON.stringify([symbol, exchange])
+            logger.info(`Received unsubscription for connection id: ${socket.id}, symbol: ${key}`)
             subscriptionHandler.unsubscribe(symbol, exchange, normalPriceCallBack).
             then(()=>{
-                socket.emit('unsubscriptionSuccess', key)
                 subscriptions.delete(key)
-                logger.debug(`Unsubscription successsful for connection id: ${socket.id}, symbol: ${key}`)
+                logger.info(`Acknowledging unsubscription successsful for ${key}`)
+                acknowledge({successs : true})
             }).
             catch((err)=>{
-                if(err instanceof SpuriousUnsubscription){
-                    socket.emit('unsubscriptionFailure', key, `The symbol ${key} currently not subscribed for this client`)
-                }
-                logger.warn(`Error while unsubscription for connection id: ${socket.id}, symbol: ${key}, details: ${err.message}`)
-            })
-        })
-
-        socket.on('subscribeVirtual', (asset, currency, bridge)=> {
-            symbol = createVirtualTradingPairName(asset, currency, bridge)
-            subscriptionHandler.subscribeVirtual(asset, currency, bridge, virtualPriceCallBack).
-            then(()=>{
-                socket.emit('virtualSubscriptionSuccess', asset, currency, bridge)
-                virtualSubscriptions.add(symbol)
-                logger.info(`Subscription successsful for connection id: ${socket.id}, symbol: ${symbol}`)
-            }).
-            catch((err)=>{
-                if(err instanceof DuplicateSubscription){
-                    socket.emit('virtualSubscriptionFailure', asset, currency, bridge, `Duplicate subscription request for symbol: ${symbol}`)
-                }
-                else if(err instanceof InvalidSymbol){
-                    socket.emit('virtualSubscriptionFailure', asset, currency, bridge, `Invalid symbol: ${symbol}`)
-                }
-                logger.warn(`Error while subscription for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
-            })
-        })
-
-        socket.on('unsubscribeVirtual', (asset, currency, bridge)=> {
-            const symbol = createVirtualTradingPairName(asset, currency, bridge)
-            subscriptionHandler.unsubscribeVirtual(asset, currency, bridge, virtualPriceCallBack).
-            then(()=>{
-                socket.emit('virtualUnsubscriptionSuccess', asset, currency, bridge)
-                virtualSubscriptions.delete(symbol)
-                logger.info(`Unsubscription successsful for connection id: ${socket.id}, symbol: ${symbol}`)
-            }).
-            catch((err)=>{
-                if(err instanceof SpuriousUnsubscription){
-                    socket.emit('virtualUnsubscriptionFailure', asset, currency, bridge, `The symbol ${symbol} currently not subscribed for this client`)
-                }
-                logger.info(`Error while unsubscription for connection id: ${socket.id}, symbol: ${symbol}, details: ${err.message}`)
+                const reason = (err instanceof SpuriousUnsubscription)?
+                               `The symbol ${key} currently not subscribed for this client` : ""
+                logger.warn(`Acknowledging unsubscription failure for ${key}, reason: ${reason}`)
+                acknowledge({successs : false, reason : reason})
             })
         })
     })
