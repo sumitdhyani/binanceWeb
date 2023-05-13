@@ -35,7 +35,11 @@ function VanillaPricesTab(props){
                                             console.log(`Old Cache: ${JSON.stringify([...prev.keys()])}`)
                                             if(key && undefined === prev.get(key)){
                                                 console.log(`Select Changed Handler, value: ${key}`)
-                                                subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
+                                                try{
+                                                    subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
+                                                } catch (err) {
+                                                    console.log(`Error handled on subscription, caught, details : ${err.message}`)
+                                                }
                                                 console.log(`Old Cache: ${JSON.stringify([...prev.keys()])}`)
                                                 return new Map([...prev, [key, null]])
                                             } else {
