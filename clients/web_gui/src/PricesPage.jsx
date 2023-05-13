@@ -1,55 +1,88 @@
 import './App.css'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { HorizontalTabs, VerticalTabsForVanillaPrices, SearchBoxRow, EditableDropdownRow} from './CommonRenderingFunctions'
 import constants from './Constants'
 import CacheItemFsm from './CacheItemStateMachine'
 function VanillaPricesTab(props){
     const context = props.context
-    if(undefined === context.cache){
-        context.cache = new Set()
-    }
-    const cache = context.cache
     const subscription_functions = context.subscription_functions
 
     const symbol_dict = context.symbol_dict
-    const [updateCount, setUpdateCount] = useState(0)
+    const [cache, setCache] = useState(()=>{
+        console.log("Resetting")
+        const existingCache = context.cache
+        const initCache = new Map()
+        if (undefined !== existingCache) {
+            existingCache.forEach(key=> initCache.set(key, null))
+        }
+        return initCache
+    })
+
+    const priceCallback = useRef((update)=>{
+        //console.log(`Update received: ${JSON.stringify(update.key)}`)
+        setCache(prev => {
+            //console.log(`Old Cache: ${JSON.stringify([...prev.keys()])}`)
+            const ret = new Map([...prev, [update.key, update]])
+            //console.log(`Now Cache: ${JSON.stringify([...ret.keys()])}`)
+            return ret
+        })
+    })
    
-    return (
-            [<EditableDropdownRow   tabs={[ {   title : "search",
-                                                options : [...symbol_dict.keys()],
-                                                onOptionSelected : (evt, value) => {
-                                                   if(value && !cache.has(value)){
-                                                        console.log(`Select Changed Handler, value: ${value}`)
-                                                        cache.add(value)
-                                                        setUpdateCount(prev=>prev + 1)
-                                                   }
-                                                }
+    const tabsForDropDownRow = useRef([ {  title : "search",
+                                    options : [...symbol_dict.keys()],
+                                    onOptionSelected : (evt, key) => {
+                                        setCache(prev=>{
+                                            console.log(`Old Cache: ${JSON.stringify([...prev.keys()])}`)
+                                            if(key && undefined === prev.get(key)){
+                                                console.log(`Select Changed Handler, value: ${key}`)
+                                                subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
+                                                console.log(`Old Cache: ${JSON.stringify([...prev.keys()])}`)
+                                                return new Map([...prev, [key, null]])
+                                            } else {
+                                                return prev
                                             }
-                                          ]
-                                         }
+                                        })
+                                    }
+                                  }
+                                ])
+    useEffect(()=>{
+        console.log("Mounting")
+        setCache(prev=>{
+            const arr = [...prev.keys()]
+            arr.forEach(key=>{
+                subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
+            })
+            return prev
+        })
+
+        return ()=>{
+            console.log("UnMounting")
+            setCache(prev=>{
+                const arr = [...prev.keys()]
+                arr.forEach(key=>{
+                    subscription_functions.unsubscribe(...JSON.parse(key), priceCallback.current)
+                })
+                context.cache = arr
+                return prev
+            })
+        }
+    },[])
+
+    return (
+            [<EditableDropdownRow   tabs={tabsForDropDownRow.current}
                                     nameConverter = { key=> JSON.parse(key)[0] }
                                     key={0}
              />,
-             <VerticalTabsForVanillaPrices tabs={[...cache].map(key=> {
-                                                                    return {title1 : "unsubscribe", 
-                                                                            title2 : "expand",
-                                                                            content : symbol_dict.get(key).description,
-                                                                            rendering_action : (callback)=>{
-                                                                                console.log(`rendering_action action for ${key}, callback: ${callback}`)
-                                                                                subscription_functions.subscribe(...JSON.parse(key), callback)
+             <VerticalTabsForVanillaPrices tabs={[...cache.keys()].map(key=> {
+                                                                    return {symbol : symbol_dict.get(key).description,
+                                                                            update : cache.get(key),
+                                                                            user_unsubscribe_action : ()=>{
+                                                                                subscription_functions.unsubscribe(...JSON.parse(key), priceCallback.current)
+                                                                                setCache(existing=>{
+                                                                                    existing.delete(key)
+                                                                                    return new Map(existing)
+                                                                                })
                                                                             },
-                                                                            user_unsubscribe_action : (callback)=>{
-                                                                                console.log(`user_unsubscribe_action action for ${key}, callback: ${callback}`)
-                                                                                subscription_functions.unsubscribe(...JSON.parse(key), callback)
-                                                                                cache.delete(key)
-                                                                                setUpdateCount(prev=>prev+1)
-                                                                            },
-                                                                            auto_unsubscribe_action : (callback)=>{
-                                                                                if(cache.has(key)){
-                                                                                    subscription_functions.unsubscribe(...JSON.parse(key), callback)
-                                                                                }
-                                                                            }
-
                                                                         }
                                                                 })} key={1}/>
             ]

@@ -1,7 +1,7 @@
 
 import './App.css'
 import constants from './Constants';
-import { useState, React, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef} from 'react';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 
@@ -35,7 +35,8 @@ function EditableDropdown(props) {
     <Autocomplete
       className={className}
       options={options}
-      onChange={(evt, value)=>{ 
+      onChange={(evt, value)=>{
+        evt.preventDefault()
         console.log(`Option selected: ${value}`)
         onOptionSelected(evt, value)
       }}
@@ -75,37 +76,22 @@ export function HorizontalTabs(props) {
     );
 }
 
-function VerticalTabForVanillaPrices(props){
-  const [currUpdate, setCurrUpdate] = useState(null)
-  const [tab, index] = [props.tab, props.index]
-  const priceCallback = useRef((update)=>{
-    //console.log(`Update received: ${JSON.stringify(update)}`)
-    setCurrUpdate(update)
-  })
-
-  useEffect(()=>{
-    console.log(`Mounting ${tab.content}`)
-    tab.rendering_action(priceCallback.current)
-    return ()=>{ 
-      console.log(`UnMounting ${tab.content}`)
-      tab.auto_unsubscribe_action(priceCallback.current)
-    }
-  },[])
+const VerticalTabForVanillaPrices = React.memo((props)=>{
+  const tab = props.tab
   return (
     <div className="row">
-      <GetWidget className="button" title="-" widget_id={constants.widget_ids.button} onClick={()=>tab.user_unsubscribe_action(priceCallback.current)}/>
+      <GetWidget className="button" title="-" widget_id={constants.widget_ids.button} onClick={()=>tab.user_unsubscribe_action()}/>
       <GetWidget className="button" title="&#9660;" widget_id={constants.widget_ids.button}/>
-      <h4 className="tab">{tab.content} {"=>"} {currUpdate? [currUpdate.bids[0][0], "|", currUpdate.bids[0][1],  "<==>", currUpdate.asks[0][0], "|", currUpdate.asks[0][1]] : ""}</h4>
+      <h4 className="tab">{tab.symbol} {"=>"} {tab.update? [tab.update.bids[0][0], "|", tab.update.bids[0][1],  "<==>", tab.update.asks[0][0], "|", tab.update.asks[0][1]] : ""}</h4>
     </div>
   )
-
-}
+});
 
 export function VerticalTabsForVanillaPrices(props) {
   const tabs = props.tabs
   return (
     <div className="container">
-      {tabs.map((tab, index) => <VerticalTabForVanillaPrices tab={tab} index={index} key={index}/>)}
+      {tabs.map((tab, index) => <VerticalTabForVanillaPrices tab={tab} key={index} index={index}/>)}
     </div>
   );
 }
@@ -125,11 +111,11 @@ export function SearchBoxRow(props) {
   )
 }
 
-export function EditableDropdownRow(props) {
+const EditableDropdownRow = React.memo((props)=> {
   const tabs = props.tabs
   const nameConverter = props.nameConverter
 
-  console.log(`Tabs: ${tabs}`)
+  //console.log(`Tabs: ${tabs}`)
   return (
     <div className="horizontal_tabs">
         {tabs.map((tab, index) => <GetWidget {...tab}
@@ -142,4 +128,6 @@ export function EditableDropdownRow(props) {
         }
     </div>
   )
-}
+});
+
+export {EditableDropdownRow}

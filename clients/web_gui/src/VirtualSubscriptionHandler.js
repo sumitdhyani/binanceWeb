@@ -100,6 +100,7 @@ class VirtualSubscriptionHandler
                                                                currency : currency,
                                                                bridge : bridge,
                                                                exchange : exchange,
+                                                               key : JSON.stringify([asset, currency, bridge, exchange]),
                                                                exchange_side_asset_symbol : exchange_side_asset_symbol,
                                                                exchange_side_currency_symbol : exchange_side_currency_symbol},
                                                                this.logger,
