@@ -15,8 +15,8 @@ function App() {
 
   useEffect(()=>{
     logger.warn(`Initializing the library`)
-    //init({auth_server : "http://206.81.18.17:90", credentials : {user : "test_user", password : "test_pwd"}},
-    init({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}},
+    init({auth_server : "http://206.81.18.17:90", credentials : {user : "test_user", password : "test_pwd"}},
+    //init({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}},
          logger,
          (symbolDict)=>{
           logger.warn(`Downloaded symbols`)
@@ -46,13 +46,36 @@ function App() {
     })
   }
 
+  let nativeAssetList = new Map()
+  let nativeCurrencyList = new Map()
+  
+  instrumentStore.forEach((instrument , key)=>{
+    const exchange = instrument.exchange
+    let assetListForThisExchange = nativeAssetList.get(exchange)
+    let currencyListForThisExchange = nativeCurrencyList.get(exchange)
+    if(undefined === assetListForThisExchange){
+      assetListForThisExchange = new Set()
+      nativeAssetList.set(exchange, assetListForThisExchange)
+    }
 
-    console.log(`render Cycle, libraryInitialized : ${libraryInitialized}`)
-    if(libraryInitialized){
-      const context = { symbol_dict : instrumentStore,
-                        subscription_functions : {subscribe : subscribe, unsubscribe : unsubscribe},
-                        virtual_subscription_functions : {subscribe : subscribeVirtual, unsubscribe : unsubscribeVirtual}
-                      }
+    if(undefined === currencyListForThisExchange){
+      currencyListForThisExchange = new Set()
+      nativeCurrencyList.set(exchange, currencyListForThisExchange)
+    }
+
+    assetListForThisExchange.add(instrument.baseAsset)
+    currencyListForThisExchange.add(instrument.quoteAsset)
+  })
+
+  console.log(`render Cycle, libraryInitialized : ${libraryInitialized}`)
+  if(libraryInitialized){
+    const context = { symbol_dict : instrumentStore,
+                      subscription_functions : {subscribe : subscribe, unsubscribe : unsubscribe},
+                      virtual_subscription_functions : {subscribe : subscribeVirtual, unsubscribe : unsubscribeVirtual},
+                      native_assets : nativeAssetList,
+                      native_currencies : nativeCurrencyList,
+                      exchanges : ["BINANCE"]
+                    }
     return (
       <Visual context={context}/>
     );
