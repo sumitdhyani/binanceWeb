@@ -96,6 +96,25 @@ export function VerticalTabsForVanillaPrices(props) {
   );
 }
 
+const VerticalTabForCrossPrices = React.memo((props)=>{
+  const tab = props.tab
+  return (
+    <div className="row">
+      <GetWidget className="button" title="-" widget_id={constants.widget_ids.button} onClick={()=>tab.user_unsubscribe_action()}/>
+      <h4 className="tab">{tab.symbol} {"=>"} {tab.update? [tab.update.bids[0][0], "|", tab.update.bids[0][1],  "<==>", tab.update.asks[0][0], "|", tab.update.asks[0][1]] : ""}</h4>
+    </div>
+  )
+});
+
+export function VerticalTabsForCrossPrices(props) {
+  const tabs = props.tabs
+  return (
+    <div className="container">
+      {tabs.map((tab, index) => <VerticalTabForCrossPrices tab={tab} key={index} index={index}/>)}
+    </div>
+  );
+}
+
 export function SearchBoxRow(props) {
   const tabs = props.tabs
   //console.log(`Tabs: ${tabs}`)
