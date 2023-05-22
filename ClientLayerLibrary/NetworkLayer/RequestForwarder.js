@@ -24,9 +24,9 @@ class RequestSerializers{
 
 function subscribe(symbol, exchange){
     const key = JSON.stringify([symbol, exchange])
-    if(subscriptionBook.has(key)){
-        throw new appSpecificErrors.DuplicateSubscription(`Duplicate subscription for ${key}`)
-    }
+    //if(subscriptionBook.has(key)){
+    //    throw new appSpecificErrors.DuplicateSubscription(`Duplicate subscription for ${key}`)
+    //}
 
     requestSerializer.requestToSend(key, sock, 'subscribe', (result)=>{
         if(result.success) {
