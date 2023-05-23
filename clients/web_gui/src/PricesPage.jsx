@@ -2,7 +2,6 @@ import './App.css'
 import { useState, useEffect, useRef } from 'react'
 import { HorizontalTabs, VerticalTabsForVanillaPrices, SearchBoxRow, EditableDropdownRow} from './CommonRenderingFunctions'
 import constants from './Constants'
-import CacheItemFsm from './CacheItemStateMachine'
 function VanillaPricesTab(props){
     const context = props.context
     const subscription_functions = context.subscription_functions
