@@ -123,6 +123,10 @@ function CrossPricesTabs(props){
         })
     })
 
+    const nameConverter = key=> {
+        const [symbol, exchange] = JSON.parse(key)
+        return `${symbol} (${exchange})`
+    }
     const elementsForDropDownRow = useRef([ 
                                             {   widget_id : constants.widget_ids.editable_drop_down,
                                                 title : "Asset Side",
@@ -131,7 +135,8 @@ function CrossPricesTabs(props){
                                                     if(key) {
                                                         assetSide = symbol_dict.get(key)
                                                     }
-                                                }
+                                                },
+                                                nameConverter : nameConverter
                                             },
                                             
                                             {   widget_id : constants.widget_ids.editable_drop_down,
@@ -141,11 +146,11 @@ function CrossPricesTabs(props){
                                                     if (key) {
                                                         currencySide = symbol_dict.get(key)
                                                     }
-                                                }
+                                                },
+                                                nameConverter : nameConverter
                                             },
 
-                                            {   
-                                                widget_id : constants.widget_ids.button,
+                                            {   widget_id : constants.widget_ids.button,
                                                 title : "Select",
                                                 onClick : ()=>{
                                                     if (!(assetSide && currencySide)) {
@@ -201,7 +206,6 @@ function CrossPricesTabs(props){
 
     return (
             [<HorizontalTabs    tabs={elementsForDropDownRow.current}
-                                nameConverter = { key=> key }
                                 key={0}
              />,
              <VerticalTabsForVanillaPrices  tabs={[...cache.keys()].map(key=> {
