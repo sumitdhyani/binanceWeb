@@ -5,66 +5,52 @@ import constants from './Constants'
 function VanillaPricesTab(props){
     const context = props.context
     const subscription_functions = context.subscription_functions
+    const [updateCount, setUpdateCount] = useState(0)
 
     const symbol_dict = context.symbol_dict
-    const [cache, setCache] = useState(()=>{
-        console.log("Resetting")
-        const existingCache = context.cache
-        const initCache = new Map()
-        if (undefined !== existingCache) {
-            existingCache.forEach(key=> initCache.set(key, null))
-        }
-        return initCache
-    })
-
+    
+    const cache = useRef( (undefined !== context.cache)? new Map(context.cache.map(key=>[key, null])) : new Map() )
     const priceCallback = useRef((update)=>{
-        //console.log(`Update received: ${JSON.stringify(update.key)}`)
-        setCache(prev => {
-            return new Map([...prev, [update.key, update]])
-        })
+        //console.log(`Update received: ${JSON.stringify(update)}`)
+        cache.current.set(update.key, update)
+        setUpdateCount(prev=>prev+1)
     })
    
     const tabsForDropDownRow = useRef([ {  title : "search",
                                     options : [...symbol_dict.keys()],
                                     onOptionSelected : (evt, key) => {
-                                        setCache(prev=>{
-                                            console.log(`Old Cache: ${JSON.stringify([...prev.keys()])}`)
-                                            if(key && undefined === prev.get(key)){
-                                                console.log(`Select Changed Handler, value: ${key}`)
-                                                try{
-                                                    subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
-                                                } catch (err) {
-                                                    console.log(`Error handled on subscription, caught, details : ${err.message}`)
-                                                }
-                                                console.log(`Old Cache: ${JSON.stringify([...prev.keys()])}`)
-                                                return new Map([...prev, [key, null]])
-                                            } else {
-                                                return prev
+                                        const currCache = cache.current
+                                        console.log(`Old Cache: ${JSON.stringify([...currCache.keys()])}`)
+                                        if (key && undefined === currCache.get(key)) {
+                                            console.log(`Select Changed Handler, value: ${key}`)
+                                            try{
+                                                subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
+                                            } catch (err) {
+                                                console.log(`Error handled on subscription, caught, details : ${err.message}`)
                                             }
-                                        })
+                                            console.log(`Old Cache: ${JSON.stringify([...currCache.keys()])}`)
+                                            currCache.set(key, null)
+                                            setUpdateCount(prev=>prev+1)
+                                        }
                                     }
                                   }
                                 ])
     useEffect(()=>{
         console.log("Mounting")
-        setCache(prev=>{
-            const arr = [...prev.keys()]
-            arr.forEach(key=>{
-                subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
-            })
-            return prev
+        const arr = [...cache.current.keys()]
+        arr.forEach(key=>{
+            subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
         })
 
+        const cacheInTheEnd = cache.current
+        const callbackToBeRemoved = priceCallback.current
         return ()=>{
             console.log("UnMounting")
-            setCache(prev=>{
-                const arr = [...prev.keys()]
-                arr.forEach(key=>{
-                    subscription_functions.unsubscribe(...JSON.parse(key), priceCallback.current)
-                })
-                context.cache = arr
-                return prev
+            const arr = [...cacheInTheEnd.keys()]
+            arr.forEach(key=>{
+                subscription_functions.unsubscribe(...JSON.parse(key), callbackToBeRemoved)
             })
+            context.cache = arr
         }
     },[])
 
@@ -76,15 +62,14 @@ function VanillaPricesTab(props){
                                                     }}
                                     key={0}
              />,
-             <VerticalTabsForVanillaPrices tabs={[...cache.keys()].map(key=> {
+             <VerticalTabsForVanillaPrices tabs={[...cache.current.keys()].map(key=> {
                                                                     return {symbol : symbol_dict.get(key).description,
-                                                                            update : cache.get(key),
+                                                                            update : cache.current.get(key),
                                                                             user_unsubscribe_action : ()=>{
+                                                                                const currCache = cache.current
                                                                                 subscription_functions.unsubscribe(...JSON.parse(key), priceCallback.current)
-                                                                                setCache(existing=>{
-                                                                                    existing.delete(key)
-                                                                                    return new Map(existing)
-                                                                                })
+                                                                                currCache.delete(key)
+                                                                                setUpdateCount(prev=>prev+1)
                                                                             },
                                                                         }
                                                                 })} key={1}/>

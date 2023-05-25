@@ -1,12 +1,13 @@
 const { io } = require('socket.io-client')
 const appSpecificErrors = require('../../IndependentCommonUtils/appSpecificErrors')
 const { RequestSerializer } = require('./RequestSerializer')
+const { ActionAntiAction } = require('./ActionAntiAction')
 let sock = null
 let logger = null
 subscriptionBook = new Set()
 let disconnectionHandler = null
 let requestSerializer = null
-
+let actionAntiAction = null
 class RequestSerializers{
     constructor(){
         this.serializers = new Map()
@@ -28,14 +29,16 @@ function subscribe(symbol, exchange){
     //    throw new appSpecificErrors.DuplicateSubscription(`Duplicate subscription for ${key}`)
     //}
 
-    requestSerializer.requestToSend(key, sock, 'subscribe', (result)=>{
-        if(result.success) {
-            subscriptionBook.add(key)
-            logger.warn(`subscriptionSuccess for: ${symbol}`)
-        }else {
-            logger.warn(`subscriptionFailure for: ${symbol}, reason: ${result.reason}`)
-        }
-    }, symbol, exchange)
+    actionAntiAction.antiAct(key, ()=>{
+        requestSerializer.requestToSend(key, sock, 'subscribe', (result)=>{
+            if(result.success) {
+                subscriptionBook.add(key)
+                logger.warn(`subscriptionSuccess for: ${key}`)
+            }else {
+                logger.warn(`subscriptionFailure for: ${key}, reason: ${result.reason}`)
+            }
+        }, symbol, exchange)
+    })
 }
 
 function unsubscribe(symbol, exchange){
@@ -43,14 +46,16 @@ function unsubscribe(symbol, exchange){
     //if(!subscriptionBook.has(key)){
     //    throw new appSpecificErrors.SpuriousUnsubscription()
     //}
-    requestSerializer.requestToSend(key, sock, 'unsubscribe', (result)=>{
-        if(result.success) {
-            subscriptionBook.delete(key)
-            logger.warn(`unsubscriptionSuccess for: ${symbol}`)
-        }else {
-            logger.warn(`unsubscriptionFailure for: ${symbol}, reason: ${result.reason}`)
-        }
-    }, symbol, exchange)
+    actionAntiAction.act(key, 10000, ()=>{
+        requestSerializer.requestToSend(key, sock, 'unsubscribe', (result)=>{
+            if(result.success) {
+                subscriptionBook.delete(key)
+                logger.warn(`unsubscriptionSuccess for: ${key}`)
+            }else {
+                logger.warn(`unsubscriptionFailure for: ${key}, reason: ${result.reason}`)
+            }
+        }, symbol, exchange)
+    })
 }
 
 function forward(intent){
@@ -77,6 +82,7 @@ function disconnect(){
 }
 
 function connect(serverAddress, callback, libLogger){//Server address <ip>:<port>
+    actionAntiAction = new ActionAntiAction() 
     logger = libLogger
     requestSerializer = new RequestSerializers()
     logger.debug(`Connecting to the server ${serverAddress}`)
