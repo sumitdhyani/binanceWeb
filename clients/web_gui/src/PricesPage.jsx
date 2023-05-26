@@ -1,5 +1,5 @@
 import './App.css'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { HorizontalTabs, VerticalTabsForVanillaPrices, SearchBoxRow, EditableDropdownRow} from './CommonRenderingFunctions'
 import constants from './Constants'
 function VanillaPricesTab(props){
@@ -10,11 +10,11 @@ function VanillaPricesTab(props){
     const symbol_dict = context.symbol_dict
     
     const cache = useRef( (undefined !== context.cache)? new Map(context.cache.map(key=>[key, null])) : new Map() )
-    const priceCallback = useRef((update)=>{
+    const priceCallback = useCallback((update)=>{
         //console.log(`Update received: ${JSON.stringify(update)}`)
         cache.current.set(update.key, update)
         setUpdateCount(prev=>prev+1)
-    })
+    },[])
    
     const tabsForDropDownRow = useRef([ {  title : "search",
                                     options : [...symbol_dict.keys()],
@@ -24,7 +24,7 @@ function VanillaPricesTab(props){
                                         if (key && undefined === currCache.get(key)) {
                                             console.log(`Select Changed Handler, value: ${key}`)
                                             try{
-                                                subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
+                                                subscription_functions.subscribe(...JSON.parse(key), priceCallback)
                                             } catch (err) {
                                                 console.log(`Error handled on subscription, caught, details : ${err.message}`)
                                             }
@@ -39,11 +39,11 @@ function VanillaPricesTab(props){
         console.log("Mounting")
         const arr = [...cache.current.keys()]
         arr.forEach(key=>{
-            subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
+            subscription_functions.subscribe(...JSON.parse(key), priceCallback)
         })
 
         const cacheInTheEnd = cache.current
-        const callbackToBeRemoved = priceCallback.current
+        const callbackToBeRemoved = priceCallback
         return ()=>{
             console.log("UnMounting")
             const arr = [...cacheInTheEnd.keys()]
@@ -67,7 +67,7 @@ function VanillaPricesTab(props){
                                                                             update : cache.current.get(key),
                                                                             user_unsubscribe_action : ()=>{
                                                                                 const currCache = cache.current
-                                                                                subscription_functions.unsubscribe(...JSON.parse(key), priceCallback.current)
+                                                                                subscription_functions.unsubscribe(...JSON.parse(key), priceCallback)
                                                                                 currCache.delete(key)
                                                                                 setUpdateCount(prev=>prev+1)
                                                                             },
@@ -75,10 +75,6 @@ function VanillaPricesTab(props){
                                                                 })} key={1}/>
             ]
     )
-}
-
-function CrossPricesTab(props){
-    return <h1>CrossPricesTab</h1>
 }
 
 function CrossPricesTabs(props){
