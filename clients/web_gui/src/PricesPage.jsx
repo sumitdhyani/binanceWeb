@@ -84,28 +84,18 @@ function CrossPricesTab(props){
 function CrossPricesTabs(props){
     const context = props.context
     const subscription_functions = context.subscription_functions
-    const exchanges = context.exchanges
-    const nativeAssets = context.native_assets
-    const nativeCurrencies = context.native_currencies
     const symbol_dict = context.symbol_dict
 
-    const [cache, setCache] = useState(()=>{
-        const existingCache = context.cache
-        const initCache = new Map()
-        if (undefined !== existingCache) {
-            existingCache.forEach(key=> initCache.set(key, null))
-        }
-        return initCache
+    const [updateCount, setUpdateCount] = useState(0)
+    const cache = useRef( (undefined !== context.cache)? new Map(context.cache.map(key=>[key, null])) : new Map() )
+    const priceCallback = useRef((update)=>{
+        //console.log(`Update received: ${JSON.stringify(update)}`)
+        cache.current.set(update.key, update)
+        setUpdateCount(prev=>prev+1)
     })
 
     let assetSideAndCurrencySide = useRef([null, null])
     let [assetSide, currencySide] = assetSideAndCurrencySide.current
-
-    const priceCallback = useRef((update)=>{
-        setCache(prev => {
-            return new Map([...prev, [update.key, update]])
-        })
-    })
 
     const nameConverter = key=> {
         const [symbol, exchange] = JSON.parse(key)
@@ -144,47 +134,38 @@ function CrossPricesTabs(props){
                                                     } else if (assetSide.quoteAsset !== currencySide.quoteAsset) {
                                                         alert(`Both options should have same currency`)
                                                     } else {
-                                                        setCache(prev=>{
-                                                            const key = JSON.stringify([assetSide.baseAsset, currencySide.baseAsset, assetSide.quoteAsset, assetSide.exchange])
-                                                            console.log(`Old Cache: ${JSON.stringify([...prev.keys()])}`)
-                                                            if (undefined === prev.get(key)) {
-                                                                console.log(`Select Changed Handler, value: ${key}`)
-                                                                try{
-                                                                    subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
-                                                                } catch (err) {
-                                                                    console.log(`Error handled on subscription, caught, details : ${err.message}`)
-                                                                }
-                                                                console.log(`Old Cache: ${JSON.stringify([...prev.keys()])}`)
-                                                                return new Map([...prev, [key, null]])
-                                                            } else {
-                                                                return prev
+                                                        const currCache = cache.current
+                                                        const key = JSON.stringify([assetSide.baseAsset, currencySide.baseAsset, assetSide.quoteAsset, assetSide.exchange])
+                                                        console.log(`Old Cache: ${JSON.stringify([...currCache.keys()])}`)
+                                                        if (undefined === currCache.get(key)) {
+                                                            console.log(`Select Changed Handler, value: ${key}`)
+                                                            try{
+                                                                subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
+                                                            } catch (err) {
+                                                                console.log(`Error handled on subscription caught, details : ${err.message}`)
                                                             }
-                                                        })
+                                                            console.log(`Old Cache: ${JSON.stringify([...currCache.keys()])}`)
+                                                            currCache.set(key, null)
+                                                            setUpdateCount(prev=>prev+1)
+                                                        }
                                                     }
                                                 }
                                             }
                                          ])
     useEffect(()=>{
         console.log("Mounting")
-        setCache(prev=>{
-            const arr = [...prev.keys()]
-            arr.forEach(key=>{
-                subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
-            })
-            return prev
+        cache.current.forEach((lastUpdate, key)=>{
+            subscription_functions.subscribe(...JSON.parse(key), priceCallback.current)
         })
 
+        const cacheInTheEnd = cache.current
         const callbackToBeRemoved = priceCallback.current
         return ()=>{
             console.log("UnMounting")
-            setCache(prev=>{
-                const arr = [...prev.keys()]
-                arr.forEach(key=>{
-                    subscription_functions.unsubscribe(...JSON.parse(key), callbackToBeRemoved)
-                })
-                context.cache = arr
-                return prev
+            cacheInTheEnd.forEach((lastUpdate, key)=>{
+                subscription_functions.unsubscribe(...JSON.parse(key), callbackToBeRemoved)
             })
+            context.cache = [...cacheInTheEnd.keys()]
         }
     },[])
 
@@ -192,15 +173,14 @@ function CrossPricesTabs(props){
             [<HorizontalTabs    tabs={elementsForDropDownRow.current}
                                 key={0}
              />,
-             <VerticalTabsForVanillaPrices  tabs={[...cache.keys()].map(key=> {
+             <VerticalTabsForVanillaPrices  tabs={[...cache.current.keys()].map(key=> {
                                                                     return {symbol : key,
-                                                                            update : cache.get(key),
+                                                                            update : cache.current.get(key),
                                                                             user_unsubscribe_action : ()=>{
                                                                                 subscription_functions.unsubscribe(...JSON.parse(key), priceCallback.current)
-                                                                                setCache(existing=>{
-                                                                                    existing.delete(key)
-                                                                                    return new Map(existing)
-                                                                                })
+                                                                                const currCache = cache.current
+                                                                                currCache.delete(key)
+                                                                                setUpdateCount(prev=>prev+1)
                                                                             },
                                                                         }
                                                  })}
