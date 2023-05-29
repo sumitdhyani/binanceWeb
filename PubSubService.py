@@ -73,9 +73,9 @@ async def onSyncData(msg, meta, logger):
     try:
         if "download_end" not in msgDict.keys():
             params = getSubscriptionParamsFromKey(msgDict["key"])
-            await (tpBook[partition]).handleEvent("SyncData", params, msgDict["destination_topics"])
+            await (tpBook[str(partition)]).handleEvent("SyncData", params, msgDict["destination_topics"])
         else:
-            await (tpBook[partition]).handleEvent("DownloadEnd")
+            await (tpBook[str(partition)]).handleEvent("DownloadEnd")
     except Exception as ex:
         logger.warning("Unexpected error while Downloading phase for partition: %s, details: %s", str(partition), str(ex))
 

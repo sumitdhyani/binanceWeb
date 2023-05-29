@@ -43,8 +43,8 @@ def extractAssetFromSymbolName(tradingPair, currency):
 
 async def timer(sec, func, cont):
     async def internalFunc():
-        await asyncio.sleep(sec)
         await func()
+        await asyncio.sleep(sec)
         if cont[0]:
             await timer(sec, func, cont)
     await asyncio.wait([create_task(asyncio.sleep(0)), create_task(internalFunc())], return_when=asyncio.FIRST_COMPLETED)

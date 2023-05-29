@@ -1,6 +1,7 @@
 import asyncio
 from AsyncFSM import AFSM, AFSMState, SpecialEvents, FinalityReachedException
 from enum import Enum
+from CommonUtils import Timer
 
 class SubscriptionAction(Enum):
     subscribe = "subscribe"
@@ -46,25 +47,19 @@ class Syncing(AFSMState):
         self.partition = partition
         self.logger = logger
         self.subscriptionKeys = set()
-        async def retryDownload():
-            await asyncio.sleep(5)
-            try:
-                await selfStateMachine.handleEvent("RetryDownLoad")
-            except FinalityReachedException as ex:
-                self.logger.warn("received an event after reaching a final state which is: %s", str(type(selfStateMachine.currState)) )
-            except Exception as ex:
-                self.logger.warn("Exception received while processing RetryDownLoad evt details: %s", str(ex))
+        self.timer = Timer()
 
-            
+        async def retryDownload():
+            self.logger.info("Entered Syncing state, partition: %s", str(self.partition))
+            await self.syncdataRequestor(self.partition)
+            self.logger.info("Syncing state, partition: %s, sent sync request", str(self.partition))
         self.retryFunc = retryDownload
     
     async def after_entry(self):
-        self.logger.info("Entered Syncing state, partition: %s", str(self.partition))
-        await self.syncdataRequestor(self.partition)
-        self.logger.info("Syncing state, partition: %s, sent sync request", str(self.partition))
-        await asyncio.wait([asyncio.sleep(0), self.retryFunc()], return_when=asyncio.FIRST_COMPLETED)
+        await self.timer.setTimer(5, self.retryFunc)
     
     async def on_SyncData(self, symbolRelatedSubscriptionParams, destTopics):
+        self.timer.unsetTimer(self.retryFunc)
         self.logger.debug("on_SyncData in Syncing state, partition: %s", str(self.partition))
         for destTopic in destTopics:
             appParams = symbolRelatedSubscriptionParams + [destTopic]
@@ -79,13 +74,8 @@ class Syncing(AFSMState):
                            self.partition,
                            self.logger)
 
-    async def on_RetryDownLoad(self):
-        self.logger.warn("on_RetryDownLoad in Syncing state, partition: %s", str(self.partition))
-        await self.syncdataRequestor(self.partition)
-        await asyncio.wait([asyncio.sleep(0), self.retryFunc()], return_when=asyncio.FIRST_COMPLETED)
-        self.logger.warn("Syncing state, partition: %s, sent sync request", str(self.partition))
-
     async def on_DownloadEnd(self):
+        await self.timer.unsetTimer(self.retryFunc)
         self.logger.info("on_DownloadEnd in Syncing state, partition: %s", str(self.partition))
         return Operational(self.appMsghandler,
                            self.subscriptionKeys,
