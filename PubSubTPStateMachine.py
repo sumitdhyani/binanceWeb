@@ -59,7 +59,7 @@ class Syncing(AFSMState):
         await self.timer.setTimer(5, self.retryFunc)
     
     async def on_SyncData(self, symbolRelatedSubscriptionParams, destTopics):
-        self.timer.unsetTimer(self.retryFunc)
+        await self.timer.unsetTimer(self.retryFunc)
         self.logger.debug("on_SyncData in Syncing state, partition: %s", str(self.partition))
         for destTopic in destTopics:
             appParams = symbolRelatedSubscriptionParams + [destTopic]
