@@ -2,6 +2,7 @@ const https = require('react-http-client')
 const { ClientLayerFSM } = require("./StateMachine/ClientLayerFSM")
 const Validator = require("./ValidatorLayer/Validator")
 const NetworkServices = require("./NetworkLayer/RequestForwarder")
+const constants = require('../ClientLayerLibrary/Constants').constants
 //const fs = require('fs')
 let fsm = null
 
@@ -18,7 +19,12 @@ function start(auth_params, data_callback, logger){
                                                                           try{
                                                                             if(data.success){
                                                                               fsm.handleEvent("auth_response", {success: true, conn_params : "http://" + data.feed_server})
-                                                                            }else{
+                                                                            } else if (data.code === constants.error_codes.no_feed_server) {
+                                                                              const retryInterval = 5000
+                                                                              logger.warn(`No feed server provided from authenticator, retrying in ${retryInterval} ms`);
+                                                                              setTimeout(()=>func(), retryInterval)
+                                                                            }
+                                                                            else {
                                                                               fsm.handleEvent("auth_response", data)
                                                                             }
                                                                           }catch(err){
