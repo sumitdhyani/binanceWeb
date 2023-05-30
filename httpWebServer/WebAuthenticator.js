@@ -5,6 +5,7 @@ const appSpecificErrors = require('../IndependentCommonUtils/appSpecificErrors')
 const api = require('../apiHandle')
 const process = require('process')
 const express = require('express')
+const constants = require('../ClientLayerLibrary/Constants').constants
 const app = express()
 const cors = require('cors')
 app.use(cors({
@@ -246,7 +247,8 @@ function launchHttpCommunicationEngine(app, apiLogger)
                       feed_server : currServer["hostPort"]})
         }
         else{
-            res.send({success : false, 
+            res.send({success : false,
+                      code : constants.error_codes.no_feed_server,
                       reason : `No feedserver found`})
             logger.warn(`No feedserver found`)
         }

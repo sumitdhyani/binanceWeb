@@ -1,4 +1,4 @@
-export const constants = {
+const constants = {
     tags : {exchange : "exchange", action : "action"},
     exchanges: {exch_binance : "BINANCE"},
     instrumets : {currency_pair : "currency_pair",
@@ -14,3 +14,5 @@ export const constants = {
                   tab : "tab"
                  }
 }
+
+module.exports.constants = constants

@@ -14,7 +14,6 @@ class DepthDataProvider:
         self.logger = logger
 
     async def subscribe(self, symbol, callback):
-        self.logger.debug("New subscripton for %s", symbol)
         if symbol not in self.subscriberDictionary.keys():
             self.subscriberDictionary[symbol] = AsyncEvent.AsyncEvent()
             self.subscriberDictionary[symbol] += callback
@@ -26,6 +25,7 @@ class DepthDataProvider:
         subscriptionPresent = True
         try:
             dcm = DepthManagerWrapper(self.client, symbol, refresh_interval=None, limit=5)
+            self.logger.info("Opened stream for %s", symbol)
             async with dcm as dcm_socket:
                 while subscriptionPresent:
                     self.logger.debug("Fetching %s", symbol)
@@ -46,6 +46,7 @@ class DepthDataProvider:
 
         try:
             await dcm.close()
+            self.logger.info("Closed stream for %s", symbol)
         except Exception as ex:
             self.logger.warning("Got exception while closing depth connection for symbol: %s, details: %s", symbol, str(ex))
 
