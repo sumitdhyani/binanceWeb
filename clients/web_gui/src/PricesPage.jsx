@@ -1,7 +1,7 @@
 import './App.css'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { HorizontalTabs, VerticalTabsForVanillaPrices, SearchBoxRow, EditableDropdownRow, VerticalTabsForCrossPrices} from './CommonRenderingFunctions'
-import constants from './Constants'
+import { constants } from './root/ClientLayerLibrary/Constants'
 function VanillaPricesTab(props){
     const context = props.context
     const subscription_functions = context.subscription_functions

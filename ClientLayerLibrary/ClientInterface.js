@@ -8,10 +8,10 @@ let fsm = null
 function start(auth_params, data_callback, logger){
     fsm = new ClientLayerFSM({auth_params : auth_params,
                               authentication_method : (auth_params)=>{ 
-                                                                      let retryInterval = 1
                                                                       const func = ()=>{
                                                                         const url = auth_params.auth_server + "/auth/" + JSON.stringify(auth_params.credentials)
-                                                                        https.get(url).then(data => {
+                                                                        https.get(url)
+                                                                        .then(data => {
                                                                           logger.debug(`Response from auth_server: ${JSON.stringify(data)}`)
                                                                           //data = JSON.parse(res)
                                                                           //logger.debug(data)
@@ -23,6 +23,26 @@ function start(auth_params, data_callback, logger){
                                                                             }
                                                                           }catch(err){
                                                                             logger.warn(`Exceptions while handling auth_response, details: ${err.message}`)
+                                                                          }
+                                                                        })
+                                                                        .catch(error=>{
+                                                                          if (error.response) {
+                                                                            // The request was made and the server responded with a status code
+                                                                            logger.warn('Error status:', error.response.status);
+                                                                            logger.warn('Error data:', error.response.data);
+                                                                          } else if (error.request) {
+                                                                            // The request was made but no response was received
+                                                                            logger.warn('No response received');
+                                                                          } else if (error.code === 'ECONNREFUSED') {
+                                                                            const retryInterval = 5000
+                                                                            logger.warn(`No response from auth_server, retrying in ${retryInterval} ms`);
+                                                                            setTimeout(()=>func(), retryInterval)
+                                                                          } 
+                                                                          else {
+                                                                            // Something happened in setting up the request that triggered an error
+                                                                            const retryInterval = 5000
+                                                                            logger.warn(`No response from auth_server, retrying in ${retryInterval} ms`);
+                                                                            setTimeout(()=>func(), retryInterval)
                                                                           }
                                                                         })
                                                                         //.err(err =>{ 

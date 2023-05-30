@@ -1,6 +1,6 @@
 
 import './App.css'
-import constants from './Constants';
+import { constants } from './root/ClientLayerLibrary/Constants'
 import React, { useState, useEffect, useCallback, useRef} from 'react';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';

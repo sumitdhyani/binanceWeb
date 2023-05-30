@@ -1,7 +1,6 @@
 import Visual from './ContentRoot'
 import {useEffect, useState} from 'react'
 import './App.css';
-import constants from './Constants';
 const {init, subscribe, unsubscribe, subscribeVirtual, unsubscribeVirtual} = require('./Gui-Library-Interface')
 const logger = { debug : str => console.log(str),
   info : str => {},
