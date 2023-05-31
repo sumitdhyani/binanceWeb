@@ -1,7 +1,6 @@
 const { Kafka } = require('kafkajs')
 const winston = require('winston')
 const CommonUtils = require("../CommonUtils")
-const appSpecificErrors = require('../IndependentCommonUtils/appSpecificErrors')
 const api = require('../apiHandle')
 const process = require('process')
 const express = require('express')
@@ -12,14 +11,12 @@ app.use(cors({
     origin: '*'
 }))
 const httpHandle = require('http')
-const { json } = require('express')
-//const { isAsyncFunction } = require('util/types')
-//const { setMaxIdleHTTPParsers } = require('http')
 const NativeLoglevel = api.Loglevel
 const WebserverEvents= api.WebserverEvents
+
 //Key: appId of feedServer,
 //Value: array of 2 elements [0] = no. of clients connected currently, [1] = all the other details of the feed_server
-feedServerBook = new Map()
+const feedServerBook = new Map()
 let producer = null
 let logger = null
 const httpServer = httpHandle.createServer(app)
@@ -96,44 +93,24 @@ let logLevel = api.Loglevel.INFO
 if(undefined !== process.argv[5]){
     logLevel = stringToAPILogLevel(process.argv[5])
 }
-feedServerBook = new Map()
 
-function onWebserverEvt(dict){
-    evt = dict["evt"]
-    if(0 == evt.localeCompare(WebserverEvents.NewConnection.description) ||
-       0 == evt.localeCompare(WebserverEvents.Disconnection.description)){
-        appName = dict["appId"]
-        numConnections = dict["numClientConnections"]
-        if(feedServerBook.has(appName))
-        {   
-            (feedServerBook[appName])[0]++;
-            logger.info(`${evt} received for app: ${appName}, numconnections: ${numConnections}`)
-        }
-        else{
-            logger.info(`${evt} received for unregistereed app : ${appName}`)
-        }
-    }
+async function onWebserverEvt(dict){
+    await sendWebserverQuery(dict.appId)
 }
 
-function onAdminEvent(dict){
-    evt = dict["evt"]
-    appName = dict["appId"]
-    appGroup = dict["appGroup"]
+async function onAdminEvent(dict){
+    const evt = dict.evt
+    const appName = dict.appId
+    const appGroup = dict.appGroup
 
-    if(appGroup != "FeedServer"){
+    if (appGroup != "FeedServer") {
         return
     }
 
-    if(0 == evt.localeCompare("app_up")){
-        if(!feedServerBook.has(appName)){
-            feedServerBook.set(appName, [0, dict])
-            logger.info(`app_up received for app: ${appName}`)
-        }
-        else{
-            logger.warn(`app_up received for existing app: ${appName}`)
-        }
+    if (evt === "app_up") {
+        await sendWebserverQuery(dict.appId)
     }
-    else if(0 == evt.localeCompare("app_down")){
+    else if(0 === evt.localeCompare("app_down")){
         if(!feedServerBook.delete(appName)){
             logger.warn(`app_down received for non-existent app: ${appName}`)
         }
@@ -144,24 +121,19 @@ function onAdminEvent(dict){
 }
 
 async function onAdminQueryResponse(dict){
-    results = dict["results"]
+    results = dict.results
 
     for(const result of results){
-        appName = result["appId"] 
-        if(!feedServerBook.has(appName)){
-            feedServerBook.set(appName, [0, result])
-            logger.info(`adminQuery resopnse received for app: ${appName}`)
-        }
-
+        const appName = result.appId
+        logger.info(`Sent component inquiry for ${appName}`)
         await sendWebserverQuery(appName)
 
     }
 }
 
 async function onWebserverQueryResponse(dict){
-    appName = result["appId"] 
-    logger.info(`WebserverQuery resopnse received for app: ${appName}`)
-    (feedServerBook[appId])[0] = dict["numClientConnections"]
+    logger.info(`WebserverQuery resopnse received for app: ${dict.appId}`)
+    feedServerBook.set(dict.appId, [dict.numClientConnections, dict])
 }
 
 const AdminEvents = {
@@ -232,15 +204,15 @@ function launchHttpCommunicationEngine(app, apiLogger)
     });
 
     app.get('/auth/:json', (req, res) =>{
-        lowest = -1
-        currServer = null
+        let lowest = Number.MAX_SAFE_INTEGER
+        let currServer = null
         feedServerBook.forEach((value, key) => {
-            if(value[0] > lowest){
+            if(value[0] < lowest){
                 lowest = value[0]
                 currServer = value[1]
             }
         });
-        if(lowest != -1){
+        if(lowest != Number.MAX_SAFE_INTEGER){
             logger.info(JSON.stringify(feedServerBook))
             logger.info(`On http request, returning the server: ${JSON.stringify(currServer)}`)
             res.send({success : true, 
@@ -316,24 +288,23 @@ async function run() {
             eachMessage: async ({ topic, partition, message }) => {
                 const raw = message.value.toString()
                 const dict = JSON.parse(raw)
-                logger.info(`Data recieved: ${JSON.stringify(dict)}`)
                 
-                if(topic == "admin_events"){
+                if (0 === topic.localeCompare("admin_events")) {
                     logger.info(`admin_events recieved: ${JSON.stringify(dict)}`)
-                    onAdminEvent(dict)
+                    await onAdminEvent(dict)
                 }
-                else if(topic == "webserver_events"){
+                else if (0 === topic.localeCompare("webserver_events")) {
                     logger.info(`webserver_events recieved: ${JSON.stringify(dict)}`)
-                    onWebserverEvt(dict)
+                    await onWebserverEvt(dict)
                 }
-                else if(topic == appId){
-                    logger.info(`${appId} recieved: ${JSON.stringify(dict)}`)
-                    messageType = dict["message_type"]
-                    if("admin_query_response" == messageType){
+                else if (0 === topic.localeCompare(appId)) {
+                    logger.info(`${appId} recieved: ${raw}`)
+                    messageType = dict.message_type
+                    if (0 === messageType.localeCompare("admin_query_response")) {
                         await onAdminQueryResponse(dict)
                     }
-                    else if("webserver_query_response" == messageType){
-                        await onWebserverQueryResponse(dict)
+                    else if ( 0 === messageType.localeCompare("webserver_query_response")) {
+                        onWebserverQueryResponse(dict)
                     }
                 }
             },

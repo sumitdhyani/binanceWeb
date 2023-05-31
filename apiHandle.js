@@ -186,9 +186,12 @@ function getJsonStringForRegistration()
     return JSON.stringify(dict)
 }
 
+function getObjectForComponentInfo(){
+    return {appId : appId, appGroup : "FeedServer", hostPort : env.LOCALIP + ":" + port, numClientConnections : numClientConnections}
+}
+
 function getJsonStringForComponentInfo(){
-    dict = {appId : appId, appGroup : "FeedServer", hostPort : env.LOCALIP + ":" + port, numClientConnections : numClientConnections}
-    return JSON.stringify(dict)
+    return JSON.stringify(getObjectForComponentInfo())
 }
 
 async function sendWebserverEvent(event)
@@ -215,10 +218,11 @@ async function sendAdminEvent(event){
 }
 
 async function sendComponentInfo(destTopic){
-    await producer.send({ topic: destTopic, messages: [{ key: appId, value: getJsonStringForComponentInfo() }] })
+    await producer.send({ topic: destTopic, messages: [{ key: appId, value: JSON.stringify({...getObjectForComponentInfo(), message_type : "webserver_query_response"})}] })
 }
 
 async function onComponentEnquiry(dict){
+    logger.warn(`Component inquiry received, dest topic: ${dict["destination_topic"]}`)
     await sendComponentInfo(dict["destination_topic"])
 }
 
@@ -361,7 +365,7 @@ module.exports = {
 
                         const raw = message.value.toString()
                         const dict = JSON.parse(raw)
-                        const messageType = dict["message_type"]
+                        const messageType = dict.message_type
                         
                         if("depth" === messageType){    
                             onNormalPriceData(dict, raw, headers)
@@ -369,7 +373,7 @@ module.exports = {
                         else if("virtual_depth" == messageType){
                             onVirtualPriceData(dict, raw)
                         }
-                        else if("component_enquiry" == messageType){
+                        else if("component_enquiry" === messageType){
                             await onComponentEnquiry(dict)
                         }
                     }catch(err){
