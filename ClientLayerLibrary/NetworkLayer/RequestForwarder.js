@@ -25,9 +25,6 @@ class RequestSerializers{
 
 function subscribe(symbol, exchange){
     const key = JSON.stringify([symbol, exchange])
-    //if(subscriptionBook.has(key)){
-    //    throw new appSpecificErrors.DuplicateSubscription(`Duplicate subscription for ${key}`)
-    //}
 
     actionAntiAction.antiAct(key, ()=>{
         requestSerializer.requestToSend(key, sock, 'subscribe', (result)=>{
@@ -43,9 +40,7 @@ function subscribe(symbol, exchange){
 
 function unsubscribe(symbol, exchange){
     const key = JSON.stringify([symbol, exchange])
-    //if(!subscriptionBook.has(key)){
-    //    throw new appSpecificErrors.SpuriousUnsubscription()
-    //}
+
     actionAntiAction.act(key, 10000, ()=>{
         requestSerializer.requestToSend(key, sock, 'unsubscribe', (result)=>{
             if(result.success) {
@@ -94,14 +89,16 @@ function connect(serverAddress, callback, libLogger){//Server address <ip>:<port
     sock.on('disconnect', (reason)=>{
         callback(JSON.stringify({ message_type : "disconnection", reason : reason}))
         subscriptionBook.clear()
-        if(null !== disconnectionHandler){
-            setTimeout(()=>disconnectionHandler(reason), 0);
-        }
+        setTimeout(()=>disconnectionHandler(reason), 0);
     })
 
     sock.on('depth', (depth)=>{
         callback(depth)
     })
+
+    sock.on("connect_error", (reason) => {
+        setTimeout(()=>disconnectionHandler(reason), 0);
+    });
 }
 
 function setDisconnectionHandler(callback){

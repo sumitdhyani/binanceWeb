@@ -74,7 +74,12 @@ class ConnectingToFeedServer extends State{
 
     }
 
-    on_client_intent(intent){
+    on_disconnect(err) {
+        this.logger.warn(err.message)
+        return new Authenticating(this.authentication_params)
+    }
+
+    on_client_intent(intent) {
             return SpecialTransition.deferralTransition
     }
 }
