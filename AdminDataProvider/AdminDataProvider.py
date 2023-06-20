@@ -21,7 +21,7 @@ timer = Timer()
 async def increaseMissedHeartBeats(otherApp, parentFunc):
     heartbeatBook[otherApp] += 1
     if heartbeatBook[otherApp] >= allowedMissedHeartbeats:
-        await produce("admin_events", json.dumps({"evt" : "app_down", "appId" : otherApp}), otherApp, None)
+        #await produce("admin_events", json.dumps({"evt" : "app_down", "appId" : otherApp}), otherApp, None)
         heartbeatBook.pop(otherApp)
         appMetadata.pop(otherApp)
         await timer.unsetTimer(parentFunc)
@@ -36,6 +36,7 @@ async def onHeartbeat(msg, meta):
     
 async def onRegistration(msg, meta):
     msgDict = json.loads(msg)
+    logger.info("Registration for component: %s, json: %s", msgDict["appId"], msg)
     app_id = msgDict["appId"]
     appMetadata[app_id] = msgDict.copy()
     msgDict["evt"] = "app_up"

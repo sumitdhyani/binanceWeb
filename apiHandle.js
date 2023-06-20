@@ -218,7 +218,11 @@ async function sendAdminEvent(event){
 }
 
 async function sendComponentInfo(destTopic){
-    await producer.send({ topic: destTopic, messages: [{ key: appId, value: JSON.stringify({...getObjectForComponentInfo(), message_type : "webserver_query_response"})}] })
+    const componentInfo = {...getObjectForComponentInfo(), message_type : "webserver_query_response"}
+    const valueToBeSent = JSON.stringify(componentInfo)
+    logger.info(`Sending component info to topic ${destTopic}: ${valueToBeSent}`)
+    await producer.send({ topic: destTopic, messages: [{ key: appId, value: valueToBeSent}] })
+    logger.info(`Sent component info`)
 }
 
 async function onComponentEnquiry(dict){
@@ -312,45 +316,59 @@ module.exports = {
         const appFileName = applId + "_" + timeSuffix + ".log"
         const kafkFileName = "Kafka_" + appFileName
 
-        logger = CommonUtils.createFileLogger("Logs/" + appFileName, enumToWinstomLogLevel(logLevel))
-        //logger = {debug : msg=>console.log(msg),
-        //          info : msg=>console.log(msg),
-        //          warn : msg=>console.log(msg),
-        //          error : msg=>console.log(msg)}
+        const seekOffset = async (admin, groupId, topic, partition) => {
+            const offsets = await admin.fetchOffsets({ groupId, topic })
+            logger.info(`Group info: ${JSON.stringify(offsets)}`)
+            return offsets.reduce((prev, curr) => curr.partition === partition? curr.offset : prev, -1)
+        };
 
-        await loadSymbols()
-        kafka = new Kafka({
-            clientId: apiHandleId,
-            brokers: hosts,
-            logLevel: enumToKafkaLogLevel(logLevel),
-            logCreator: (logLevel) => {
-                return WinstonLogCreator(logLevel, "Logs/" + kafkFileName)
-            }
-        })
+        try {
+            logger = CommonUtils.createFileLogger("Logs/" + appFileName, enumToWinstomLogLevel(logLevel))
+            //logger = {debug : msg=>console.log(msg),
+            //          info : msg=>console.log(msg),
+            //          warn : msg=>console.log(msg),
+            //          error : msg=>console.log(msg)}
 
-        const admin = kafka.admin()
-        consumer = kafka.consumer({ groupId: applId })
-        producer = kafka.producer()
-        await admin.connect()
-        await consumer.connect()
-        await producer.connect()
-
-        //Create the inbound topic for this service
-        await admin.createTopics({
-            topics: [{ topic: applId, replicationFactor: 1, numPartitions: 1 }]
-        })
-
-        await consumer.subscribe({ topic: applId, fromBeginning: false })
-
-        await sendAdminEvent(AdminEvents.Registration)
-        setInterval(()=>{
-            sendAdminEvent(AdminEvents.HeartBeat).then(()=>{}).catch((err)=>{
-                console.log(`Error while sending HeartBeat event, details: ${err.message}`)
+            await loadSymbols()
+            const kafkaHandle = new Kafka({
+                clientId: apiHandleId,
+                brokers: hosts,
+                logLevel: enumToKafkaLogLevel(logLevel),
+                logCreator: (logLevel) => {
+                    return WinstonLogCreator(logLevel, "Logs/" + kafkFileName)
+                }
             })
-        }, 5000)
 
-        kafkaReaderLoop = consumer.run(
-            {
+            const admin = kafkaHandle.admin()
+            const consumer = kafkaHandle.consumer({ groupId: appId, enableAutoCommit: false })
+            producer = kafkaHandle.producer()
+            await admin.connect()
+            await consumer.connect()
+            await producer.connect()
+
+            //Create the inbound topic for this service
+            await admin.createTopics({
+                topics: [{ topic: applId, replicationFactor: 1, numPartitions: 1 }]
+            })
+
+            await sendAdminEvent(AdminEvents.Registration)
+
+            const currentOffset = await seekOffset(admin, applId, applId, 0)
+            if (-1 == currentOffset || undefined === currentOffset) {
+                logger.warn(`Current offset for topic ${applId} is -1, so setting fromBeginning: true`)
+                await consumer.subscribe({ topic: applId, fromBeginning: true })
+            } else {
+                logger.info(`Current offset for topic ${applId} is ${currentOffset}`)
+                await consumer.subscribe({ topic: applId, fromBeginning: false })
+            }
+            setInterval(()=>{
+                sendAdminEvent(AdminEvents.HeartBeat).then(()=>{}).catch((err)=>{
+                    console.log(`Error while sending HeartBeat event, details: ${err.message}`)
+                })
+            }, 5000)
+        
+
+            kafkaReaderLoop = consumer.run( {
                 eachMessage: async ({ topic, partition, message }) => {
                     try{
                         const recvTime = Date.now()
@@ -364,9 +382,10 @@ module.exports = {
                         headers[numKeys+1] = recvTime
 
                         const raw = message.value.toString()
+                        logger.debug(`Data received: ${raw}`)
                         const dict = JSON.parse(raw)
                         const messageType = dict.message_type
-                        
+
                         if("depth" === messageType){    
                             onNormalPriceData(dict, raw, headers)
                         }
@@ -376,12 +395,18 @@ module.exports = {
                         else if("component_enquiry" === messageType){
                             await onComponentEnquiry(dict)
                         }
-                    }catch(err){
-                        logger.warn(`Error in reader loop: ${err.message}`)
-                    }
+
+                    } catch(err){
+	            	    logger.warn(`Got error while processsing {topic:partition:offset}: ${topic}:${partition}:${message.offset+1}, details: ${err.message}`)
+                    } finally {
+	            	await consumer.commitOffsets([{ topic, partition, offset: message.offset + 1 }])
+	            }
                 },
             })
-        await Promise.all([kafkaReaderLoop, clientEntryPointFunction(logger)])
+            await Promise.all([kafkaReaderLoop, clientEntryPointFunction(logger)])
+        } catch(err) {
+        logger.warn(`Error in initial phase, details: ${err.message}`)
+        }
     },
 
     Loglevel: NativeLoglevel,

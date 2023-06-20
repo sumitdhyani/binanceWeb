@@ -34,7 +34,7 @@ function stringToAPILogLevel(level){
     }
 }
 
-const broker = process.argv[2] 
+const brokers = process.argv[2].split(",")
 const listenPort = parseInt(process.argv[3])
 const appId = process.argv[4]
 let logLevel = api.Loglevel.INFO
@@ -95,11 +95,11 @@ async function mainLoop(logger){
                 acknowledge({success : true})
             }).
             catch((err)=>{
+                logger.warn(`Acknowledging Subscription failure for ${key}, reason: ${err.message}`)
                 const reason = (err instanceof DuplicateSubscription)?
                                `Duplicate subscription request for symbol: ${key}`:
                                (err instanceof InvalidSymbol)?
-                               `Invalid symbol: ${key}` : ""
-                logger.warn(`Acknowledging Subscription failure for ${key}, reason: ${reason}`)
+                               `Invalid symbol: ${key}` : err.message
                 acknowledge({success : false, reason : reason})
             })
         })
@@ -123,7 +123,7 @@ async function mainLoop(logger){
     })
 }
 
-api.start(appId, mainLoop, [broker], appId, listenPort, logLevel).then(()=>{}).catch((err)=>{
+api.start(appId, mainLoop, brokers, appId, listenPort, logLevel).then(()=>{}).catch((err)=>{
     console.log(`Error in init phase, details: ${err.message}, exiting...`)
     process.exit(0)
 })

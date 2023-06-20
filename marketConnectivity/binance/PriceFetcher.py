@@ -87,37 +87,15 @@ async def onSubMsg(msg, subscriptionFunc, unsubscriptionFunc):
         return unregisterSubscription(unsubscriptionFunc, symbol, dest_topic)
 
 
-#async def run():
-#    try:
-#        client = await binance.AsyncClient.create(api_key=Keys.PUBLIC, api_secret=Keys.SECRET)
-#        networkComplaintHandler = NetworkComplaintHandler("https://www.binance.com/")
-#        ddp = DepthDataProvider(client, networkComplaintHandler.registerComplaint, logger)
-#    except Exception as ex:
-#        logger.error("Error while connecting to market, details: %s", str(ex))
-#        return
-#  
-#    await PubSubService.start(broker,
-#                              "binance_price_subscriptions",
-#                              lambda msg, meta : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
-#                              "price_fetcher",
-#                              appId,
-#                              lambda symbol, destTopic : registerSubscription(ddp.subscribe, symbol, destTopic),
-#                              lambda symbol : cancelAllSubscriptions(symbol, ddp.unsubscribe),
-#                              logger,
-#                              False,
-#                              None)
-
 async def run():
-    global totalIncommingMessages
-    global totalOutGoingMessages
-    logger.info("Started mock version of mkt gwy")
-    ddp = MockDepthDataProvider(logger)
-    timer = Timer()
-
-    async def dummyFunc():
-        logger.warn("Total in: %s, total out: %s, totalSunscriptions: %s", str(totalIncommingMessages), str(totalOutGoingMessages), str(len(subscriptionBook)))
-        
-    await timer.setTimer(1, dummyFunc)
+    try:
+        client = await binance.AsyncClient.create(api_key=Keys.PUBLIC, api_secret=Keys.SECRET)
+        networkComplaintHandler = NetworkComplaintHandler("https://www.binance.com/")
+        ddp = DepthDataProvider(client, networkComplaintHandler.registerComplaint, logger)
+    except Exception as ex:
+        logger.error("Error while connecting to market, details: %s", str(ex))
+        return
+  
     await PubSubService.start(broker,
                               "binance_price_subscriptions",
                               lambda msg, meta : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
@@ -128,6 +106,28 @@ async def run():
                               logger,
                               False,
                               None)
+
+#async def run():
+#    global totalIncommingMessages
+#    global totalOutGoingMessages
+#    logger.info("Started mock version of mkt gwy")
+#    ddp = MockDepthDataProvider(logger)
+#    timer = Timer()
+#
+#    async def dummyFunc():
+#        logger.warn("Total in: %s, total out: %s, totalSunscriptions: %s", str(totalIncommingMessages), str(totalOutGoingMessages), str(len(subscriptionBook)))
+#        
+#    await timer.setTimer(1, dummyFunc)
+#    await PubSubService.start(broker,
+#                              "binance_price_subscriptions",
+#                              lambda msg, meta : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
+#                              "price_fetcher",
+#                              appId,
+#                              lambda symbol, destTopic : registerSubscription(ddp.subscribe, symbol, destTopic),
+#                              lambda symbol : cancelAllSubscriptions(symbol, ddp.unsubscribe),
+#                              logger,
+#                              False,
+#                              None)
 
 
 asyncio.run(run())

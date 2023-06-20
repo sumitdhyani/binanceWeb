@@ -86,7 +86,7 @@ function enumToWinstomLogLevel(level) {
 }
 
 
-const broker = process.argv[2] 
+const brokers = process.argv[2].split(",")
 const listenPort = parseInt(process.argv[3])
 const appId = process.argv[4]
 let logLevel = api.Loglevel.INFO
@@ -103,11 +103,11 @@ async function onAdminEvent(dict){
     const appName = dict.appId
     const appGroup = dict.appGroup
 
-    if (appGroup != "FeedServer") {
+    if (undefined === appGroup || 0 !== appGroup.localeCompare("FeedServer")) {
         return
     }
 
-    if (evt === "app_up") {
+    if (0 === evt.localeCompare("app_up")) {
         await sendWebserverQuery(dict.appId)
     }
     else if(0 === evt.localeCompare("app_down")){
@@ -121,14 +121,14 @@ async function onAdminEvent(dict){
 }
 
 async function onAdminQueryResponse(dict){
-    results = dict.results
-
-    for(const result of results){
+    const results = dict.results
+    results.forEach(result=>{
+        logger.info(`Result: ${JSON.stringify(result)}`)
         const appName = result.appId
-        logger.info(`Sent component inquiry for ${appName}`)
-        await sendWebserverQuery(appName)
-
-    }
+        sendWebserverQuery(appName).
+        then(()=>{}).
+        catch(err=>{})
+    })
 }
 
 async function onWebserverQueryResponse(dict){
@@ -170,8 +170,10 @@ async function sendAdminQuery(){
 }
 
 async function sendWebserverQuery(topic){
+    logger.info(`Sending component inquiry for ${topic}`)
     dict = {destination_topic : appId, message_type : "component_enquiry"}
     await producer.send({ topic: topic, messages: [{ key: appId, value: JSON.stringify(dict) }] })
+    logger.info(`Sent component inquiry for ${topic}`)
 }
 
 const WinstonLogCreator = (logLevel, fileName) => {
@@ -258,7 +260,7 @@ async function run() {
 
     kafka = new Kafka({
         clientId: appId,
-        brokers: [broker],
+        brokers: brokers,
         logLevel: enumToKafkaLogLevel(logLevel),
         logCreator: (logLevel) => {
             return WinstonLogCreator(logLevel, "Logs/" + kafkFileName)
@@ -266,7 +268,7 @@ async function run() {
     })
 
     const admin = kafka.admin()
-    consumer = kafka.consumer({ groupId: appId })
+    consumer = kafka.consumer({ groupId: appId, enableAutoCommit: false })
     producer = kafka.producer()
     await admin.connect()
     await consumer.connect()
@@ -286,27 +288,34 @@ async function run() {
     await consumer.run(
         {
             eachMessage: async ({ topic, partition, message }) => {
-                const raw = message.value.toString()
-                const dict = JSON.parse(raw)
-                
-                if (0 === topic.localeCompare("admin_events")) {
-                    logger.info(`admin_events recieved: ${JSON.stringify(dict)}`)
-                    await onAdminEvent(dict)
-                }
-                else if (0 === topic.localeCompare("webserver_events")) {
-                    logger.info(`webserver_events recieved: ${JSON.stringify(dict)}`)
-                    await onWebserverEvt(dict)
-                }
-                else if (0 === topic.localeCompare(appId)) {
-                    logger.info(`${appId} recieved: ${raw}`)
-                    messageType = dict.message_type
-                    if (0 === messageType.localeCompare("admin_query_response")) {
-                        await onAdminQueryResponse(dict)
+		try {
+                    const raw = message.value.toString()
+                    const dict = JSON.parse(raw)
+                    
+                    if (0 === topic.localeCompare("admin_events")) {
+                        logger.info(`admin_events recieved: ${JSON.stringify(dict)}`)
+                        await onAdminEvent(dict)
                     }
-                    else if ( 0 === messageType.localeCompare("webserver_query_response")) {
-                        onWebserverQueryResponse(dict)
+                    else if (0 === topic.localeCompare("webserver_events")) {
+                        logger.info(`webserver_events recieved: ${JSON.stringify(dict)}`)
+                        await onWebserverEvt(dict)
                     }
-                }
+                    else if (0 === topic.localeCompare(appId)) {
+                        logger.info(`${appId} recieved: ${raw}`)
+                        const messageType = dict.message_type
+                        if (0 === messageType.localeCompare("admin_query_response")) {
+                            await onAdminQueryResponse(dict)
+                        }
+                        else if ( 0 === messageType.localeCompare("webserver_query_response")) {
+                            onWebserverQueryResponse(dict)
+                        }
+                    }
+
+		} catch(err) {
+		    logger.warn(`Got error while processsing {topic:partition:offset}: ${topic}:${partition}:${message.offset+1}, details: ${err.message}`)
+		} finally {
+		    await consumer.commitOffsets([{ topic, partition, offset: message.offset + 1 }])
+		}
             },
         })
     
