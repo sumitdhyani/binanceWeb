@@ -21,7 +21,8 @@ timer = Timer()
 async def increaseMissedHeartBeats(otherApp, parentFunc):
     heartbeatBook[otherApp] += 1
     if heartbeatBook[otherApp] >= allowedMissedHeartbeats:
-        #await produce("admin_events", json.dumps({"evt" : "app_down", "appId" : otherApp}), otherApp, None)
+        logger.info("Exceeded allowed misssed hearbeats for %s", otherApp)
+        await produce("admin_events", json.dumps({"evt" : "app_down", "appId" : otherApp, "appGroup" : (appMetadata[otherApp])["appGroup"] }), otherApp, None)
         heartbeatBook.pop(otherApp)
         appMetadata.pop(otherApp)
         await timer.unsetTimer(parentFunc)
