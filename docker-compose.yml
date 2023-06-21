@@ -50,7 +50,7 @@ services:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
-    command: python3 ./DataDispatcher/DataDispatcher.py node_3:9094 data_dispatcher_${node_id} prices,virtual_prices
+    command: python3 ./DataDispatcher/DataDispatcher.py node_1:9092,node_2:9093,node_3:9094 data_dispatcher_${node_id} prices,virtual_prices
   virtual_price_fetcher:
     build: ./images/ubuntu_all_packages
     volumes:
