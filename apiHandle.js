@@ -405,7 +405,7 @@ module.exports = {
             })
             await Promise.all([kafkaReaderLoop, clientEntryPointFunction(logger)])
         } catch(err) {
-        logger.warn(`Error in initial phase, details: ${err.message}`)
+            logger.warn(`Error in initial phase, details: ${err.message}, stack: ${err.stack}`)
         }
     },
 
