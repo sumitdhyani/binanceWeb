@@ -81,12 +81,13 @@ function connect(serverAddress, callback, libLogger){//Server address <ip>:<port
     logger = libLogger
     requestSerializer = new RequestSerializers()
     logger.debug(`Connecting to the server ${serverAddress}`)
-    sock = io(serverAddress)
+    sock = io(serverAddress, {reconnection: false})
     sock.on('connect', ()=>{
         logger.debug(`Connected by id: ${sock.id}`)
     })
 
     sock.on('disconnect', (reason)=>{
+        console.log(`disconnect, description: ${JSON.stringify(reason)}`)
         callback(JSON.stringify({ message_type : "disconnection", reason : reason}))
         subscriptionBook.clear()
         setTimeout(()=>disconnectionHandler(reason), 0);
@@ -97,6 +98,7 @@ function connect(serverAddress, callback, libLogger){//Server address <ip>:<port
     })
 
     sock.on("connect_error", (reason) => {
+        console.log(`connect_error, description: ${JSON.stringify(reason)}`)
         setTimeout(()=>disconnectionHandler(reason), 0);
     });
 }
