@@ -1,11 +1,12 @@
 
 function listen(port, connectionEvtCallback) {
+    const httpHandle = require('http')
     const express = require('express')
     const app = express()
     const Socket_io = require('socket.io')
     const httpServer = httpHandle.createServer(app)
     const io = new Socket_io.Server(httpServer, {cors: {origin: "*"}})
-    httpServer.listen(listenPort, () => {})
+    httpServer.listen(port, () => {})
 
     io.on('connection', socket => {
         const connectionHandle = {
@@ -16,7 +17,7 @@ function listen(port, connectionEvtCallback) {
             subscribe : subscriptionDictionary=>
                 Object.entries(subscriptionDictionary).forEach(([evt, callback])=> {
                     socket.on(evt, (...args)=> {
-                    callback(socket, ...args)
+                    callback(...args)
                 })
             })
         }

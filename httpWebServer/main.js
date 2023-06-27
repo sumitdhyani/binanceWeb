@@ -50,11 +50,13 @@ async function mainLoop(logger) {
                     clientConnectionHandle.send('depth', update)
                 }
 
+                const subscriptions = new Set()
                 clientConnectionHandle.subscribe({
                     disconnect: reason=> {
                         sendWebserverEvent(WebserverEvents.Disconnection).then(()=>{}).catch((err)=>{
                             console.log(`Error while sending Disconnection event, details: ${err.message}`)
                         })
+                        
                         for(const key of subscriptions){
                             const [symbol, exchange] = JSON.parse(key)
                             subscriptionHandler.unsubscribe(symbol, exchange, priceUpdateCallback).
