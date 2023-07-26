@@ -49,8 +49,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         await producer.start()
         groupConsumer = aiokafka.AIOKafkaConsumer(bootstrap_servers=brokers,
                                                   group_id=groupId,
-                                                  client_id=groupId+clientId+"_group",
-                                                  enable_auto_commit=False)
+                                                  client_id=groupId+clientId+"_group")
         logger.info("Group consumer created")
         
         async def consumptionBatch(consumer, callbackDict):
@@ -71,8 +70,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         if unCoOrdinatedtopicsAndCallbacks:
             individualConsumer = aiokafka.AIOKafkaConsumer(bootstrap_servers=brokers,
                                                            group_id=clientId,
-                                                           client_id=groupId+clientId,
-                                                           enable_auto_commit=False)
+                                                           client_id=groupId+clientId)
             logger.info("Individual consumer created")
             individualConsumer.subscribe([topic for topic in unCoOrdinatedtopicsAndCallbacks.keys()])
             await individualConsumer.start()
@@ -121,7 +119,6 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                                 else:
                                     await callback(msg, headers)
                                 tp = TopicPartition(kafkaMsg.topic, kafkaMsg.partition)
-                                await consumer.commit({tp: kafkaMsg.offset + 1})
                             except Exception as ex:
                                 logger.error("Unexpedted exception in the task loop, details %s, traceback: %s", str(ex), traceback.format_exc())
     except Exception as ex:

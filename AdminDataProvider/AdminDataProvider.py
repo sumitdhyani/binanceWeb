@@ -14,7 +14,7 @@ loggingLevel = getLoggingLevel(sys.argv[3]) if(len(sys.argv) >= 4) else getLoggi
 logger = getLogger(loggingLevel, appId)
 
 appMetadata = {}
-allowedMissedHeartbeats = 3
+allowedMissedHeartbeats = 7
 heartbeatBook = {}
 
 timer = Timer()
@@ -74,8 +74,8 @@ async def onAdminEvent(msg, meta):
     
 
 async def run():
-    await startCommunication({"heartbeats" : onHeartbeat, "admin_queries" : onAdminQuery},
-                             {"registrations" : onRegistration, "admin_events" : onAdminEvent},
+    await startCommunication({"admin_queries" : onAdminQuery},
+                             {"heartbeats" : onHeartbeat, "registrations" : onRegistration, "admin_events" : onAdminEvent},
                              broker,
                              appId,
                              "admin_data_provider",
