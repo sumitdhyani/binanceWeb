@@ -9,8 +9,11 @@ let fsm = null
 function start(auth_params, data_callback, logger){
     fsm = new ClientLayerFSM({auth_params : auth_params,
                               authentication_method : (auth_params)=>{ 
-                                                                      const func = ()=>{
-                                                                        const url = auth_params.auth_server + "/auth/" + JSON.stringify(auth_params.credentials)
+                                                                        let currServerIndex = 0
+                                                                        const func = ()=>{
+                                                                        const authServers = auth_params.auth_server
+                                                                        const numAuthServers = authServers.length
+                                                                        const url = authServers[currServerIndex] + "/auth/" + JSON.stringify(auth_params.credentials)
                                                                         https.get(url)
                                                                         .then(data => {
                                                                           logger.debug(`Response from auth_server: ${JSON.stringify(data)}`)
@@ -32,7 +35,8 @@ function start(auth_params, data_callback, logger){
                                                                           }
                                                                         })
                                                                         .catch(error=>{
-                                                                          if (error.response) {
+                                                                            currServerIndex = (currServerIndex + 1) % numAuthServers
+                                                                            if (error.response) {
                                                                             // The request was made and the server responded with a status code
                                                                             logger.warn('Error status:', error.response.status);
                                                                             logger.warn('Error data:', error.response.data);

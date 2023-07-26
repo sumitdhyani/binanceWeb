@@ -147,7 +147,7 @@ process.on('SIGKILL', ()=> {
 //This is the entry point of the application, this method is passed to the start method as you will see below
 async function mainLoop(symbolDict)
 {
-    launch({auth_server : "http://206.81.18.17:90", credentials : {user : "test_user", password : "test_pwd"}}, onData, logger)
+    launch({auth_server : ["http://node_1:90","http://node_2:90","http://node_3:90"], credentials : {user : "test_user", password : "test_pwd"}}, onData, logger)
     low = parseInt(process.argv[2])
     mid = parseInt(process.argv[3])
     high = parseInt(process.argv[4])
