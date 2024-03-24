@@ -14,7 +14,7 @@ function App() {
 
   useEffect(()=>{
     logger.warn(`Initializing the library`)
-    init({auth_server : ["http://165.22.214.94:90","http://139.59.82.158:90","http://139.59.84.218:90"], credentials : {user : "test_user", password : "test_pwd"}},
+    init({auth_server : ["http://165.232.187.129:90","http://143.244.139.3:90","http://143.244.131.67:90"], credentials : {user : "test_user", password : "test_pwd"}},
     //init({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}},
          logger,
          (symbolDict)=>{
