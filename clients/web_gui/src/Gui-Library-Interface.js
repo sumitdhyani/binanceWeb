@@ -1,9 +1,12 @@
 const { SubscriptionHandler } = require('./SubscriptionHandler')
 const { VirtualSubscriptionHandler } = require('./VirtualSubscriptionHandler')
+const { BasketSubscriptionHandler } = require('./BasketSubscriptionHandler')
 const { launch, raise_request, download_instruments} = require('./root/ClientLayerLibrary/ClientInterface')
                                     
 let subscriptionHandler = null
 let virtualSubscriptionHandler = null
+let basketSubscriptionHandler = null
+
 let libLogger = null
 function subscribe(symbol , exchange, callback){
     libLogger.debug(`subscribe, arguments: ${JSON.stringify(arguments)}`)
@@ -42,6 +45,22 @@ function unsubscribeVirtual(asset, currency, bridge, exchange, callback){
                                          callback)
 }
 
+function subscribeBasket(reqId, symbols, coefficients, currency, priceConverters, exchange, callback){ 
+    libLogger.debug(`subscribeBasket, arguments: ${JSON.stringify(arguments)}`)
+    basketSubscriptionHandler.subscribe(reqId,
+                                        symbols,
+                                        coefficients,
+                                        currency,
+                                        priceConverters,
+                                        exchange,
+                                        callback)
+}
+
+function unsubscribeBasket(reqId){
+    libLogger.debug(`unsubscribeBasket, arguments: ${JSON.stringify(arguments)}`)
+    basketSubscriptionHandler.unsubscribe(reqId)
+}
+
 function onPriceUpdate(update){
     subscriptionHandler.onUpdate(update)
 }
@@ -68,6 +87,12 @@ function init(auth_params, logger, staticDataCallback){
         virtualSubscriptionHandler = new VirtualSubscriptionHandler(subscriptionHandler.subscribe.bind(subscriptionHandler),
                                                                     subscriptionHandler.unsubscribe.bind(subscriptionHandler),
                                                                     libLogger)
+
+        basketSubscriptionHandler = new BasketSubscriptionHandler(
+            subscriptionHandler.subscribe.bind(subscriptionHandler),
+            subscriptionHandler.unsubscribe.bind(subscriptionHandler),
+            libLogger)
+            
         launch(auth_params, onPriceUpdate, libLogger)
         staticDataCallback(dict)
     })
@@ -78,3 +103,5 @@ module.exports.subscribe = subscribe
 module.exports.unsubscribe = unsubscribe
 module.exports.subscribeVirtual = subscribeVirtual
 module.exports.unsubscribeVirtual = unsubscribeVirtual
+module.exports.subscribeBasket = subscribeBasket
+module.exports.unsubscribeBasket = unsubscribeBasket

@@ -8,6 +8,7 @@ const logger = { debug : str => console.log(str),
   error : str => console.log(str)
  }
 
+let defaultCurrencies = new Map()
 let instrumentStore = new Map()
 function App() {
   const [libraryInitialized, setLibraryInitialized] = useState(false)
@@ -18,36 +19,31 @@ function App() {
     //init({auth_server : "http://127.0.0.1:90", credentials : {user : "test_user", password : "test_pwd"}},
          logger,
          (symbolDict)=>{
-          logger.warn(`Downloaded symbols`)
           instrumentStore = symbolDict
           logger.warn(`Library initialized`)
           setLibraryInitialized(true)})
     return ()=>{}
   },[])
   
-  function getQuoteBasedDictionary(dict){
-    const quoteBasedDictionary = new Map()
-    let arr = [...dict.values()]
-    arr.forEach(item =>{
+  function getExchangeKeyedSymbolDict(dict){
+    const exchangeKeyedSymbolDict = new Map()
+    dict.forEach((item, key)=>{
       const exchange = item.exchange
-      if(undefined === quoteBasedDictionary.get(exchange)){
-        quoteBasedDictionary.set(exchange, new Map())
+      if(undefined === exchangeKeyedSymbolDict.get(exchange)){
+        exchangeKeyedSymbolDict.set(exchange, new Map())
       }
 
-      const exchangeLevelBook = quoteBasedDictionary.get(exchange)
-      const quoteAsset = item.quoteAsset
-      if(undefined === exchangeLevelBook.get(quoteAsset)){
-        exchangeLevelBook.set(quoteAsset, new Set())
-      }
-
-      const symbolSet = exchangeLevelBook.get(quoteAsset)
-      symbolSet.add(item)
+      const exchangeLevelBook = exchangeKeyedSymbolDict.get(exchange)
+      exchangeLevelBook.set(key, item)
     })
+
+    return exchangeKeyedSymbolDict
   }
 
   let nativeAssetList = new Map()
   let nativeCurrencyList = new Map()
-  
+  let exchangeKeyedSymbolDict = getExchangeKeyedSymbolDict(instrumentStore)
+  defaultCurrencies.set("BINANCE", "USDT")
   instrumentStore.forEach((instrument , key)=>{
     const exchange = instrument.exchange
     let assetListForThisExchange = nativeAssetList.get(exchange)
@@ -68,12 +64,13 @@ function App() {
 
   console.log(`render Cycle, libraryInitialized : ${libraryInitialized}`)
   if(libraryInitialized){
-    const context = { symbol_dict : instrumentStore,
+    const context = { symbol_dict : exchangeKeyedSymbolDict.get("BINANCE"),
                       subscription_functions : {subscribe : subscribe, unsubscribe : unsubscribe},
                       virtual_subscription_functions : {subscribe : subscribeVirtual, unsubscribe : unsubscribeVirtual},
-                      native_assets : nativeAssetList,
-                      native_currencies : nativeCurrencyList,
-                      exchanges : ["BINANCE"]
+                      native_assets : nativeAssetList.get("BINANCE"),
+                      native_currencies : nativeCurrencyList.get("BINANCE"),
+                      exchanges : ["BINANCE"],
+                      default_currency : defaultCurrencies.get("BINANCE")
                     }
     return (
       <Visual context={context}/>
