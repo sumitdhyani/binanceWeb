@@ -18,6 +18,6 @@ RUN pip install pudb
 RUN pip install kafka-python
 RUN wd="$(pwd)" && echo $wd
 RUN file="$(ls -1rth)" && echo $file
-RUN apt-get install -y curl
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-RUN apt-get install -y nodejs
+#RUN apt-get install -y curl
+#RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+#RUN apt-get install -y nodejs
