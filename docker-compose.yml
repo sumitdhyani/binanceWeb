@@ -9,7 +9,7 @@ services:
       - "node_2:${node_2}"
       - "node_3:${node_3}"
     working_dir: /usr/src
-    command: python3 ./marketConnectivity/RequestRouter.py node_1:9092,node_2:9092,node_3:9092 request_router_${node_id} '{"${exch_binance}":"binance_price_subscriptions"}' ${logging_level}
+    command: python3 ./marketConnectivity/RequestRouter.py node_1:9092,node_2:9092,node_3:9092 request_router_${node_id} '{"${exch_binance}":"binance_price_subscriptions","${exch_fakex}":"fakex_price_subscriptions"}' ${logging_level}
   binance_mkt_gateway:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -17,6 +17,13 @@ services:
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
     command: python3 ./marketConnectivity/binance/PriceFetcher.py node_1:9092,node_2:9092,node_3:9092 binance_mkt_gateway_${node_id} ${logging_level} 
+  fakex_mkt_gateway:
+    build: ./images/ubuntu_all_packages
+    volumes:
+      - .:/usr/src
+    extra_hosts: *all_extra_hosts
+    working_dir: /usr/src
+    command: python3 ./marketConnectivity/fakex/PriceFetcher.py node_1:9092,node_2:9092,node_3:9092 fakex_mkt_gateway_${node_id} ${logging_level}
   node_package_installer:
     build: ./images/ubuntu_all_packages
     volumes:
