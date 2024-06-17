@@ -133,7 +133,10 @@ async function loadSymbols() {
         dict = JSON.parse(line)
         const desc = dict["baseAsset"] + " vs " + dict["quoteAsset"]
         dict["description"] = desc
-        const key =  JSON.stringify([dict["symbol"], "BINANCE"])
+        let key =  JSON.stringify([dict["symbol"], "BINANCE"])
+        symbolDict[key] = dict
+
+        key =  JSON.stringify([dict["symbol"], "FAKEX"])
         symbolDict[key] = dict
     }
 }
