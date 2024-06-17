@@ -30,7 +30,7 @@ async def onPrice(depth):
     if depth.symbol in subscriptionBook.keys():
         destinations = list(subscriptionBook[depth.symbol])
         msgDict = {"message_type" : "depth",
-                   "exchange" : "BINANCE",
+                   "exchange" : "FAKEX",
                    "symbol" : depth.symbol,
                    "bids" : bids[0:bidLen],
                    "asks" : asks[0:askLen],
