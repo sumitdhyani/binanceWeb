@@ -4,7 +4,8 @@ const fs = require('fs');
 const readline = require('readline');
 const CommonUtils = require("./CommonUtils")
 const appSpecificErrors = require('./IndependentCommonUtils/appSpecificErrors');
-const process = require('process')
+const process = require('process');
+const { type } = require('os');
 const env = process.env
 
 let port = 0
@@ -251,8 +252,8 @@ module.exports = {
         downloadEndCallback()
     },
 
-    subscribePrice: async function (symbol, exchange, callback) {
-        const key = JSON.stringify([symbol, exchange])
+    subscribePrice: async function (symbol, exchange, type, callback) {
+        const key = JSON.stringify([symbol, exchange, type])
         if (undefined === symbolDict[key]) {
             throw new appSpecificErrors.InvalidSymbol(`Invalid instrument, symbol: ${key}`)
         }
@@ -261,51 +262,21 @@ module.exports = {
         }
         else {
             subscriptionBook.set(key, callback)
-            obj = { symbol : symbol, exchange : exchange, action : "subscribe"}
+            obj = { symbol : symbol, exchange : exchange, type : type, action : "subscribe"}
             await enqueueSubscriptionRequest(obj, "price_subscriptions", JSON.stringify([symbol, exchange]))
             logger.info(`Forwarded subsccription for: ${key}, futher in the pipeline`)
         }
     },
 
-    subscribeVirtualPrice: async function (asset, currency, bridge, callback) {
-        symbol1 = createTradingPairName(asset, bridge)
-        symbol2 = createTradingPairName(currency, bridge)
-        if (!(symbolDict.has(symbol1) && symbolDict.has(symbol2))) {
-            throw new appSpecificErrors.InvalidSymbol("One of the params is not a proper asset")
-        }
-        else {
-            virtualSymbol = createVirtualTradingPairName(asset, currency, bridge)
-            if (virtualSubscriptionBook.has(virtualSymbol)) {
-                throw new appSpecificErrors.DuplicateSubscription()
-            }
-            else {
-                virtualSubscriptionBook.set(virtualSymbol, callback)
-                obj = { asset: asset, currency: currency, bridge: bridge, action: "subscribe" }
-                await enqueueSubscriptionRequest(obj, "virtual_price_subscriptions", virtualSymbol)
-            }
-        }
-    },
-
-    unsubscribePrice: async function (symbol, exchange) {
+    unsubscribePrice: async function (symbol, exchange, type) {
         const key = JSON.stringify([symbol, exchange])
         if (!subscriptionBook.delete(key)) {
             throw new appSpecificErrors.SpuriousUnsubscription()
         }
         else {
-            obj = { symbol: symbol, exchange : exchange, action: "unsubscribe" }
+            obj = { symbol: symbol, exchange : exchange, type : type, action: "unsubscribe" }
             await enqueueSubscriptionRequest(obj, "price_subscriptions", JSON.stringify([symbol, exchange]))
             logger.info(`Forwarded unsubsccription for: ${key}, futher in the pipeline`)
-        }
-    },
-
-    unsubscribeVirtualPrice: async function (asset, currency, bridge) {
-        virtualSymbol = createVirtualTradingPairName(asset, currency, bridge)
-        if (!virtualSubscriptionBook.delete(virtualSymbol)) {
-            throw new appSpecificErrors.SpuriousUnsubscription()
-        }
-        else {
-            obj = {asset: asset, currency: currency, bridge : bridge, action: "unsubscribe" }
-            await enqueueSubscriptionRequest(obj, "virtual_price_subscriptions", virtualSymbol)
         }
     },
 

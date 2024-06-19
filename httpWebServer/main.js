@@ -85,10 +85,10 @@ async function mainLoop(logger){
             subscriptions.clear()
         })
 
-        socket.on('subscribe', (symbol, exchange, acknowledge)=>{
-            const key = JSON.stringify([symbol, exchange])
+        socket.on('subscribe', (symbol, exchange, type, acknowledge)=>{
+            const key = JSON.stringify([symbol, exchange, type])
             logger.info(`Received subscription for connection id: ${socket.id}, symbol: ${key}`)
-            subscriptionHandler.subscribe(symbol, exchange, normalPriceCallBack).
+            subscriptionHandler.subscribe(symbol, exchange, type, normalPriceCallBack).
             then(()=>{
                 subscriptions.add(key)
                 logger.info(`Acknowledging Subscription successsful for ${key}`)
@@ -104,10 +104,10 @@ async function mainLoop(logger){
             })
         })
 
-        socket.on('unsubscribe',(symbol, exchange, acknowledge)=>{
-            const key = JSON.stringify([symbol, exchange])
+        socket.on('unsubscribe',(symbol, exchange, type, acknowledge)=>{
+            const key = JSON.stringify([symbol, exchange, type])
             logger.info(`Received unsubscription for connection id: ${socket.id}, symbol: ${key}`)
-            subscriptionHandler.unsubscribe(symbol, exchange, normalPriceCallBack).
+            subscriptionHandler.unsubscribe(symbol, exchange, type, normalPriceCallBack).
             then(()=>{
                 subscriptions.delete(key)
                 logger.info(`Acknowledging unsubscription successsful for ${key}`)

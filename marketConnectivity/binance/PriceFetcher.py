@@ -46,7 +46,7 @@ async def onPrice(depth):
         logger.warn("Price recieved for unsubscribed symbol: %s", depth.symbol)
 
 async def onTrade(trade):
-    pass
+    logger.debug("Trade recd: %s", trade)
 
 async def cancelAllSubscriptions(symbol, depthUnsubscriptionFunc, tradeUnsubscriptionFunc):
     if symbol in depthSubscriptionBook:
@@ -65,7 +65,7 @@ async def registerDepthSubscription(subscriptionFunc, symbol, destinationTopic):
     if symbol not in depthSubscriptionBook.keys():
         depthSubscriptionBook[symbol] = set([destinationTopic])
         await subscriptionFunc(symbol, onPrice)
-        return (symbol,)
+        return (symbol,"depth")
     elif destinationTopic not in depthSubscriptionBook[symbol]:
         depthSubscriptionBook[symbol].add(destinationTopic)
         return (symbol,"depth",)
@@ -79,7 +79,7 @@ def unregisterDepthSubscription(unsubscriptionFunc, symbol, destinationTopic):
             if 0 == len(depthSubscriptionBook[symbol]):
                 unsubscriptionFunc(symbol, onPrice)
                 depthSubscriptionBook.pop(symbol)
-            return (symbol,)
+            return (symbol,"depth")
         else:
             logger.warn("Unsubscription attempted for %s which has no active subscriptions", symbol)
     except KeyError:
@@ -89,7 +89,7 @@ async def registerTradeSubscription(subscriptionFunc, symbol, destinationTopic):
     if symbol not in tradeSubscriptionBook.keys():
         tradeSubscriptionBook[symbol] = set([destinationTopic])
         await subscriptionFunc(symbol, onTrade)
-        return (symbol,"trade")
+        return (symbol,"trade",)
     elif destinationTopic not in tradeSubscriptionBook[symbol]:
         tradeSubscriptionBook[symbol].add(destinationTopic)
         return (symbol,"trade",)
