@@ -253,23 +253,24 @@ module.exports = {
     },
 
     subscribePrice: async function (symbol, exchange, type, callback) {
-        const key = JSON.stringify([symbol, exchange, type])
-        if (undefined === symbolDict[key]) {
-            throw new appSpecificErrors.InvalidSymbol(`Invalid instrument, symbol: ${key}`)
+        const instrumentKey = JSON.stringify([symbol, exchange])
+        const subscriptionKey = JSON.stringify([symbol, exchange, type])
+        if (undefined === symbolDict[instrumentKey]) {
+            throw new appSpecificErrors.InvalidSymbol(`Invalid instrument, symbol: ${subscriptionKey}`)
         }
-        else if (undefined !== subscriptionBook[key]) {
+        else if (undefined !== subscriptionBook[subscriptionKey]) {
             throw new appSpecificErrors.DuplicateSubscription()
         }
         else {
-            subscriptionBook.set(key, callback)
+            subscriptionBook.set(subscriptionKey, callback)
             obj = { symbol : symbol, exchange : exchange, type : type, action : "subscribe"}
             await enqueueSubscriptionRequest(obj, "price_subscriptions", JSON.stringify([symbol, exchange]))
-            logger.info(`Forwarded subsccription for: ${key}, futher in the pipeline`)
+            logger.info(`Forwarded subsccription for: ${subscriptionKey}, futher in the pipeline`)
         }
     },
 
     unsubscribePrice: async function (symbol, exchange, type) {
-        const key = JSON.stringify([symbol, exchange])
+        const key = JSON.stringify([symbol, exchange, type])
         if (!subscriptionBook.delete(key)) {
             throw new appSpecificErrors.SpuriousUnsubscription()
         }
