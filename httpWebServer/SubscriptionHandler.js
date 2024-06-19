@@ -52,9 +52,11 @@ class SubscriptionHandler
     }
 
     onDepth(symbol, exchange, type, depth, raw){
+        logger.debug(`Recd update in SubscriptionHandler.js`)
         const key = JSON.stringify([symbol, exchange, type])
         const evt = this.subscriptionBook.get(key)
         if(undefined !== evt){
+            logger.debug(`Found evt in SubscriptionHandler.js`)
             evt.raise(depth, raw)
         }
     }

@@ -8,6 +8,7 @@ const { SubscriptionHandler } = require('./SubscriptionHandler')
 const httpServer = httpHandle.createServer(app)
 const io = new Socket_io.Server(httpServer, {cors: {origin: "*"}})
 const appSpecificErrors = require('../IndependentCommonUtils/appSpecificErrors')
+const { Logger } = require('winston')
 const SpuriousUnsubscription = appSpecificErrors.SpuriousUnsubscription
 const DuplicateSubscription = appSpecificErrors.DuplicateSubscription
 const InvalidSymbol = appSpecificErrors.InvalidSymbol
@@ -62,9 +63,10 @@ async function mainLoop(logger){
         logger.info(`New connection, id: ${socket.id}`)
         let subscriptions = new Set()
         function updateCallback(update, raw){
-            if (0 == update.message_type.localeCompare("depth")) {
+            logger.debug(`Recd update in main.js`)
+            if (0 === update.message_type.localeCompare("depth")) {
                 socket.volatile.emit('depth', raw)
-            } else if (0 == update.message_type.localeCompare("trade")) {
+            } else if (0 === update.message_type.localeCompare("trade")) {
                 socket.volatile.emit('trade', raw)
             }
         }
