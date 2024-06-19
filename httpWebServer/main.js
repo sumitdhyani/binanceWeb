@@ -61,8 +61,12 @@ async function mainLoop(logger){
         
         logger.info(`New connection, id: ${socket.id}`)
         let subscriptions = new Set()
-        function normalPriceCallBack(depth){
-            socket.volatile.emit('depth', depth)
+        function updateCallback(update, raw){
+            if (0 == update.message_type.localeCompare("depth")) {
+                socket.volatile.emit('depth', raw)
+            } else if (0 == update.message_type.localeCompare("trade")) {
+                socket.volatile.emit('trade', raw)
+            }
         }
 
         socket.on('disconnect', (reason)=> {
@@ -73,7 +77,7 @@ async function mainLoop(logger){
 
             for(const key of subscriptions){
                 const [symbol, exchange] = JSON.parse(key)
-                subscriptionHandler.unsubscribe(symbol, exchange, normalPriceCallBack).
+                subscriptionHandler.unsubscribe(symbol, exchange, updateCallback).
                 then(()=>{
                     logger.debug(`Subscription cancelled for connection id: ${socket.id}, symbol: ${key} upon disconnection`)
                 }).
@@ -88,7 +92,7 @@ async function mainLoop(logger){
         socket.on('subscribe', (symbol, exchange, type, acknowledge)=>{
             const key = JSON.stringify([symbol, exchange, type])
             logger.info(`Received subscription for connection id: ${socket.id}, symbol: ${key}`)
-            subscriptionHandler.subscribe(symbol, exchange, type, normalPriceCallBack).
+            subscriptionHandler.subscribe(symbol, exchange, type, updateCallback).
             then(()=>{
                 subscriptions.add(key)
                 logger.info(`Acknowledging Subscription successsful for ${key}`)
@@ -107,7 +111,7 @@ async function mainLoop(logger){
         socket.on('unsubscribe',(symbol, exchange, type, acknowledge)=>{
             const key = JSON.stringify([symbol, exchange, type])
             logger.info(`Received unsubscription for connection id: ${socket.id}, symbol: ${key}`)
-            subscriptionHandler.unsubscribe(symbol, exchange, type, normalPriceCallBack).
+            subscriptionHandler.unsubscribe(symbol, exchange, type, updateCallback).
             then(()=>{
                 subscriptions.delete(key)
                 logger.info(`Acknowledging unsubscription successsful for ${key}`)

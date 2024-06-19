@@ -108,18 +108,9 @@ function onNormalPriceData(dict, raw, headers) {
     dict["timestamps"] = headers
     const callback = subscriptionBook.get(key)
     if (undefined !== callback) {
-        callback(JSON.stringify(dict))
+        callback(dict, JSON.stringify(dict))
     }
 }
-
-function onVirtualPriceData(dict, raw){
-    symbol = createVirtualTradingPairName(dict["asset"], dict["currency"], dict["bridge"])
-    const callback = virtualSubscriptionBook.get(symbol)
-    if (undefined !== callback) {
-        callback(raw)
-    }
-}
-
 
 async function loadSymbols() {
     const fileStream = fs.createReadStream('symbols.txt');
@@ -363,11 +354,7 @@ module.exports = {
 
                         if("depth" === messageType){    
                             onNormalPriceData(dict, raw, headers)
-                        }
-                        else if("virtual_depth" == messageType){
-                            onVirtualPriceData(dict, raw)
-                        }
-                        else if("component_enquiry" === messageType){
+                        } else if("component_enquiry" === messageType){
                             await onComponentEnquiry(dict)
                         }
 
