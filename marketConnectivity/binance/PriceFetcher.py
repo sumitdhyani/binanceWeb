@@ -50,7 +50,7 @@ async def cancelAllSubscriptions(symbol, unsubscriptionFunc):
     else:
         logger.warning("cancelAllSubscriptions called for a spurious symbol: %s", symbol)
     
-async def registerSubscription(subscriptionFunc, symbol, destinationTopic):
+async def registerDepthSubscription(subscriptionFunc, symbol, destinationTopic):
     if symbol not in subscriptionBook.keys():
         subscriptionBook[symbol] = set([destinationTopic])
         await subscriptionFunc(symbol, onPrice)
@@ -61,7 +61,7 @@ async def registerSubscription(subscriptionFunc, symbol, destinationTopic):
     else:
         logger.warn("Duplicate subscription attempted for: %s destination topic: %s", symbol, destinationTopic)
 
-def unregisterSubscription(unsubscriptionFunc, symbol, destinationTopic):
+def unregisterDepthSubscription(unsubscriptionFunc, symbol, destinationTopic):
     try:
         if symbol in subscriptionBook.keys():
             subscriptionBook[symbol].remove(destinationTopic)
@@ -74,6 +74,12 @@ def unregisterSubscription(unsubscriptionFunc, symbol, destinationTopic):
     except KeyError:
         logger.warn("Unsubscription attempted for %s topic %s which is not an active listener for this symbol", symbol, destinationTopic)
 
+async def registerTradeSubscription(subscriptionFunc, symbol, destinationTopic):
+    pass
+
+def unregisterTradeSubscription(unsubscriptionFunc, symbol, destinationTopic):
+    pass
+
 async def onSubMsg(msg, subscriptionFunc, unsubscriptionFunc):
     msgDict = json.loads(msg)
     global totalIncommingMessages
@@ -82,9 +88,9 @@ async def onSubMsg(msg, subscriptionFunc, unsubscriptionFunc):
     action = msgDict["action"]
     dest_topic = msgDict["destination_topic"]
     if("subscribe" == action):
-        return await registerSubscription(subscriptionFunc, symbol, dest_topic)
+        return await registerDepthSubscription(subscriptionFunc, symbol, dest_topic)
     else:
-        return unregisterSubscription(unsubscriptionFunc, symbol, dest_topic)
+        return unregisterDepthSubscription(unsubscriptionFunc, symbol, dest_topic)
 
 
 async def run():
@@ -101,7 +107,7 @@ async def run():
                               lambda msg, meta : onSubMsg(msg, ddp.subscribe, ddp.unsubscribe),
                               "binance_price_fetcher",
                               appId,
-                              lambda symbol, destTopic : registerSubscription(ddp.subscribe, symbol, destTopic),
+                              lambda symbol, destTopic : registerDepthSubscription(ddp.subscribe, symbol, destTopic),
                               lambda symbol : cancelAllSubscriptions(symbol, ddp.unsubscribe),
                               logger,
                               False,

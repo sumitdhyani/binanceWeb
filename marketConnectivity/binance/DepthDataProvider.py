@@ -25,7 +25,7 @@ class DepthDataProvider:
         subscriptionPresent = True
         try:
             dcm = DepthManagerWrapper(self.client, symbol, refresh_interval=None, limit=5)
-            self.logger.info("Opened stream for %s", symbol)
+            self.logger.info("Opened depth stream for %s", symbol)
             async with dcm as dcm_socket:
                 while subscriptionPresent:
                     self.logger.debug("Fetching %s", symbol)
@@ -53,7 +53,7 @@ class DepthDataProvider:
         if subscriptionPresent:
             await asyncio.wait([asyncio.sleep(0), self.retreiveAndNotifyDepth(symbol)], return_when=asyncio.FIRST_COMPLETED)
         else:
-            self.logger.debug("No subscriptions are now active for %s", symbol)
+            self.logger.debug("No depth subscriptions are now active for %s", symbol)
 
     def unsubscribe(self, symbol, callback):
         if symbol in self.subscriberDictionary.keys():
@@ -64,7 +64,7 @@ class DepthDataProvider:
                 if evt.empty():
                     del self.subscriberDictionary[symbol]
             except:
-                self.logger.warning("Spurious unsubscription for %s", symbol)
+                self.logger.warning("Spurious depth unsubscription for %s", symbol)
                 pass
 
 
