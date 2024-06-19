@@ -102,8 +102,8 @@ const WinstonLogCreator = (logLevel, fileName) => {
     }
 }
 
-function onNormalPriceData(dict, raw, headers) {
-    const key = JSON.stringify([dict["symbol"], dict["exchange"]])
+function onUpdate(dict, raw, headers) {
+    const key = JSON.stringify([dict.symbol, dict.exchange, dict.message_type])
     headers[Object.keys(headers).length] = Date.now()
     dict["timestamps"] = headers
     const callback = subscriptionBook.get(key)
@@ -353,7 +353,7 @@ module.exports = {
                         const messageType = dict.message_type
 
                         if("depth" === messageType){    
-                            onNormalPriceData(dict, raw, headers)
+                            onUpdate(dict, raw, headers)
                         } else if("component_enquiry" === messageType){
                             await onComponentEnquiry(dict)
                         }
