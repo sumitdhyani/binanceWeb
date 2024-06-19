@@ -108,7 +108,10 @@ function onUpdate(dict, raw, headers) {
     dict["timestamps"] = headers
     const callback = subscriptionBook.get(key)
     if (undefined !== callback) {
+        logger.debug(`Callback found for key: ${key}`)
         callback(dict, JSON.stringify(dict))
+    } else {
+        logger.debug(`Callback not found for key: ${key}`)
     }
 }
 
