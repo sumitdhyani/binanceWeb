@@ -112,7 +112,7 @@ async def onSubMsg(partition,
     try:
         await tpBook[str(partition)].handleEvent("ExternalSubUnsub", msg, meta)
     except Exception as ex:
-        logger.error("Exceptin in Application code: %s", str(ex))
+        logger.error("Exceptin in Application code, details: %s, traceback: %s", str(ex), traceback.format_exc())
     
 async def start(brokers,
                 reqTopic,
