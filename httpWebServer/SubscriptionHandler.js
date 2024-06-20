@@ -38,7 +38,8 @@ class SubscriptionHandler
     }
 
     async unsubscribe(symbol, exchange, type, callback){
-        const key = JSON.stringify([symbol, exchange])
+        const key = JSON.stringify([symbol, exchange, type])
+        this.logger.debug(`key: ${key}`)
         const evt = this.subscriptionBook.get(key)
         if(undefined !== evt){
             evt.unregisterCallback(callback)
