@@ -47,7 +47,7 @@ async def onPrice(depth):
 
 async def onTrade(trade):
     print(f'recv {res}')
-    logger.debug("Trade recd: %s", trade)
+    #logger.debug("Trade recd: %s", trade)
 
 async def cancelAllSubscriptions(symbol, depthUnsubscriptionFunc, tradeUnsubscriptionFunc):
     if symbol in depthSubscriptionBook:
@@ -87,6 +87,7 @@ def unregisterDepthSubscription(unsubscriptionFunc, symbol, destinationTopic):
         logger.warn("Unsubscription attempted for %s topic %s which is not an active listener for this symbol", symbol, destinationTopic)
 
 async def registerTradeSubscription(subscriptionFunc, symbol, destinationTopic):
+    logger.debug("Trade subscription for: %s", symbol)
     if symbol not in tradeSubscriptionBook.keys():
         tradeSubscriptionBook[symbol] = set([destinationTopic])
         await subscriptionFunc(symbol, onTrade)
