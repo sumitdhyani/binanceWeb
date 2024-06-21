@@ -55,7 +55,7 @@ class TradeDataProvider:
             self.logger.warning("Got exception while closing trade connection for symbol: %s, details: %s", symbol, str(ex))
 
         if subscriptionPresent:
-            await asyncio.wait([asyncio.sleep(0), self.retreiveAndNotifyDepth(symbol)], return_when=asyncio.FIRST_COMPLETED)
+            await asyncio.wait([asyncio.sleep(0), self.retreiveAndNotifyTrade(symbol)], return_when=asyncio.FIRST_COMPLETED)
         else:
             self.logger.debug("No trade subscriptions are now active for %s", symbol)
 
