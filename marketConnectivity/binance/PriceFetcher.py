@@ -46,7 +46,7 @@ async def onPrice(depth):
         logger.warn("Price recieved for unsubscribed symbol: %s", depth.symbol)
 
 async def onTrade(trade):
-    print(f'recv {res}')
+    print(f'recv {trade}')
     #logger.debug("Trade recd: %s", trade)
 
 async def cancelAllSubscriptions(symbol, depthUnsubscriptionFunc, tradeUnsubscriptionFunc):
