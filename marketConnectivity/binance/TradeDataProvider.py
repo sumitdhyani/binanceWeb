@@ -20,7 +20,7 @@ class TradeDataProvider:
         if symbol not in self.subscriberDictionary.keys():
             self.subscriberDictionary[symbol] = AsyncEvent.AsyncEvent()
             self.subscriberDictionary[symbol] += callback
-            await asyncio.wait([asyncio.sleep(0), self.retreiveAndNotifyDepth(symbol)], return_when=asyncio.FIRST_COMPLETED)
+            await asyncio.wait([asyncio.sleep(0), self.retreiveAndNotifyTrade(symbol)], return_when=asyncio.FIRST_COMPLETED)
         else:
             self.subscriberDictionary[symbol] += callback
 
