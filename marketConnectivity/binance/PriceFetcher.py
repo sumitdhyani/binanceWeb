@@ -110,7 +110,7 @@ def unregisterTradeSubscription(unsubscriptionFunc, symbol, destinationTopic):
     try:
         if symbol in tradeSubscriptionBook.keys():
             tradeSubscriptionBook[symbol].remove(destinationTopic)
-            if 0 == len(depthSubscriptionBook[symbol]):
+            if 0 == len(tradeSubscriptionBook[symbol]):
                 unsubscriptionFunc(symbol, onTrade)
                 tradeSubscriptionBook.pop(symbol)
             return (symbol,"trade",)
