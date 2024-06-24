@@ -28,7 +28,7 @@ class TradeDataProvider:
         subscriptionPresent = True
         try:
             #start any sockets here, i.e a trade socket
-            ts = self.tradeSocketGenerator.trade_socket('BNBBTC')
+            ts = self.tradeSocketGenerator.trade_socket(symbol)
             self.logger.info("Opened trade stream for %s", symbol)
             async with ts as ts_socket:
                 while subscriptionPresent:
