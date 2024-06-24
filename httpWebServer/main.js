@@ -78,8 +78,8 @@ async function mainLoop(logger){
             logger.warn(`Disconnection, id: ${socket.id}, reason: ${reason} cancelling all subscriptions(${subscriptions.size})`)
 
             for(const key of subscriptions){
-                const [symbol, exchange] = JSON.parse(key)
-                subscriptionHandler.unsubscribe(symbol, exchange, updateCallback).
+                const [symbol, exchange, type] = JSON.parse(key)
+                subscriptionHandler.unsubscribe(symbol, exchange, type, updateCallback).
                 then(()=>{
                     logger.debug(`Subscription cancelled for connection id: ${socket.id}, symbol: ${key} upon disconnection`)
                 }).
