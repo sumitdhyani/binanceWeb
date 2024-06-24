@@ -12,6 +12,7 @@ class TradeDataProvider:
         self.client = client
         self.subscriberDictionary = {}
         self.awaitConnectionUpFunc = awaitConnectionUpFunc
+        self.tagTranslationDictionary= {'s': "symbol", 'p': "price", 'q': "quantity"}
         self.logger = logger
         self.tradeSocketGenerator = binance.BinanceSocketManager(client)
 
@@ -23,6 +24,12 @@ class TradeDataProvider:
             await asyncio.wait([asyncio.sleep(0), self.retreiveAndNotifyTrade(symbol)], return_when=asyncio.FIRST_COMPLETED)
         else:
             self.subscriberDictionary[symbol] += callback
+
+    def translate(self, trade):
+        for exhangeTag, ourTag in self.tagTranslationDictionary.items():
+            trade[ourTag] = trade[exhangeTag]
+            del trade[exhangeTag]
+        return trade
 
     async def retreiveAndNotifyTrade(self, symbol):
         subscriptionPresent = True
@@ -38,7 +45,7 @@ class TradeDataProvider:
                         if not trade:
                             raise Exception("Null trade recieved for " + symbol)
                         else:
-                            await self.subscriberDictionary[symbol](trade)# async execution of all the callbacks
+                            await self.subscriberDictionary[symbol](self.translate(trade))# async execution of all the callbacks
         except TimeoutError as ex:
             self.logger.warning("Got TimeoutError while fetching depth for symbol: %s, details: %s, awaiting for the connection to be up again and restarting the price fetch loop", symbol, str(ex))
             await self.awaitConnectionUpFunc()
