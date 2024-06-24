@@ -158,7 +158,7 @@ async def takeAction(symbol,
         if("depth" == type):
             return unregisterDepthSubscription(depthUnsubscriptionFunc, symbol, dest_topic)
         elif("trade" == type):
-            return await unregisterTradeSubscription(tradeUnsubscriptionFunc, symbol, dest_topic)
+            return unregisterTradeSubscription(tradeUnsubscriptionFunc, symbol, dest_topic)
 
 async def run():
     try:
@@ -177,7 +177,7 @@ async def run():
                               appId,
                               lambda symbol, type, dest_topic : takeAction("subscribe",
                                                                           symbol,
-                                                                          type,
+                                                                          typ   e,
                                                                           dest_topic,
                                                                           ddp.subscribe,
                                                                           ddp.unsubscribe,
