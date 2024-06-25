@@ -177,7 +177,7 @@ async def run():
                               appId,
                               lambda symbol, type, dest_topic : takeAction("subscribe",
                                                                           symbol,
-                                                                          typ   e,
+                                                                          type,
                                                                           dest_topic,
                                                                           ddp.subscribe,
                                                                           ddp.unsubscribe,
