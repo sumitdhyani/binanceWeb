@@ -33,9 +33,12 @@ class TradeDataProvider:
 
     async def retreiveAndNotifyTrade(self, symbol):
         subscriptionPresent = True
+        ts = None
         try:
             #start any sockets here, i.e a trade socket
             ts = self.tradeSocketGenerator.trade_socket(symbol)
+            if not ts:
+                raise Exception("Failed ti create trace socket")
             self.logger.info("Opened trade stream for %s", symbol)
             async with ts as ts_socket:
                 while subscriptionPresent:
@@ -56,7 +59,7 @@ class TradeDataProvider:
             self.logger.warning("Got exception while fetching depth for symbol: %s, details: %s, restarting the price fetch loop", symbol, str(ex))
 
         try:
-            await ts.close()
+            await self.tradeSocketGenerator._exit_socket(ts)
             self.logger.info("Closed trade stream for %s", symbol)
         except Exception as ex:
             self.logger.warning("Got exception while closing trade connection for symbol: %s, details: %s", symbol, str(ex))
