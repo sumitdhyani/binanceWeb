@@ -49,7 +49,7 @@ async def onTrade(trade):
     symbol = trade["symbol"]
 
     if symbol in tradeSubscriptionBook.keys():
-        destinations = list(depthSubscriptionBook[depth.symbol])
+        destinations = list(tradeSubscriptionBook[symbol])
         trade["message_type"] = "trade"
         trade["destination_topics"] = destinations
         tradeStr = json.dumps(trade)
