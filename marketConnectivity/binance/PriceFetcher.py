@@ -46,12 +46,13 @@ async def onPrice(depth):
         logger.warn("Price recieved for unsubscribed symbol: %s", depth.symbol)
 
 async def onTrade(trade):
-    trade["message_type"] = "trade"
     symbol = trade["symbol"]
-    tradeStr = json.dumps(trade)
-    logger.debug("Trade recd: %s", tradeStr)
 
     if symbol in tradeSubscriptionBook.keys():
+        destinations = list(depthSubscriptionBook[depth.symbol])
+        trade["message_type"] = "trade"
+        trade["destination_topics"] = destinations
+        tradeStr = json.dumps(trade)
         await produce("prices", tradeStr, symbol, None)
     else:
         logger.warn("Trade recieved for unsubscribed symbol: %s", symbol)
