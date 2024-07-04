@@ -51,6 +51,7 @@ async def onTrade(trade):
     if symbol in tradeSubscriptionBook.keys():
         destinations = list(tradeSubscriptionBook[symbol])
         trade["message_type"] = "trade"
+        trade["exchange"] = "BINANCE"
         trade["destination_topics"] = destinations
         tradeStr = json.dumps(trade)
         await produce("prices", tradeStr, symbol, None)
