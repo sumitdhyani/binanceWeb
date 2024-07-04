@@ -355,7 +355,7 @@ module.exports = {
                         const dict = JSON.parse(raw)
                         const messageType = dict.message_type
 
-                        if("depth" === messageType){    
+                        if("depth" === messageType || "trade" == message_type){    
                             onUpdate(dict, raw, headers)
                         } else if("component_enquiry" === messageType){
                             await onComponentEnquiry(dict)
