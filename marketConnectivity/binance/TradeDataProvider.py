@@ -42,6 +42,8 @@ class TradeDataProvider:
             self.logger.info("Opened trade stream for %s", symbol)
             async with ts as ts_socket:
                 while subscriptionPresent:
+                    #Rate limit the trades to 1 per sec
+                    await asyncio.sleep(1)
                     self.logger.debug("Fetching %s", symbol)
                     trade = await ts_socket.recv()
                     if subscriptionPresent := symbol in self.subscriberDictionary.keys():
