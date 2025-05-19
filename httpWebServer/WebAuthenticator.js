@@ -218,7 +218,7 @@ function launchHttpCommunicationEngine(app, apiLogger)
             logger.info(JSON.stringify(feedServerBook))
             logger.info(`On http request, returning the server: ${JSON.stringify(currServer)}`)
             res.send({success : true, 
-                      feed_server : currServer["hostPort"]})
+                      feed_server : currServer["appId"]})
         }
         else{
             res.send({success : false,
