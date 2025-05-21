@@ -9,21 +9,21 @@ services:
       - "node_2:${node_2}"
       - "node_3:${node_3}"
     working_dir: /usr/src
-    command: python3 ./marketConnectivity/RequestRouter.py node_1:9092,node_2:9092,node_3:9092 request_router_${node_id} '{"${exch_binance}":"binance_price_subscriptions","${exch_fakex}":"fakex_price_subscriptions"}' ${logging_level}
+    command: python3 ./marketConnectivity/RequestRouter.py node_1:9092,node_2:9093,node_3:9094 request_router_${node_id} '{"${exch_binance}":"binance_price_subscriptions","${exch_fakex}":"fakex_price_subscriptions"}' ${logging_level}
   binance_mkt_gateway:
     build: ./images/ubuntu_all_packages
     volumes:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
-    command: python3 ./marketConnectivity/binance/PriceFetcher.py node_1:9092,node_2:9092,node_3:9092 binance_mkt_gateway_${node_id} ${logging_level} 
+    command: python3 ./marketConnectivity/binance/PriceFetcher.py node_1:9092,node_2:9093,node_3:9094 binance_mkt_gateway_${node_id} ${logging_level} 
   fakex_mkt_gateway:
     build: ./images/ubuntu_all_packages
     volumes:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
-    command: python3 ./marketConnectivity/fakex/PriceFetcher.py node_1:9092,node_2:9092,node_3:9092 fakex_mkt_gateway_${node_id} ${logging_level}
+    command: python3 ./marketConnectivity/fakex/PriceFetcher.py node_1:9092,node_2:9093,node_3:9094 fakex_mkt_gateway_${node_id} ${logging_level}
   node_package_installer:
     build: ./images/ubuntu_all_packages
     volumes:
@@ -39,7 +39,7 @@ services:
     working_dir: /usr/src
     environment:
       - LOCALIP=${LOCALIP}
-    command: node ./httpWebServer/main.js node_1:9092,node_2:9092,node_3:9092 ${web_server_port} web_server_${node_id} ${logging_level}
+    command: node ./httpWebServer/main.js node_1:9092,node_2:9093,node_3:9094 ${web_server_port} web_server_${node_id} ${logging_level}
     ports:
       - "${web_server_port}:${web_server_port}"
   web_authenticator:
@@ -48,7 +48,7 @@ services:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
-    command: node ./httpWebServer/WebAuthenticator.js node_1:9092,node_2:9092,node_3:9092 ${web_authenticator_port} web_authenticator_${node_id} ${logging_level}
+    command: node ./httpWebServer/WebAuthenticator.js node_1:9092,node_2:9093,node_3:9094 ${web_authenticator_port} web_authenticator_${node_id} ${logging_level}
     ports:
       - "${web_authenticator_port}:${web_authenticator_port}"
   data_dispatcher:
@@ -57,33 +57,33 @@ services:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
-    command: python3 ./DataDispatcher/DataDispatcher.py node_1:9092,node_2:9092,node_3:9092 data_dispatcher_${node_id} prices,virtual_prices
+    command: python3 ./DataDispatcher/DataDispatcher.py node_1:9092,node_2:9093,node_3:9094 data_dispatcher_${node_id} prices,virtual_prices
   virtual_price_fetcher:
     build: ./images/ubuntu_all_packages
     volumes:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
-    command: python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py node_1:9092,node_2:9092,node_3:9092 vpf_${node_id} ${logging_level}
+    command: python3 ./VirtualPriceFetcher/VirtualPriceFetcher.py node_1:9092,node_2:9093,node_3:9094 vpf_${node_id} ${logging_level}
   topic_data_dumper:
     build: ./images/ubuntu_all_packages
     volumes:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
-    command: python3 ./testFiles/DataDumper.py node_1:9092,node_2:9092,node_3:9092 tdd_${node_id} admin_events,admin_queries,web_authenticator_node_1 ${logging_level}
+    command: python3 ./testFiles/DataDumper.py node_1:9092,node_2:9093,node_3:9094 tdd_${node_id} admin_events,admin_queries,web_authenticator_node_1 ${logging_level}
   sync_data_provider:
     build: ./images/ubuntu_all_packages
     volumes:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
-    command: python3 ./SyncDataProvider/SyncDataProvider.py node_1:9092,node_2:9092,node_3:9092 sdp_${node_id} ${logging_level}
+    command: python3 ./SyncDataProvider/SyncDataProvider.py node_1:9092,node_2:9093,node_3:9094 sdp_${node_id} ${logging_level}
   admin_data_provider:
     build: ./images/ubuntu_all_packages
     volumes:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
-    command: python3 ./AdminDataProvider/AdminDataProvider.py node_1:9092,node_2:9092,node_3:9092 adp_${node_id} ${logging_level}
+    command: python3 ./AdminDataProvider/AdminDataProvider.py node_1:9092,node_2:9093,node_3:9094 adp_${node_id} ${logging_level}
 
