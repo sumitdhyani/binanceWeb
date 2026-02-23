@@ -7,9 +7,47 @@ const express = require('express')
 const constants = require('../ClientLayerLibrary/Constants').constants
 const app = express()
 const cors = require('cors')
-app.use(cors({
-    origin: '*'
-}))
+const bodyParser = require('body-parser')
+const jwt = require('jsonwebtoken')
+const userModel = require('./userModel')
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+app.use(cors({ origin: '*' }))
+app.use(bodyParser.json())
+// User signup endpoint
+app.post('/api/signup', async (req, res) => {
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) {
+        return res.status(400).json({ success: false, message: 'Missing fields' });
+    }
+    try {
+        const user = await userModel.registerUser(username, email, password);
+        res.json({ success: true, user: { id: user.id, username: user.username, email: user.email } });
+    } catch (err) {
+        if (err.message.includes('UNIQUE')) {
+            res.status(409).json({ success: false, message: 'Username or email already exists' });
+        } else {
+            res.status(500).json({ success: false, message: 'Internal error' });
+        }
+    }
+});
+
+// User login endpoint
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: 'Missing fields' });
+    }
+    try {
+        const user = await userModel.validateUser(username, password);
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({ success: true, token, user: { id: user.id, username: user.username, email: user.email } });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Internal error' });
+    }
+});
 const httpHandle = require('http')
 const NativeLoglevel = api.Loglevel
 const WebserverEvents= api.WebserverEvents
