@@ -276,7 +276,7 @@ async function run() {
 
     //Create the inbound topic for this service
     await admin.createTopics({
-        topics: [{ topic: appId, replicationFactor: 1, numPartitions: 1 }]
+        topics: [{ topic: appId, replicationFactor: 2, numPartitions: 1 }]
     })
 
     await consumer.subscribe({ topic: 'webserver_events', fromBeginning: false })
