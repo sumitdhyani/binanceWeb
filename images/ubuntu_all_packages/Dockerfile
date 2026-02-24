@@ -9,6 +9,8 @@ RUN apt-get install -y cmake gcc g++
 RUN apt-get install -y build-essential
 RUN apt-get install -y git
 RUN apt-get install -y gdb
+RUN apt-get install -y nodejs
+RUN apt-get install -y npm
 RUN apt-get install -y python
 RUN apt-get install -y python3-pip
 RUN pip install python-binance
@@ -16,6 +18,8 @@ RUN pip install --upgrade poloniexapi
 RUN pip install aiokafka
 RUN pip install pudb
 RUN pip install kafka-python
+RUN pip install nodejs
+RUN pip install npm
 RUN wd="$(pwd)" && echo $wd
 RUN file="$(ls -1rth)" && echo $file
 #RUN apt-get install -y curl

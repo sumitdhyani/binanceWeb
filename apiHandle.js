@@ -317,7 +317,7 @@ module.exports = {
 
             //Create the inbound topic for this service
             await admin.createTopics({
-                topics: [{ topic: applId, replicationFactor: 1, numPartitions: 1 }]
+                topics: [{ topic: applId, replicationFactor: 2, numPartitions: 1 }]
             })
 
             await sendAdminEvent(AdminEvents.Registration)

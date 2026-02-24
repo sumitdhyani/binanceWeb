@@ -39,7 +39,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
 
         try:
             for newTopic in topicsToCreate:
-                await createTopic(newTopic, 1, 1)
+                await createTopic(newTopic, 1, 2)
                 logger.warn("Topic %s created the new topic", newTopic)
         except TopicAlreadyExistsError as ex:
             logger.warn("Topic %s already exists, ignoring the attempt to create the new topic", newTopic)
