@@ -314,11 +314,11 @@ async function run() {
                         logger.info(`admin_events recieved: ${JSON.stringify(dict)}`)
                         await onAdminEvent(dict)
                     }
-                    // else if (0 === topic.localeCompare("webserver_events")) {
-                    //     logger.info(`webserver_events recieved: ${JSON.stringify(dict)}`)
-                    //     await onWebserverEvt(dict)
-                    // }
-                    //
+                    else if (0 === topic.localeCompare("webserver_events")) {
+                        logger.info(`webserver_events recieved: ${JSON.stringify(dict)}`)
+                        await onWebserverEvt(dict)
+                    }
+                    
                     else if (0 === topic.localeCompare(appId)) {
                         logger.info(`${appId} recieved: ${raw}`)
                         const messageType = dict.message_type
