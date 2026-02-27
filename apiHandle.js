@@ -324,9 +324,11 @@ module.exports = {
             await producer.connect()
 
             //Create the inbound topic for this service
-            await admin.createTopics({
-                topics: [{ topic: applId, replicationFactor: 2, numPartitions: 1 }]
-            })
+            try {
+                await admin.createTopics({
+                    topics: [{ topic: applId, replicationFactor: 2, numPartitions: 1 }]
+                })
+            } catch(error) {}
 
             await sendAdminEvent(AdminEvents.Registration)
 

@@ -33,6 +33,10 @@ async def increaseMissedHeartBeats(otherApp, parentFunc):
         heartbeatBook.pop(otherApp)
         appMetadata.pop(otherApp)
         await timer.unsetTimer(parentFunc)
+        if otherApp in subscriptions.keys():
+            logger.info("%s was a subscriber, removing it from subscriber list", otherApp)
+            subscriptions.pop(otherApp)
+
         
 async def onHeartbeat(msg, meta):
     msgDict = json.loads(msg)
@@ -41,7 +45,7 @@ async def onHeartbeat(msg, meta):
         heartbeatBook[otherApp] = 0
         return
         
-    if "appGroup" in msgDict.keys() and msgDict["appGroup"] == "FeedServer":
+    if "appGroup" in msgDict.keys():
         logger.warn("hearbeat received for unregistered app, app_id: %s, msg: %s, sending component enquiry(only for web_server)", otherApp, msg)
         await produce(otherApp, json.dumps({"destination_topic" : appId, "message_type" : "component_enquiry"}), otherApp, meta)
 

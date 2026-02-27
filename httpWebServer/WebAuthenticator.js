@@ -128,6 +128,25 @@ async function onAdminQueryResponse(responseDict){
     feedServerBook.set(dict.appId, [dict.numClientConnections, dict])
 }
 
+
+function getObjectForComponentInfo(){
+    return {appId : appId, appGroup : "web_authenticator"}
+}
+
+async function sendComponentInfo(destTopic){
+    const componentInfo = {...getObjectForComponentInfo(), message_type : "component_enquiry_response"}
+    const valueToBeSent = JSON.stringify(componentInfo)
+    logger.info(`Sending component info to topic ${destTopic}: ${valueToBeSent}`)
+    await producer.send({ topic: destTopic, messages: [{ key: appId, value: valueToBeSent}] })
+    logger.info(`Sent component info`)
+}
+
+async function onComponentEnquiry(dict) {
+    logger.warn(`Component inquiry received, dest topic: ${dict["destination_topic"]}`)
+    await sendComponentInfo(dict["destination_topic"])
+}
+
+
 async function onWebserverQueryResponse(dict){
     logger.info(`WebserverQuery resopnse received for app: ${dict.appId}`)
     feedServerBook.set(dict["appId"], [dict.numClientConnections, dict])
@@ -272,9 +291,11 @@ async function run() {
     await producer.connect()
 
     //Create the inbound topic for this service
-    await admin.createTopics({
-        topics: [{ topic: appId, replicationFactor: 2, numPartitions: 1 }]
-    })
+    try {
+        await admin.createTopics({
+            topics: [{ topic: appId, replicationFactor: 2, numPartitions: 1 }]
+        })
+    } catch(error) {}
 
     await consumer.subscribe({ topic: 'webserver_events', fromBeginning: false })
     await consumer.subscribe({ topic: 'admin_events', fromBeginning: false })
@@ -304,9 +325,9 @@ async function run() {
                         if (0 === messageType.localeCompare("component_subscription_update")) {
                             await onAdminQueryResponse(dict)
                         }
-                        // else if ( 0 === messageType.localeCompare("webserver_query_response")) {
-                        //     onWebserverQueryResponse(dict)
-                        // }
+                        else if ( 0 === messageType.localeCompare("component_enquiry")) {
+                            await onComponentEnquiry(dict)
+                        }
                     }
 
 		} catch(err) {
