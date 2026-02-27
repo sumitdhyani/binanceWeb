@@ -130,7 +130,7 @@ async function onAdminQueryResponse(responseDict){
 
 
 function getObjectForComponentInfo(){
-    return {appId : appId, appGroup : "web_authenticator"}
+    return {appId : appId, appGroup : "web_auth"}
 }
 
 async function sendComponentInfo(destTopic){
