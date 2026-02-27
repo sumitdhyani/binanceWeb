@@ -174,7 +174,7 @@ function getJsonStringForDisconnection()
 
 function getJsonStringForHeartbeat()
 {
-    dict = {evt : AdminEvents.HeartBeat.description, appId : appId}
+    dict = {evt : AdminEvents.HeartBeat.description, appId : appId, appGroup : "FeedServer"}
     return JSON.stringify(dict)
 }
 
@@ -216,7 +216,7 @@ async function sendAdminEvent(event){
 }
 
 async function sendComponentInfo(destTopic){
-    const componentInfo = {...getObjectForComponentInfo(), message_type : "webserver_query_response"}
+    const componentInfo = {...getObjectForComponentInfo(), message_type : "component_enquiry_response"}
     const valueToBeSent = JSON.stringify(componentInfo)
     logger.info(`Sending component info to topic ${destTopic}: ${valueToBeSent}`)
     await producer.send({ topic: destTopic, messages: [{ key: appId, value: valueToBeSent}] })
@@ -308,11 +308,19 @@ module.exports = {
                 }
             })
 
+            logger.info(`Creating admin`)
             const admin = kafkaHandle.admin()
+            logger.info(`Creating consumer`)
             const consumer = kafkaHandle.consumer({ groupId: appId, enableAutoCommit: false })
+            logger.info(`Creating producer`)
             producer = kafkaHandle.producer()
+
+
+            logger.info(`Connecting Admin`)
             await admin.connect()
+            logger.info(`Connecting Consumer`)
             await consumer.connect()
+            logger.info(`Connecting producer`)
             await producer.connect()
 
             //Create the inbound topic for this service

@@ -17,12 +17,19 @@ appMetadata = {}
 allowedMissedHeartbeats = 7
 heartbeatBook = {}
 
+# key dest_topic, value: set of subscription criteria json
+subscriptions = {}
+
 timer = Timer()
 async def increaseMissedHeartBeats(otherApp, parentFunc):
-    heartbeatBook[otherApp] += 1
+    heartbeatBook[otherApp] = heartbeatBook[otherApp] + 1
+    logger.info("Heartbeat missed for %s, total missed heartbeats: %s", otherApp, str(heartbeatBook[otherApp]))
     if heartbeatBook[otherApp] >= allowedMissedHeartbeats:
         logger.info("Exceeded allowed misssed hearbeats for %s", otherApp)
-        await produce("admin_events", json.dumps({"evt" : "app_down", "appId" : otherApp, "appGroup" : (appMetadata[otherApp])["appGroup"] }), otherApp, None)
+        msgDict = {"evt" : "app_down", "appId" : otherApp, "appGroup" : (appMetadata[otherApp])["appGroup"] }
+        msgBody = json.dumps(msgDict)
+        logger.info("Ending the app_down evt, payload: %s", msgBody)
+        await produce("admin_events", msgBody, otherApp, None)
         heartbeatBook.pop(otherApp)
         appMetadata.pop(otherApp)
         await timer.unsetTimer(parentFunc)
@@ -30,23 +37,57 @@ async def increaseMissedHeartBeats(otherApp, parentFunc):
 async def onHeartbeat(msg, meta):
     msgDict = json.loads(msg)
     otherApp = msgDict["appId"]
-    if otherApp not in heartbeatBook.keys():
-        logger.warn("hearbeat received for unregistered app, app_id: %s", otherApp)
-    else:
-        heartbeatBook[otherApp] -= 1
-    
+    if otherApp in appMetadata.keys():
+        heartbeatBook[otherApp] = 0
+        return
+        
+    if "appGroup" in msgDict.keys() and msgDict["appGroup"] == "FeedServer":
+        logger.warn("hearbeat received for unregistered app, app_id: %s, msg: %s, sending component enquiry(only for web_server)", otherApp, msg)
+        await produce(otherApp, json.dumps({"destination_topic" : appId, "message_type" : "component_enquiry"}), otherApp, meta)
+
 async def onRegistration(msg, meta):
     msgDict = json.loads(msg)
-    logger.info("Registration for component: %s, json: %s", msgDict["appId"], msg)
     app_id = msgDict["appId"]
-    appMetadata[app_id] = msgDict.copy()
+    logger.info("Registration for component: %s, json: %s", app_id, msg)
+    if app_id in appMetadata.keys():
+        return
+
+    logger.info("Registration for component: %s, json: %s, sending component enquiry", app_id, msg)
+    await produce(app_id, json.dumps({"destination_topic" : appId, "message_type" : "component_enquiry"}), app_id, meta)
     msgDict["evt"] = "app_up"
     await produce("admin_events", json.dumps(msgDict), msgDict["appId"], meta)
-    if app_id not in heartbeatBook.keys():
+
+async def onInBoundMessage(msg, meta):
+    msgDict = json.loads(msg)
+    message_type = msgDict["message_type"]
+    if message_type != "component_enquiry_response":
+        return
+
+    app_id = msgDict["appId"]
+    logger.info("Component enquiry response from component: %s, json: %s", app_id, msg)
+    if app_id not in appMetadata.keys():
+        appMetadata[app_id] = msgDict.copy()
         heartbeatBook[app_id] = 0
         async def dummyFunc():
             await increaseMissedHeartBeats(app_id, dummyFunc) 
         await timer.setTimer(5, dummyFunc)
+        logger.info("Heartbeat timer activated for: %s", app_id)
+
+    logger.info("Processing Component enquiry response from component: %s", app_id)
+    for dest_topic, suscriptionStrings in subscriptions.items():
+        for suscriptionString in suscriptionStrings:
+            subscriptionCriteriaDict = json.loads(suscriptionString)
+            logger.info("Trying to match %s with: subscription: %s, dest_topic", app_id, suscriptionString, dest_topic)
+            if "eq" not in subscriptionCriteriaDict.keys():
+                continue
+            equalityDict = subscriptionCriteriaDict["eq"]
+            matched = True
+            for key in equalityDict.keys():
+                matched = matched and key in msgDict.keys() and msgDict[key] == equalityDict[key]
+            if matched:
+                logger.info("%s matched sending update to: %s", app_id, dest_topic)
+                await produce(dest_topic, json.dumps({"message_type" : "component_subscription_update", "component" : msgDict}), dest_topic, meta)
+
 
 async def onAdminQuery(msg, meta):
     msgDict = json.loads(msg)
@@ -65,21 +106,38 @@ async def onAdminQuery(msg, meta):
     logger.info("Received admin query: %s, current metadata: %s, result: %s", msg, str(appMetadata), str(responseDict))
     await produce(destTopic, json.dumps(responseDict), destTopic, meta)
 
-async def onAdminEvent(msg, meta):
+async def onAdminSubscription(msg, meta):
     msgDict = json.loads(msg)
-    evt = msgDict["evt"]
-    if "app_up" == evt:
-        otherApp = msgDict["appId"]
-        appMetadata[otherApp] = msgDict
+    destTopic = msgDict["destination_topic"]
+    if destTopic not in subscriptions.keys():
+        subscriptions[destTopic] = set()
+    subscriptionStrings = subscriptions[destTopic]
+    subscriptionStrings.add(msg)
+    results = []
+    logger.info("Received admin subscription: %s, current metadata: %s", msg, str(appMetadata))
+    if "eq" in msgDict.keys():
+        equalityDict = msgDict["eq"]
+        results = [metaData for app, metaData in appMetadata.items() if all(key in metaData.keys() and metaData[key] == equalityDict[key]
+                   for key in equalityDict.keys())]
+                   
+    for result in results:
+        resultStr = json.dumps({"message_type" : "component_subscription_update", "component" : result})
+        logger.info("Sending subscription response admin subscription: %s, destTopic: %s, Result: %s", msg, destTopic, resultStr)
+        await produce(destTopic, resultStr, destTopic, meta)
+
+async def onAdminEvent(msg, meta):
+    pass
     
 
 async def run():
-    await startCommunication({"admin_queries" : onAdminQuery},
-                             {"heartbeats" : onHeartbeat, "registrations" : onRegistration, "admin_events" : onAdminEvent},
+    await startCommunication({"admin_queries" : onAdminQuery, "admin_subscriptions" : onAdminSubscription},
+                             {"heartbeats" : onHeartbeat, "registrations" : onRegistration, "admin_events" : onAdminEvent, appId : onInBoundMessage},
                              broker,
                              appId,
                              "admin_data_provider",
-                             logger)
+                             logger,
+                             False,
+                             [appId])
     
 asyncio.run(run())
 

@@ -37,12 +37,11 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         admin = KafkaAdminClient(bootstrap_servers=brokers)
         logger.info("Admin client created")
 
-        try:
-            for newTopic in topicsToCreate:
-                await createTopic(newTopic, 1, 2)
-                logger.warn("Topic %s created the new topic", newTopic)
-        except TopicAlreadyExistsError as ex:
-            logger.warn("Topic %s already exists, ignoring the attempt to create the new topic", newTopic)
+        for newTopic in topicsToCreate:
+            await deleteTopic(newTopic, logger)
+
+        for newTopic in topicsToCreate:
+            await createTopic(newTopic, 1, 2, logger)
 
         producer = aiokafka.AIOKafkaProducer(bootstrap_servers=brokers, acks="all")
         logger.info("Producer created")
@@ -143,10 +142,23 @@ async def produce(topic, data, key, meta):
                                  headers= [] if meta is None else meta,
                                  timestamp_ms=int(time.time()*1000))
 
-async def createTopic(queueId, numPartitions, replicationFactor):
+async def createTopic(queueId, numPartitions, replicationFactor, logger):
     global admin
-    admin.create_topics([NewTopic(name=queueId, num_partitions=numPartitions, replication_factor=replicationFactor)])
-    
+    try:
+        admin.create_topics([NewTopic(name=queueId, num_partitions=numPartitions, replication_factor=replicationFactor)])
+        logger.warn("Topic %s created the new topic", queueId)
+    except TopicAlreadyExistsError as ex:
+        logger.warn("Topic %s already exists, ignoring the attempt to create the new topic", queueId)
+
+async def deleteTopic(queueId, logger):
+    global admin
+    try:
+        admin.delete_topics([queueId])
+        logger.warn("Topic %s deleted the new topic", queueId)
+    except:
+        logger.warn("Error while deleting topic: %s", queueId)
+ 
+
 def pause(topic, partition):
     if topic in coOrdinatedtopicCallbackDict.keys():
         groupConsumer.pause(TopicPartition(topic, partition))

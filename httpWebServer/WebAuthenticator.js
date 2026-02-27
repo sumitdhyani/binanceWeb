@@ -107,10 +107,11 @@ async function onAdminEvent(dict){
         return
     }
 
-    if (0 === evt.localeCompare("app_up")) {
-        await sendWebserverQuery(dict.appId)
-    }
-    else if(0 === evt.localeCompare("app_down")){
+    // if (0 === evt.localeCompare("app_up")) {
+    //     await sendWebserverQuery(dict.appId)
+    // }
+    // else 
+    if(0 === evt.localeCompare("app_down")){
         if(!feedServerBook.delete(appName)){
             logger.warn(`app_down received for non-existent app: ${appName}`)
         }
@@ -120,20 +121,16 @@ async function onAdminEvent(dict){
     }
 }
 
-async function onAdminQueryResponse(dict){
-    const results = dict.results
-    results.forEach(result=>{
-        logger.info(`Result: ${JSON.stringify(result)}`)
-        const appName = result.appId
-        sendWebserverQuery(appName).
-        then(()=>{}).
-        catch(err=>{})
-    })
+async function onAdminQueryResponse(responseDict){
+    const dict = responseDict.component
+    logger.info(`Update received for app: ${JSON.stringify(dict)}, appId: ${dict["appId"]}, appGroup: ${dict.appGroup}`)
+    //logger.info(`WebserverQuery response received for app: ${dict.appId}`)
+    feedServerBook.set(dict.appId, [dict.numClientConnections, dict])
 }
 
 async function onWebserverQueryResponse(dict){
     logger.info(`WebserverQuery resopnse received for app: ${dict.appId}`)
-    feedServerBook.set(dict.appId, [dict.numClientConnections, dict])
+    feedServerBook.set(dict["appId"], [dict.numClientConnections, dict])
 }
 
 const AdminEvents = {
@@ -165,8 +162,8 @@ async function sendAdminEvent(event){
 }
 
 async function sendAdminQuery(){
-    dict = {destination_topic : appId, eq : {appGroup : "FeedServer"}}
-    await producer.send({ topic: "admin_queries", messages: [{ key: appId, value: JSON.stringify(dict) }] })
+    dict = {destination_topic : appId, message_type : "component_subscription", eq : {appGroup : "FeedServer"}}
+    await producer.send({ topic: "admin_subscriptions", messages: [{ key: appId, value: JSON.stringify(dict) }] })
 }
 
 async function sendWebserverQuery(topic){
@@ -296,19 +293,20 @@ async function run() {
                         logger.info(`admin_events recieved: ${JSON.stringify(dict)}`)
                         await onAdminEvent(dict)
                     }
-                    else if (0 === topic.localeCompare("webserver_events")) {
-                        logger.info(`webserver_events recieved: ${JSON.stringify(dict)}`)
-                        await onWebserverEvt(dict)
-                    }
+                    // else if (0 === topic.localeCompare("webserver_events")) {
+                    //     logger.info(`webserver_events recieved: ${JSON.stringify(dict)}`)
+                    //     await onWebserverEvt(dict)
+                    // }
+                    //
                     else if (0 === topic.localeCompare(appId)) {
                         logger.info(`${appId} recieved: ${raw}`)
                         const messageType = dict.message_type
-                        if (0 === messageType.localeCompare("admin_query_response")) {
+                        if (0 === messageType.localeCompare("component_subscription_update")) {
                             await onAdminQueryResponse(dict)
                         }
-                        else if ( 0 === messageType.localeCompare("webserver_query_response")) {
-                            onWebserverQueryResponse(dict)
-                        }
+                        // else if ( 0 === messageType.localeCompare("webserver_query_response")) {
+                        //     onWebserverQueryResponse(dict)
+                        // }
                     }
 
 		} catch(err) {
