@@ -82,6 +82,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         await produce("registrations", json.dumps({"appId" : clientId, "appGroup" : groupId}), clientId, None)
         logger.info("Component registration sent")
         heartBeatOffsetReset = False
+        pricesOffsetReset = False
         while True:
             consumptionFunctions = None
             if individualConsumer is not None:
@@ -99,6 +100,10 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                         consumer.seek_to_end(topicPartition)
                         logger.info("Heartbeat offset reset to latest")
                         heartBeatOffsetReset = True
+                    elif topicPartition.topic == "prices" and not pricesOffsetReset:
+                        consumer.seek_to_end(topicPartition)
+                        logger.info("Prices offset reset to latest")
+                        pricesOffsetReset = True
                         
                     lastCommitted = await consumer.committed(topicPartition)
                     lastCommitted = 0 if lastCommitted is None else lastCommitted

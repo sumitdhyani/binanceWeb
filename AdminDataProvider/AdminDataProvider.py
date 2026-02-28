@@ -112,7 +112,7 @@ async def onAdminQuery(msg, meta):
     logger.info("Received admin query: %s, current metadata: %s, result: %s", msg, str(appMetadata), str(responseDict))
     await produce(destTopic, json.dumps(responseDict), destTopic, meta)
 
-async def onAdminSubscription(msg, msgDict, meta):
+async def onAdminSubscription(msg, msgDict, meta = None):
     destTopic = msgDict["destination_topic"]
     if destTopic not in subscriptions.keys():
         subscriptions[destTopic] = set()

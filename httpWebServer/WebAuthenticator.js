@@ -141,6 +141,11 @@ async function onAdminQueryResponse(responseDict){
     }
 }
 
+async function onWebServerEnquiryResponse(dict) {
+    logger.info(`component_enquiry_response received for app: ${dict["appId"]}, appGroup: ${dict.appGroup}`)
+    //logger.info(`WebserverQuery response received for app: ${dict.appId}`)
+    feedServerBook.set(dict.appId, [dict.numClientConnections, dict])
+}
 
 function getObjectForComponentInfo(){
     return {appId : appId, appGroup : "web_auth"}
@@ -340,6 +345,9 @@ async function run() {
                         }
                         else if ( 0 === messageType.localeCompare("component_enquiry")) {
                             await onComponentEnquiry(dict)
+                        }
+                        else if ( 0 === messageType.localeCompare("component_enquiry_response")) {
+                            await onWebServerEnquiryResponse(dict)
                         }
                     }
 
