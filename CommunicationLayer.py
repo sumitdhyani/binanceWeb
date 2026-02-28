@@ -81,6 +81,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         await timer.setTimer(5, dummyFunc)
         await produce("registrations", json.dumps({"appId" : clientId, "appGroup" : groupId}), clientId, None)
         logger.info("Component registration sent")
+        heartBeatOffsetReset = False
         while True:
             consumptionFunctions = None
             if individualConsumer is not None:
@@ -94,10 +95,15 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                 callbackDict = result[1]
                 consumer = result[2]
                 for topicPartition, kafkaMsgs in messageDict.items():
+                    if topicPartition.topic == "heartbeats" and not heartBeatOffsetReset:
+                        consumer.seek_to_end(topicPartition)
+                        logger.info("Heartbeat offset reset to latest")
+                        heartBeatOffsetReset = True
+                        
                     lastCommitted = await consumer.committed(topicPartition)
                     lastCommitted = 0 if lastCommitted is None else lastCommitted
                     if lastCommitted < kafkaMsgs[0].offset:
-                        logger.warn("Messages lost, tp: %s no. of lost messages : %s, recovering", str(topicPartition), str(kafkaMsgs[0].offset - lastCommitted))
+                        logger.warn("Messages lost, tp: %s:%s no. of lost messages : %s, recovering", topicPartition.topic , str(topicPartition.partition), str(kafkaMsgs[0].offset - lastCommitted))
                         consumer.seek(topicPartition, lastCommitted)
                     else:
                         for kafkaMsg in kafkaMsgs:

@@ -103,15 +103,24 @@ async function onAdminEvent(dict){
     const appName = dict.appId
     const appGroup = dict.appGroup
 
-    if (undefined === appGroup || 0 !== appGroup.localeCompare("FeedServer")) {
+    if (undefined === appGroup) {
         return
     }
 
-    // if (0 === evt.localeCompare("app_up")) {
-    //     await sendWebserverQuery(dict.appId)
-    // }
-    // else 
-    if(0 === evt.localeCompare("app_down")){
+    if(0 !== appGroup.localeCompare("FeedServer") &&
+       0 !== appGroup.localeCompare("admin_data_provider"))
+    {
+        return
+    }
+
+
+    if (0 === evt.localeCompare("app_up")) {
+        logger.info(`app_up received for ${appName}, group: ${appGroup}, sending subscription requests for webservers`)
+        if (0 === appGroup.localeCompare("admin_data_provider")) {
+            sendAdminQuery(appName)
+        }
+    }
+    else if(0 === evt.localeCompare("app_down")){
         if(!feedServerBook.delete(appName)){
             logger.warn(`app_down received for non-existent app: ${appName}`)
         }
@@ -123,9 +132,13 @@ async function onAdminEvent(dict){
 
 async function onAdminQueryResponse(responseDict){
     const dict = responseDict.component
-    logger.info(`Update received for app: ${JSON.stringify(dict)}, appId: ${dict["appId"]}, appGroup: ${dict.appGroup}`)
+    logger.info(`Admin Update received for app: ${JSON.stringify(dict)}, appId: ${dict["appId"]}, appGroup: ${dict.appGroup}`)
     //logger.info(`WebserverQuery response received for app: ${dict.appId}`)
-    feedServerBook.set(dict.appId, [dict.numClientConnections, dict])
+    if (!feedServerBook.has(dict.appId)) {
+        feedServerBook.set(dict.appId, [dict.numClientConnections, dict])
+    } else {
+        logger.info(`Admin Update ignored for app: ${dict["appId"]} as it's already in the book`)
+    }
 }
 
 
@@ -180,9 +193,9 @@ async function sendAdminEvent(event){
     }
 }
 
-async function sendAdminQuery(){
+async function sendAdminQuery(targetTopic){
     dict = {destination_topic : appId, message_type : "component_subscription", eq : {appGroup : "FeedServer"}}
-    await producer.send({ topic: "admin_subscriptions", messages: [{ key: appId, value: JSON.stringify(dict) }] })
+    await producer.send({ topic: undefined === targetTopic? "admin_subscriptions" : targetTopic, messages: [{ key: appId, value: JSON.stringify(dict) }] })
 }
 
 async function sendWebserverQuery(topic){
@@ -284,7 +297,7 @@ async function run() {
     })
 
     const admin = kafka.admin()
-    consumer = kafka.consumer({ groupId: appId, enableAutoCommit: false })
+    consumer = kafka.consumer({ groupId: appId, enableAutoCommit: false, fromBeginning: false })
     producer = kafka.producer()
     await admin.connect()
     await consumer.connect()

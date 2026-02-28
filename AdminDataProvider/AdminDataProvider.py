@@ -61,12 +61,7 @@ async def onRegistration(msg, meta):
     msgDict["evt"] = "app_up"
     await produce("admin_events", json.dumps(msgDict), msgDict["appId"], meta)
 
-async def onInBoundMessage(msg, meta):
-    msgDict = json.loads(msg)
-    message_type = msgDict["message_type"]
-    if message_type != "component_enquiry_response":
-        return
-
+async def componentEnquiryResponse(msg, msgDict, meta):
     app_id = msgDict["appId"]
     logger.info("Component enquiry response from component: %s, json: %s", app_id, msg)
     if app_id not in appMetadata.keys():
@@ -92,6 +87,13 @@ async def onInBoundMessage(msg, meta):
                 logger.info("%s matched sending update to: %s", app_id, dest_topic)
                 await produce(dest_topic, json.dumps({"message_type" : "component_subscription_update", "component" : msgDict}), dest_topic, meta)
 
+async def onInBoundMessage(msg, meta):
+    msgDict = json.loads(msg)
+    message_type = msgDict["message_type"]
+    if message_type == "component_enquiry_response":
+        await componentEnquiryResponse(msg, msgDict, meta)
+    elif message_type == "component_subscription":
+        await onAdminSubscription(msg, msgDict, meta)
 
 async def onAdminQuery(msg, meta):
     msgDict = json.loads(msg)
@@ -110,12 +112,15 @@ async def onAdminQuery(msg, meta):
     logger.info("Received admin query: %s, current metadata: %s, result: %s", msg, str(appMetadata), str(responseDict))
     await produce(destTopic, json.dumps(responseDict), destTopic, meta)
 
-async def onAdminSubscription(msg, meta):
-    msgDict = json.loads(msg)
+async def onAdminSubscription(msg, msgDict, meta):
     destTopic = msgDict["destination_topic"]
     if destTopic not in subscriptions.keys():
         subscriptions[destTopic] = set()
     subscriptionStrings = subscriptions[destTopic]
+    # always send 
+    # if msg in subscriptionStrings:
+    #     return
+
     subscriptionStrings.add(msg)
     results = []
     logger.info("Received admin subscription: %s, current metadata: %s", msg, str(appMetadata))
