@@ -14,10 +14,11 @@ RUN apt-get install -y npm
 RUN apt-get install -y python
 RUN apt-get install -y python3-pip
 RUN pip install python-binance
-RUN pip install --upgrade poloniexapi
 RUN pip install aiokafka
 RUN pip install pudb
 RUN pip install kafka-python
+#RUN pip install unicorn-binance-websocket-api
+RUN pip install https://github.com/oliver-zehentleitner/unicorn-binance-websocket-api/archive/master.tar.gz --upgrade
 RUN pip install nodejs
 RUN pip install npm
 RUN wd="$(pwd)" && echo $wd

@@ -1,5 +1,6 @@
 import os, sys, json, inspect, asyncio, binance, aiokafka, re, traceback
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0, currentdir)
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 parentdir = os.path.dirname(parentdir)

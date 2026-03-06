@@ -108,7 +108,8 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                     lastCommitted = await consumer.committed(topicPartition)
                     lastCommitted = 0 if lastCommitted is None else lastCommitted
                     if lastCommitted < kafkaMsgs[0].offset:
-                        logger.warn("Messages lost, tp: %s:%s no. of lost messages : %s, recovering", topicPartition.topic , str(topicPartition.partition), str(kafkaMsgs[0].offset - lastCommitted))
+                        if kafkaMsgs[0].offset - lastCommitted >= 10:
+                            logger.warn("Messages lost, tp: %s:%s no. of lost messages : %s, recovering", topicPartition.topic , str(topicPartition.partition), str(kafkaMsgs[0].offset - lastCommitted))
                         consumer.seek(topicPartition, lastCommitted)
                     else:
                         for kafkaMsg in kafkaMsgs:

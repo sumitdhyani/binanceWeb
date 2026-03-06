@@ -6,7 +6,7 @@ parentdir = os.path.dirname(parentdir)
 sys.path.insert(0, parentdir)
 import Keys
 from DepthDataProvider import DepthDataProvider
-from TradeDataProvider import TradeDataProvider
+from ExpTradeDataProvider import TradeDataProvider
 from MockDepthDataProvider import MockDepthDataProvider
 from NetworkComplaintHandler import NetworkComplaintHandler
 from CommonUtils import getLoggingLevel, getLogger, Timer
@@ -167,7 +167,7 @@ async def run():
         client = await binance.AsyncClient.create(api_key=Keys.PUBLIC, api_secret=Keys.SECRET)
         networkComplaintHandler = NetworkComplaintHandler("https://www.binance.com/")
         ddp = DepthDataProvider(client, networkComplaintHandler.registerComplaint, logger)
-        tdp = TradeDataProvider(client, networkComplaintHandler.registerComplaint, logger)
+        tdp = TradeDataProvider(logger, "trade", "binance.com", Keys.PUBLIC, Keys.SECRET)
     except Exception as ex:
         logger.error("Error while connecting to market, details: %s", str(ex))
         return

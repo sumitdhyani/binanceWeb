@@ -36,14 +36,11 @@ class TradeDataProvider:
         ts = None
         try:
             #start any sockets here, i.e a trade socket
-            ts = self.tradeSocketGenerator.trade_socket(symbol)
-            if not ts:
-                raise Exception("Failed ti create trace socket")
-            self.logger.info("Opened trade stream for %s", symbol)
-            async with ts as ts_socket:
+            self.logger.info("Opening trade stream for %s", symbol)
+            async with self.tradeSocketGenerator.trade_socket(symbol) as ts_socket:
                 while subscriptionPresent:
                     #Rate limit the trades to 1 per sec
-                    await asyncio.sleep(1)
+                    #await asyncio.sleep(1)
                     self.logger.debug("Fetching %s", symbol)
                     trade = await ts_socket.recv()
                     if subscriptionPresent := symbol in self.subscriberDictionary.keys():
@@ -52,19 +49,19 @@ class TradeDataProvider:
                         else:
                             await self.subscriberDictionary[symbol](self.translate(trade))# async execution of all the callbacks
         except TimeoutError as ex:
-            self.logger.warning("Got TimeoutError while fetching depth for symbol: %s, details: %s, awaiting for the connection to be up again and restarting the price fetch loop", symbol, str(ex))
+            self.logger.warning("Got TimeoutError while fetching trade data for symbol: %s, details: %s, awaiting for the connection to be up again and restarting the price fetch loop", symbol, str(ex))
             await self.awaitConnectionUpFunc()
         except ClientConnectorError as ex:
-            self.logger.warning("Got ClientConnectorError while fetching depth for symbol: %s, details: %s, awaiting for the connection to be up again and restarting the price fetch loop", symbol, str(ex))
+            self.logger.warning("Got ClientConnectorError while fetching trade data for symbol: %s, details: %s, awaiting for the connection to be up again and restarting the price fetch loop", symbol, str(ex))
             await self.awaitConnectionUpFunc()
         except Exception as ex:
-            self.logger.warning("Got exception while fetching depth for symbol: %s, details: %s, restarting the price fetch loop", symbol, str(ex))
+            self.logger.warning("Got exception while fetching trade data for symbol: %s, details: %s, restarting the price fetch loop", symbol, str(ex))
 
-        try:
-            await self.tradeSocketGenerator._exit_socket(ts)
-            self.logger.info("Closed trade stream for %s", symbol)
-        except Exception as ex:
-            self.logger.warning("Got exception while closing trade connection for symbol: %s, details: %s", symbol, str(ex))
+        # try:
+        #     await self.tradeSocketGenerator._exit_socket(ts)
+        #     self.logger.info("Closed trade stream for %s", symbol)
+        # except Exception as ex:
+        #     self.logger.warning("Got exception while closing trade connection for symbol: %s, details: %s", symbol, str(ex))
 
         if subscriptionPresent:
             await asyncio.wait([asyncio.sleep(0), self.retreiveAndNotifyTrade(symbol)], return_when=asyncio.FIRST_COMPLETED)

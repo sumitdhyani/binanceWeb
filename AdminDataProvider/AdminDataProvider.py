@@ -23,7 +23,7 @@ subscriptions = {}
 timer = Timer()
 async def increaseMissedHeartBeats(otherApp, parentFunc):
     heartbeatBook[otherApp] = heartbeatBook[otherApp] + 1
-    logger.info("Heartbeat missed for %s, total missed heartbeats: %s", otherApp, str(heartbeatBook[otherApp]))
+    #logger.info("Heartbeat missed for %s, total missed heartbeats: %s", otherApp, str(heartbeatBook[otherApp]))
     if heartbeatBook[otherApp] >= allowedMissedHeartbeats:
         logger.info("Exceeded allowed misssed hearbeats for %s", otherApp)
         msgDict = {"evt" : "app_down", "appId" : otherApp, "appGroup" : (appMetadata[otherApp])["appGroup"] }
@@ -93,7 +93,7 @@ async def onInBoundMessage(msg, meta):
     if message_type == "component_enquiry_response":
         await componentEnquiryResponse(msg, msgDict, meta)
     elif message_type == "component_subscription":
-        await onAdminSubscription(msg, msgDict, meta)
+        await onAdminSubscription(msg, meta, msgDict)
 
 async def onAdminQuery(msg, meta):
     msgDict = json.loads(msg)
@@ -112,7 +112,9 @@ async def onAdminQuery(msg, meta):
     logger.info("Received admin query: %s, current metadata: %s, result: %s", msg, str(appMetadata), str(responseDict))
     await produce(destTopic, json.dumps(responseDict), destTopic, meta)
 
-async def onAdminSubscription(msg, msgDict, meta = None):
+async def onAdminSubscription(msg, meta = None, msgDict = None):
+    if msgDict is None:
+        msgDict = json.loads(msg)
     destTopic = msgDict["destination_topic"]
     if destTopic not in subscriptions.keys():
         subscriptions[destTopic] = set()
