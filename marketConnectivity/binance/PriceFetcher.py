@@ -58,16 +58,28 @@ async def onTrade(trade):
     else:
         logger.warn("Trade recieved for unsubscribed symbol: %s", symbol)
     
-
-async def cancelAllSubscriptions(symbol, depthUnsubscriptionFunc, tradeUnsubscriptionFunc):
+async def cancelAllDepthSubscriptions(symbol, depthUnsubscriptionFunc):
     if symbol in depthSubscriptionBook:
         depthUnsubscriptionFunc(symbol, onPrice)
         depthSubscriptionBook.pop(symbol)
     else:
         logger.warning("Depth cancelAllSubscriptions called for a spurious symbol: %s", symbol)
+
+async def cancelAllTradeSubscriptions(symbol, tradeUnsubscriptionFunc):
+    if symbol in tradeSubscriptionBook:
+        tradeUnsubscriptionFunc(symbol, onTrade)
+        tradeSubscriptionBook.pop(symbol)
+    else:
+        logger.warning("Trade cancelAllSubscriptions called for a spurious symbol: %s", symbol)
+
+async def cancelAllSubscriptions(symbol, subType, depthUnsubscriptionFunc, tradeUnsubscriptionFunc):
+    if subType.lower() == "depth":
+        await cancelAllDepthSubscriptions(symbol, depthUnsubscriptionFunc)
+    else:
+        await cancelAllTradeSubscriptions(symbol, tradeUnsubscriptionFunc)
     
     if symbol in tradeSubscriptionBook:
-        tradeSubscriptionBook(symbol, onPrice)
+        tradeUnsubscriptionFunc(symbol, onTrade)
         tradeSubscriptionBook.pop(symbol)
     else:
         logger.warning("Trade cancelAllSubscriptions called for a spurious symbol: %s", symbol)
@@ -92,7 +104,7 @@ def unregisterDepthSubscription(unsubscriptionFunc, symbol, destinationTopic):
                 depthSubscriptionBook.pop(symbol)
             return (symbol,"depth",)
         else:
-            logger.warn("Unsubscription attempted for %s which has no active subscriptions", symbol)
+            logger.warn("Depth Unsubscription attempted for %s which has no active subscriptions", symbol)
     except KeyError:
         logger.warn("Unsubscription attempted for %s topic %s which is not an active listener for this symbol", symbol, destinationTopic)
 
@@ -117,7 +129,7 @@ def unregisterTradeSubscription(unsubscriptionFunc, symbol, destinationTopic):
                 tradeSubscriptionBook.pop(symbol)
             return (symbol,"trade",)
         else:
-            logger.warn("Unsubscription attempted for %s which has no active subscriptions", symbol)
+            logger.warn("Trade Unsubscription attempted for %s which has no active subscriptions", symbol)
     except KeyError:
         logger.warn("Unsubscription attempted for %s topic %s which is not an active listener for this symbol", symbol, destinationTopic)
 
@@ -134,17 +146,17 @@ async def onSubMsg(msg,
     action = msgDict["action"]
     type = msgDict["type"]
     dest_topic = msgDict["destination_topic"]
-    return await takeAction(symbol,
-                      action,
-                      type,
-                      dest_topic,
-                      depthSubscriptionFunc,
-                      depthUnsubscriptionFunc,
-                      tradeSubscriptionFunc,
-                      tradeUnsubscriptionFunc)
+    return await takeAction(action,
+                            symbol,
+                            type,
+                            dest_topic,
+                            depthSubscriptionFunc,
+                            depthUnsubscriptionFunc,
+                            tradeSubscriptionFunc,
+                            tradeUnsubscriptionFunc)
 
-async def takeAction(symbol,
-                     action,
+async def takeAction(action,
+                     symbol,
                      type,
                      dest_topic,
                      depthSubscriptionFunc,
@@ -185,7 +197,7 @@ async def run():
                                                                           ddp.unsubscribe,
                                                                           tdp.subscribe,
                                                                           tdp.unsubscribe),
-                              lambda symbol : cancelAllSubscriptions(symbol, ddp.unsubscribe, tdp.unsubscribe),
+                              lambda symbol, subType : cancelAllSubscriptions(symbol, subType, ddp.unsubscribe, tdp.unsubscribe),
                               logger,
                               False,
                               None)

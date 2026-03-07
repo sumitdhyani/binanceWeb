@@ -6,6 +6,7 @@ from aiokafka.structs import TopicPartition
 pubSubSyncdata = "pubSub_sync_data"
 pubSubSyncdataRequests = "pubSub_sync_data_requests"
 from PubSubTPStateMachine import PubSubTPStateMachine
+import traceback
 
 tpBook = {}
 
@@ -52,11 +53,14 @@ async def onNewPartitionAssigned(partition,
                               appUnsubAllMethod,
                               syncdataProducer,
                               syncdataRequestor,
-                              cleanupMethod,
                               partition,
                               logger)
-    await sm.start()
-    tpBook[str(partition)] = sm
+                              
+    if str(partition) in tpBook.keys():
+        await tpBook[str(partition)].handleEvent("Assigned")
+    else:
+        await sm.start()
+        tpBook[str(partition)] = sm
 
 async def onPartitionRevoked(partition,
                              logger):
@@ -64,7 +68,10 @@ async def onPartitionRevoked(partition,
     try:
         await tpBook[str(partition)].handleEvent("Revoked")
     except Exception as ex:
-        logger.warning("Unexpected error while handling revokation for partition: %s, details: %s", str(partition), str(ex))
+        tbe = traceback.TracebackException.from_exception(ex)
+        logger.warning(f"Unexpected error while handling revokation for partition: %s, details: %s", str(partition), ''.join(tbe.format()))
+        
+
 
 
 async def onSyncData(msg, meta, logger):
@@ -72,7 +79,9 @@ async def onSyncData(msg, meta, logger):
     appGroup, topic, partition = generateComponentsFromGroupName(msgDict["group"])
     try:
         if "download_end" not in msgDict.keys():
+            logger.info(f"Got sync data: {msg}")
             params = getSubscriptionParamsFromKey(msgDict["key"])
+            logger.info(f"Got sync data, params: {str(params)}")
             await (tpBook[str(partition)]).handleEvent("SyncData", params, msgDict["destination_topics"])
         else:
             await (tpBook[str(partition)]).handleEvent("DownloadEnd")

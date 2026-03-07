@@ -14,7 +14,6 @@ class PubSubTPStateMachine(AFSM):
                  appUnsubAllMethod,
                  syncdataProducer,
                  syncdataRequestor,
-                 cleanupMethod,
                  partition,
                  logger):
         super().__init__(lambda : Syncing(appMsghandler,
@@ -22,9 +21,7 @@ class PubSubTPStateMachine(AFSM):
                                           appUnsubAllMethod,
                                           syncdataProducer,
                                           syncdataRequestor,
-                                          cleanupMethod,
                                           partition,
-                                          self,
                                           logger))
 class Syncing(AFSMState):
     def __init__(self,
@@ -33,9 +30,7 @@ class Syncing(AFSMState):
                  appUnsubAllMethod,
                  syncdataProducer,
                  syncdataRequestor,
-                 cleanupMethod,
                  partition,
-                 selfStateMachine,
                  logger):
         super().__init__(False)
         self.appMsghandler = appMsghandler
@@ -43,7 +38,6 @@ class Syncing(AFSMState):
         self.appUnsubAllMethod = appUnsubAllMethod
         self.syncdataProducer = syncdataProducer
         self.syncdataRequestor = syncdataRequestor
-        self.cleanupMethod = cleanupMethod
         self.partition = partition
         self.logger = logger
         self.subscriptionKeys = set()
@@ -63,6 +57,7 @@ class Syncing(AFSMState):
         self.logger.debug("on_SyncData in Syncing state, partition: %s", str(self.partition))
         for destTopic in destTopics:
             appParams = symbolRelatedSubscriptionParams + [destTopic]
+            self.logger.info(f"appParams: {str(appParams)}")
             if await self.appSubMethod(*appParams) is not None:
                 self.subscriptionKeys.add(tuple(symbolRelatedSubscriptionParams))
         return Downloading(self.appMsghandler,
@@ -70,7 +65,7 @@ class Syncing(AFSMState):
                            self.appSubMethod,
                            self.appUnsubAllMethod,
                            self.syncdataProducer,
-                           self.cleanupMethod,
+                           self.syncdataRequestor,
                            self.partition,
                            self.logger)
 
@@ -82,7 +77,7 @@ class Syncing(AFSMState):
                            self.appSubMethod,
                            self.appUnsubAllMethod,
                            self.syncdataProducer,
-                           self.cleanupMethod,
+                           self.syncdataRequestor,
                            self.partition,
                            self.logger)
     
@@ -100,7 +95,7 @@ class Downloading(AFSMState):
                  appSubMethod,
                  appUnsubAllMethod,
                  syncdataProducer,
-                 cleanupMethod,
+                 syncdataRequester,
                  partition,
                  logger):
         super().__init__(False)
@@ -109,7 +104,7 @@ class Downloading(AFSMState):
         self.appSubMethod = appSubMethod
         self.appUnsubAllMethod = appUnsubAllMethod
         self.syncdataProducer = syncdataProducer
-        self.cleanupMethod = cleanupMethod
+        self.syncdataRequester = syncdataRequester
         self.partition = partition
         self.logger = logger
     
@@ -137,7 +132,7 @@ class Downloading(AFSMState):
                            self.appSubMethod,
                            self.appUnsubAllMethod,
                            self.syncdataProducer,
-                           self.cleanupMethod,
+                           self.syncdataRequester,
                            self.partition,
                            self.logger)
         
@@ -148,7 +143,7 @@ class Operational(AFSMState):
                  appSubMethod,
                  appUnsubAllMethod,
                  syncdataProducer,
-                 cleanupMethod,
+                 syncDataRequester,
                  partition,
                  logger):
         super().__init__(False)
@@ -157,7 +152,7 @@ class Operational(AFSMState):
         self.appSubMethod = appSubMethod
         self.appUnsubAllMethod = appUnsubAllMethod
         self.syncdataProducer = syncdataProducer
-        self.cleanupMethod = cleanupMethod
+        self.syncDataRequester = syncDataRequester
         self.partition = partition
         self.logger = logger
 
@@ -175,31 +170,46 @@ class Operational(AFSMState):
         self.logger.info("on_Revoked in Operational state, partition: %s", str(self.partition))
         return Revoked(self.subscriptionKeys,
                        self.appUnsubAllMethod,
-                       self.cleanupMethod,
                        self.partition,
+                       self.appMsghandler,
+                       self.appSubMethod,
+                       self.syncdataProducer,
+                       self.syncDataRequester,
                        self.logger)
     
 class Revoked(AFSMState):
     def __init__(self,
                  subscriptionKeys,
                  appUnsubAllMethod,
-                 cleanupMethod,
                  partition,
+                 appMsghandler,
+                 appSubMethod,
+                 syncdataProducer,
+                 syncdataRequestor,
                  logger):
-        super().__init__(True)
+        super().__init__(False)
         self.subscriptionKeys = subscriptionKeys
         self.appUnsubAllMethod = appUnsubAllMethod
-        self.cleanupMethod = cleanupMethod
         self.partition = partition
+        self.appMsghandler = appMsghandler
+        self.appSubMethod = appSubMethod
+        self.syncdataProducer = syncdataProducer
+        self.syncdataRequestor = syncdataRequestor
         self.logger = logger
     
     async def after_entry(self):
         self.logger.info("Entered revoked state, partition: %s", str(self.partition))
         for subscriptionKey in self.subscriptionKeys:
+            self.logger.info(f"on_Revoked, subscription key: {str(subscriptionKey)}")
             await self.appUnsubAllMethod(*subscriptionKey)
-    
-    async def before_exit(self):
-        self.cleanupMethod(self.partition)
-        
+
+    async def on_Assigned(self):
+        return Syncing(self.appMsghandler,
+                       self.appSubMethod,
+                       self.appUnsubAllMethod,
+                       self.syncdataProducer,
+                       self.syncdataRequestor,
+                       self.partition,
+                       self.logger)        
         
         
