@@ -94,6 +94,7 @@ async def registerDepthSubscription(subscriptionFunc, symbol, destinationTopic):
         return (symbol,"depth",)
     else:
         logger.warn("Duplicate subscription attempted for: %s destination topic: %s", symbol, destinationTopic)
+        return (symbol,"depth",)
 
 def unregisterDepthSubscription(unsubscriptionFunc, symbol, destinationTopic):
     try:
@@ -119,6 +120,7 @@ async def registerTradeSubscription(subscriptionFunc, symbol, destinationTopic):
         return (symbol,"trade",)
     else:
         logger.warn("Duplicate subscription attempted for: %s destination topic: %s", symbol, destinationTopic)
+        return (symbol,"trade",)
 
 def unregisterTradeSubscription(unsubscriptionFunc, symbol, destinationTopic):
     try:

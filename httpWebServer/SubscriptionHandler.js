@@ -51,6 +51,14 @@ class SubscriptionHandler
             throw new SpuriousUnsubscription(`The symbol ${symbol} is not currently subscribed`)
     }
 
+    // Called on shutdown
+    async unsubscribeAll() {
+        for (const key of this.subscriptionBook.keys()) {
+            const [symbol, exchange, type] = JSON.parse(key)
+            await this.depthUnsubscriber(symbol, exchange, type)
+        }
+    }
+
     onDepth(symbol, exchange, type, depth, raw){
         this.logger.debug(`Recd update in SubscriptionHandler.js`)
         const key = JSON.stringify([symbol, exchange, type])

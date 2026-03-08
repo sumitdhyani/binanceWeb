@@ -24,7 +24,11 @@ def onSub(group, key, destTopic):
     subscriptionBookForThisGroup = book[group]
     if key not in subscriptionBookForThisGroup.keys():
         subscriptionBookForThisGroup[key] = []
-    subscriptionBookForThisGroup[key].append(destTopic)
+
+    if destTopic not in subscriptionBookForThisGroup[key]:
+        subscriptionBookForThisGroup[key].append(destTopic)
+    else:
+        logger.info(f"Discarded duplicate sub, key: {key}, destTopic: {destTopic}")
 
 def onUnsub(group, key, destTopic):
     if group not in book.keys():

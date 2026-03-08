@@ -47,8 +47,9 @@ httpServer.listen(listenPort, () => {
     console.log(`listening on ${listenPort}...`)
 });
 
+let subscriptionHandler = null
 async function mainLoop(logger){
-    const subscriptionHandler = new SubscriptionHandler(api.subscribePrice,
+    subscriptionHandler = new SubscriptionHandler(api.subscribePrice,
                                                   api.unsubscribePrice,
                                                   api.subscribeVirtualPrice,
                                                   api.unsubscribeVirtualPrice,
@@ -133,3 +134,6 @@ api.start(appId, mainLoop, brokers, appId, listenPort, logLevel).then(()=>{}).ca
     console.log(`Error in init phase, details: ${err.message}, exiting...`)
     process.exit(0)
 })
+
+process.on('SIGTERM', async () => { await subscriptionHandler.unsubscribeAll() });
+process.on('SIGINT', async () => { await subscriptionHandler.unsubscribeAll() });
