@@ -1,0 +1,3 @@
+[submodule "frontEnd"]
+	path = frontEnd
+	url = https://github.com/VA-ibh-AV/exchange_web_GUI.git
