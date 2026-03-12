@@ -311,7 +311,7 @@ module.exports = {
             logger.info(`Creating admin`)
             const admin = kafkaHandle.admin()
             logger.info(`Creating consumer`)
-            const consumer = kafkaHandle.consumer({ groupId: appId, enableAutoCommit: false })
+            const consumer = kafkaHandle.consumer({ groupId: appId })
             logger.info(`Creating producer`)
             producer = kafkaHandle.producer()
 
@@ -373,9 +373,7 @@ module.exports = {
 
                     } catch(err){
 	            	    logger.warn(`Got error while processsing {topic:partition:offset}: ${topic}:${partition}:${message.offset+1}, details: ${err.message}`)
-                    } finally {
-	            	await consumer.commitOffsets([{ topic, partition, offset: message.offset + 1 }])
-	            }
+                    }
                 },
             })
             await Promise.all([kafkaReaderLoop, clientEntryPointFunction(logger)])

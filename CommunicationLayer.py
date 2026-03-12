@@ -43,7 +43,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         for newTopic in topicsToCreate:
             await createTopic(newTopic, 1, 2, logger)
 
-        producer = aiokafka.AIOKafkaProducer(bootstrap_servers=brokers, acks="all")
+        producer = aiokafka.AIOKafkaProducer(bootstrap_servers=brokers, acks=1)
         logger.info("Producer created")
         await producer.start()
         groupConsumer = aiokafka.AIOKafkaConsumer(bootstrap_servers=brokers,
@@ -83,6 +83,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
         logger.info("Component registration sent")
         heartBeatOffsetReset = False
         pricesOffsetReset = False
+        lastSeenOffsets = {}
         while True:
             consumptionFunctions = None
             if individualConsumer is not None:
@@ -104,34 +105,35 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
                         consumer.seek_to_end(topicPartition)
                         logger.info("Prices offset reset to latest")
                         pricesOffsetReset = True
-                        
-                    lastCommitted = await consumer.committed(topicPartition)
-                    lastCommitted = 0 if lastCommitted is None else lastCommitted
-                    if lastCommitted < kafkaMsgs[0].offset:
-                        if kafkaMsgs[0].offset - lastCommitted >= 10:
-                            logger.warn("Messages lost, tp: %s:%s no. of lost messages : %s, recovering", topicPartition.topic , str(topicPartition.partition), str(kafkaMsgs[0].offset - lastCommitted))
-                        consumer.seek(topicPartition, lastCommitted)
-                    else:
-                        for kafkaMsg in kafkaMsgs:
-                            msg = kafkaMsg.value.decode("utf-8")
-                            key = kafkaMsg.key.decode("utf-8")
-                            send_timestamp = kafkaMsg.timestamp 
-                            headers = list(kafkaMsg.headers)
-                            indexToStartWith = len(headers)
-                            curr_time = int(time.time()*1000)
-                            logger.debug("Msg received: %s, offset :%s, header: %s", msg, str(kafkaMsg.offset), headers)
-                            headers += [(str(indexToStartWith), str(send_timestamp).encode('utf-8')), 
-                                        (str(indexToStartWith+1), str(curr_time).encode('utf-8'))]
 
-                            try:
-                                callback = callbackDict.get(kafkaMsg.topic)
-                                if lowLevelListener:
-                                    await callback(topicPartition.topic, topicPartition.partition, key, msg, headers)
-                                else:
-                                    await callback(msg, headers)
-                                tp = TopicPartition(kafkaMsg.topic, kafkaMsg.partition)
-                            except Exception as ex:
-                                logger.error("Unexpedted exception in the task loop, details %s, traceback: %s", str(ex), traceback.format_exc())
+                    tasks = []
+                    expectedOffset = lastSeenOffsets.get(topicPartition)
+                    firstOffset = kafkaMsgs[0].offset
+                    if expectedOffset is not None and firstOffset > expectedOffset:
+                        logger.warn("Offset gap on %s:%s — expected %s, got %s (%s messages skipped)",
+                                    topicPartition.topic, topicPartition.partition,
+                                    expectedOffset, firstOffset, firstOffset - expectedOffset)
+                    lastSeenOffsets[topicPartition] = kafkaMsgs[-1].offset + 1
+                    for kafkaMsg in kafkaMsgs:
+                        msg = kafkaMsg.value.decode("utf-8")
+                        key = kafkaMsg.key.decode("utf-8")
+                        send_timestamp = kafkaMsg.timestamp 
+                        headers = list(kafkaMsg.headers)
+                        indexToStartWith = len(headers)
+                        curr_time = int(time.time()*1000)
+                        logger.debug("Msg received: %s, offset :%s, header: %s", msg, str(kafkaMsg.offset), headers)
+                        headers += [(str(indexToStartWith), str(send_timestamp).encode('utf-8')), 
+                                    (str(indexToStartWith+1), str(curr_time).encode('utf-8'))]
+
+                        callback = callbackDict.get(kafkaMsg.topic)
+                        if lowLevelListener:
+                            tasks.append(callback(topicPartition.topic, topicPartition.partition, key, msg, headers))
+                        else:
+                            tasks.append(callback(msg, headers))
+                    try:
+                        await asyncio.gather(*tasks)
+                    except Exception as ex:
+                        logger.error("Unexpedted exception in the task loop, details %s, traceback: %s", str(ex), traceback.format_exc())
     except Exception as ex:
         logger.error("Unexpedted exception in the init phase loop, details %s, traceback: %s", str(ex), traceback.format_exc())
         if producer is not None:
@@ -148,7 +150,7 @@ async def startCommunication(coOrdinatedtopicsAndCallbacks,
             
 async def produce(topic, data, key, meta):
     global producer
-    await producer.send_and_wait(topic,
+    await producer.send(topic,
                                  value=bytes(data, 'utf-8'),
                                  key=bytes(key, 'utf-8'),
                                  headers= [] if meta is None else meta,
