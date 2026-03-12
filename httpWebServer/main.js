@@ -5,6 +5,8 @@ const CommonUtils = require('../CommonUtils')
 const api = require('../apiHandle')
 const Socket_io = require('socket.io')
 const { SubscriptionHandler } = require('./SubscriptionHandler')
+const jwt = require('jsonwebtoken')
+const { getLimits } = require('./tierConfig')
 const httpServer = httpHandle.createServer(app)
 const io = new Socket_io.Server(httpServer, {cors: {origin: "*"}})
 const appSpecificErrors = require('../IndependentCommonUtils/appSpecificErrors')
@@ -48,6 +50,8 @@ httpServer.listen(listenPort, () => {
 });
 
 let subscriptionHandler = null
+const JWT_SECRET = process.env.JWT_SECRET || 'change_me_in_production'
+
 async function mainLoop(logger){
     subscriptionHandler = new SubscriptionHandler(api.subscribePrice,
                                                   api.unsubscribePrice,
@@ -56,6 +60,22 @@ async function mainLoop(logger){
                                                   createVirtualTradingPairName,
                                                   logger)
 
+    // JWT auth middleware — reject connections without valid token
+    io.use((socket, next) => {
+        const token = socket.handshake.auth && socket.handshake.auth.token
+        if (!token) {
+            return next(new Error('Authentication required'))
+        }
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET)
+            socket.user = decoded
+            socket.limits = getLimits(decoded.tier)
+            next()
+        } catch (err) {
+            next(new Error('Invalid or expired token'))
+        }
+    })
+
     io.on('connection', (socket) =>{
         sendWebserverEvent(WebserverEvents.NewConnection).then(()=>{}).catch((err)=>{
             console.log(`Error whle sending NewConnection event, details: ${err.message}`)
@@ -63,6 +83,10 @@ async function mainLoop(logger){
         
         logger.info(`New connection, id: ${socket.id}`)
         let subscriptions = new Set()
+        let depthCount = 0
+        let tradeCount = 0
+        let virtualCount = 0
+        let basketCount = 0
         function updateCallback(update, raw){
             logger.debug(`Recd update in main.js`)
             if (0 === update.message_type.localeCompare("depth")) {
@@ -95,9 +119,26 @@ async function mainLoop(logger){
         socket.on('subscribe', (symbol, exchange, type, acknowledge)=>{
             const key = JSON.stringify([symbol, exchange, type])
             logger.info(`Received subscription for connection id: ${socket.id}, symbol: ${key}`)
+
+            // Enforce tier limits
+            const limits = socket.limits
+            if (type === 'depth' && depthCount >= limits.depth) {
+                return acknowledge({success: false, reason: `Depth subscription limit reached (${limits.depth}). Upgrade your account for more.`})
+            } else if (type === 'trade' && tradeCount >= limits.trade) {
+                return acknowledge({success: false, reason: `Trade subscription limit reached (${limits.trade}). Upgrade your account for more.`})
+            } else if (type === 'virtual' && virtualCount >= limits.virtual) {
+                return acknowledge({success: false, reason: `Virtual price limit reached (${limits.virtual}). Upgrade your account for more.`})
+            } else if (type === 'basket' && basketCount >= limits.basket) {
+                return acknowledge({success: false, reason: `Basket limit reached (${limits.basket}). Upgrade your account for more.`})
+            }
+
             subscriptionHandler.subscribe(symbol, exchange, type, updateCallback).
             then(()=>{
                 subscriptions.add(key)
+                if (type === 'depth') depthCount++
+                else if (type === 'trade') tradeCount++
+                else if (type === 'virtual') virtualCount++
+                else if (type === 'basket') basketCount++
                 logger.info(`Acknowledging Subscription successsful for ${key}`)
                 acknowledge({success : true})
             }).
@@ -117,6 +158,10 @@ async function mainLoop(logger){
             subscriptionHandler.unsubscribe(symbol, exchange, type, updateCallback).
             then(()=>{
                 subscriptions.delete(key)
+                if (type === 'depth') depthCount--
+                else if (type === 'trade') tradeCount--
+                else if (type === 'virtual') virtualCount--
+                else if (type === 'basket') basketCount--
                 logger.info(`Acknowledging unsubscription successsful for ${key}`)
                 acknowledge({success : true})
             }).

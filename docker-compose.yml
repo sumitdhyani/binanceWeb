@@ -37,8 +37,12 @@ services:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
+    depends_on:
+      node_package_installer:
+        condition: service_completed_successfully
     environment:
       - LOCALIP=${LOCALIP}
+      - JWT_SECRET=${JWT_SECRET}
     command: node ./httpWebServer/main.js node_1:9092,node_2:9092,node_3:9092 ${web_server_port} web_server_${node_id} ${logging_level}
     ports:
       - "${web_server_port}:${web_server_port}"
@@ -48,6 +52,12 @@ services:
       - .:/usr/src
     extra_hosts: *all_extra_hosts
     working_dir: /usr/src
+    depends_on:
+      node_package_installer:
+        condition: service_completed_successfully
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - USER_DB_PATH=${USER_DB_PATH:-/usr/src/httpWebServer/users.sqlite}
     command: node ./httpWebServer/WebAuthenticator.js node_1:9092,node_2:9092,node_3:9092 ${web_authenticator_port} web_authenticator_${node_id} ${logging_level}
     ports:
       - "${web_authenticator_port}:${web_authenticator_port}"

@@ -5,14 +5,28 @@ const api = require('../apiHandle')
 const process = require('process')
 const express = require('express')
 const constants = require('../ClientLayerLibrary/Constants').constants
+const jwt = require('jsonwebtoken')
+const userDb = require('./userDb')
+const { getLimits } = require('./tierConfig')
 const app = express()
 const cors = require('cors')
 app.use(cors({
     origin: '*'
 }))
+app.use(express.json())
 const httpHandle = require('http')
 const NativeLoglevel = api.Loglevel
 const WebserverEvents= api.WebserverEvents
+const JWT_SECRET = process.env.JWT_SECRET || 'change_me_in_production'
+
+function issueToken(payload, tier) {
+    const limits = getLimits(tier)
+    return jwt.sign(
+        { ...payload, tier, limits },
+        JWT_SECRET,
+        { expiresIn: limits.sessionTTL }
+    )
+}
 
 //Key: appId of feedServer,
 //Value: array of 2 elements [0] = no. of clients connected currently, [1] = all the other details of the feed_server
@@ -231,6 +245,19 @@ const WinstonLogCreator = (logLevel, fileName) => {
 function launchHttpCommunicationEngine(app, apiLogger)
 {
     logger = apiLogger
+
+    function pickFeedServer() {
+        let lowest = Number.MAX_SAFE_INTEGER
+        let currServer = null
+        feedServerBook.forEach((value, key) => {
+            if (value[0] < lowest) {
+                lowest = value[0]
+                currServer = value[1]
+            }
+        })
+        return lowest !== Number.MAX_SAFE_INTEGER ? currServer : null
+    }
+
     app.get('/', (req, res) =>{
         res.send("Hello World!");
     });
@@ -239,20 +266,106 @@ function launchHttpCommunicationEngine(app, apiLogger)
         res.send("Welcome to api page!");
     });
 
-    app.get('/auth/:json', (req, res) =>{
-        let lowest = Number.MAX_SAFE_INTEGER
-        let currServer = null
-        feedServerBook.forEach((value, key) => {
-            if(value[0] < lowest){
-                lowest = value[0]
-                currServer = value[1]
+    // --- Anonymous token ---
+    app.post('/auth/anonymous', (req, res) => {
+        const token = issueToken({ anonymous: true }, 'anonymous')
+        const server = pickFeedServer()
+        if (server) {
+            res.json({ success: true, token, feed_server: server.appId })
+        } else {
+            res.json({ success: false, code: constants.error_codes.no_feed_server, reason: 'No feedserver found' })
+        }
+    });
+
+    // --- Register ---
+    app.post('/auth/register', (req, res) => {
+        const { email, password } = req.body
+        if (!email || !password) {
+            return res.status(400).json({ success: false, reason: 'Email and password required' })
+        }
+        if (password.length < 8) {
+            return res.status(400).json({ success: false, reason: 'Password must be at least 8 characters' })
+        }
+
+        const result = userDb.register(email, password)
+        if (!result.success) {
+            return res.status(409).json(result)
+        }
+
+        const token = issueToken({ userId: result.userId, email }, 'free')
+        const server = pickFeedServer()
+        if (server) {
+            res.json({ success: true, token, feed_server: server.appId })
+        } else {
+            res.json({ success: true, token, feed_server: null, reason: 'Registered but no feed server available' })
+        }
+    });
+
+    // --- Login ---
+    app.post('/auth/login', (req, res) => {
+        const { email, password, deviceId } = req.body
+        if (!email || !password) {
+            return res.status(400).json({ success: false, reason: 'Email and password required' })
+        }
+
+        const result = userDb.authenticate(email, password)
+        if (!result.success) {
+            return res.status(401).json(result)
+        }
+
+        const token = issueToken({ userId: result.userId, email: result.email }, result.tier)
+        const savedSubscriptions = deviceId ? userDb.getDeviceSubscriptions(result.userId, deviceId) : null
+        const server = pickFeedServer()
+        if (server) {
+            res.json({ success: true, token, tier: result.tier, feed_server: server.appId, savedSubscriptions })
+        } else {
+            res.json({ success: true, token, tier: result.tier, feed_server: null, savedSubscriptions, reason: 'Logged in but no feed server available' })
+        }
+    });
+
+    // --- Save subscriptions (debounced from UI) ---
+    app.post('/auth/subscriptions', (req, res) => {
+        const { deviceId, subscriptions } = req.body
+        const authHeader = req.headers.authorization
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, reason: 'Token required' })
+        }
+        try {
+            const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET)
+            if (!decoded.userId) {
+                return res.status(403).json({ success: false, reason: 'Anonymous users cannot save subscriptions' })
             }
-        });
-        if(lowest != Number.MAX_SAFE_INTEGER){
-            logger.info(JSON.stringify(feedServerBook))
-            logger.info(`On http request, returning the server: ${JSON.stringify(currServer)}`)
-            res.send({success : true, 
-                      feed_server : currServer["appId"]})
+            if (!deviceId || subscriptions === undefined) {
+                return res.status(400).json({ success: false, reason: 'deviceId and subscriptions required' })
+            }
+            userDb.saveDeviceSubscriptions(decoded.userId, deviceId, subscriptions)
+            res.json({ success: true })
+        } catch (err) {
+            res.status(401).json({ success: false, reason: 'Invalid or expired token' })
+        }
+    });
+
+    // --- Legacy auth endpoint (tries credential login, falls back to anonymous) ---
+    app.get('/auth/:json', (req, res) =>{
+        const server = pickFeedServer()
+        if(server){
+            logger.info(`On http request, returning the server: ${JSON.stringify(server)}`)
+            let token
+            try {
+                const creds = JSON.parse(req.params.json)
+                if (creds.user && creds.password) {
+                    const result = userDb.authenticate(creds.user, creds.password)
+                    if (result.success) {
+                        token = issueToken({ userId: result.userId, email: result.email }, result.tier)
+                    }
+                }
+            } catch (_) { /* unparseable or missing — fall through to anonymous */ }
+            if (!token) {
+                token = issueToken({ anonymous: true }, 'anonymous')
+            }
+            res.send({success : true,
+                      token,
+                      feed_server : server["appId"]})
         }
         else{
             res.send({success : false,
@@ -285,6 +398,8 @@ function launchHttpCommunicationEngine(app, apiLogger)
 
 async function run() {
     console.log(`Started WebAuthenticator, appId: ${appId}`)
+    userDb.init()
+    console.log('User database initialized')
     const date = new Date()
     const timeSuffix =  date.getFullYear().toString() + "-" +
                         (date.getMonth() + 1).toString().padStart(2, '0') + "-" +
