@@ -80,6 +80,10 @@ function getDeviceSubscriptions(userId, deviceId) {
     try { return JSON.parse(row.subscriptions) } catch (_) { return null }
 }
 
+function getUserById(userId) {
+    return db.prepare('SELECT id, email, tier FROM users WHERE id = ?').get(userId) || null
+}
+
 function changePassword(userId, currentPassword, newPassword) {
     const user = db.prepare('SELECT id, password FROM users WHERE id = ?').get(userId)
     if (!user) {
@@ -93,4 +97,4 @@ function changePassword(userId, currentPassword, newPassword) {
     return { success: true }
 }
 
-module.exports = { init, register, authenticate, updateTier, saveDeviceSubscriptions, getDeviceSubscriptions, changePassword }
+module.exports = { init, register, authenticate, updateTier, saveDeviceSubscriptions, getDeviceSubscriptions, getUserById, changePassword }

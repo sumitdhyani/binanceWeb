@@ -374,6 +374,29 @@ function launchHttpCommunicationEngine(app, apiLogger)
         }
     });
 
+    // --- Refresh token (sliding session) ---
+    app.post('/auth/refresh', (req, res) => {
+        const authHeader = req.headers.authorization
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, reason: 'Token required' })
+        }
+        try {
+            const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET)
+            if (!decoded.userId) {
+                // Anonymous tokens are short-lived and not refreshable
+                return res.status(403).json({ success: false, reason: 'Anonymous sessions cannot be refreshed' })
+            }
+            const user = userDb.getUserById(decoded.userId)
+            if (!user) {
+                return res.status(401).json({ success: false, reason: 'User no longer exists' })
+            }
+            const newToken = issueToken({ userId: user.id, email: user.email }, user.tier)
+            res.json({ success: true, token: newToken, tier: user.tier })
+        } catch (err) {
+            res.status(401).json({ success: false, reason: 'Invalid or expired token' })
+        }
+    });
+
     // --- Legacy auth endpoint (tries credential login, falls back to anonymous) ---
     app.get('/auth/:json', (req, res) =>{
         const server = pickFeedServer()
