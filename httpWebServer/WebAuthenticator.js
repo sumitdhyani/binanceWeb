@@ -345,6 +345,34 @@ function launchHttpCommunicationEngine(app, apiLogger)
         }
     });
 
+    // --- Change password ---
+    app.post('/auth/change-password', (req, res) => {
+        const { currentPassword, newPassword } = req.body
+        const authHeader = req.headers.authorization
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, reason: 'Token required' })
+        }
+        try {
+            const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET)
+            if (!decoded.userId) {
+                return res.status(403).json({ success: false, reason: 'Anonymous users cannot change password' })
+            }
+            if (!currentPassword || !newPassword) {
+                return res.status(400).json({ success: false, reason: 'Current and new password required' })
+            }
+            if (newPassword.length < 8) {
+                return res.status(400).json({ success: false, reason: 'New password must be at least 8 characters' })
+            }
+            const result = userDb.changePassword(decoded.userId, currentPassword, newPassword)
+            if (!result.success) {
+                return res.status(400).json(result)
+            }
+            res.json({ success: true })
+        } catch (err) {
+            res.status(401).json({ success: false, reason: 'Invalid or expired token' })
+        }
+    });
+
     // --- Legacy auth endpoint (tries credential login, falls back to anonymous) ---
     app.get('/auth/:json', (req, res) =>{
         const server = pickFeedServer()
