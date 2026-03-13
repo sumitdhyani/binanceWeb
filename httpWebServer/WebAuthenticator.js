@@ -369,6 +369,7 @@ function launchHttpCommunicationEngine(app, apiLogger)
             }
             res.json({ success: true })
         } catch (err) {
+            logger.warn(`Error while trying to change password, details: ${err.message}`)
             res.status(401).json({ success: false, reason: 'Invalid or expired token' })
         }
     });
