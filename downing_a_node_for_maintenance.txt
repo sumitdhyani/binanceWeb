@@ -1,16 +1,16 @@
 If the downed node is the one having primary web_authenticator:
 1.  Turn on kafka in Secondary
+9.  Turn on react in secondary
 2.  Increase the replication factor to 3 for all the partitions(run the script increase_replicas.py), and verify that every partition has 3 Isrs before moving on to the next step
 2.  Start containers web_server, data_dispatcher and market gateways on secondary
-4.  Gracefully shutdown primary kafka broker and wait for the leader re-election for all the relevant partitions
+4.  Gracefully shutdown primary kafka broker(bty downing and disabling the lafka service) and wait for the leader re-election for all the relevant partitions
 5.  Turn off nginx in primary
 6.  Turn off cloudflare in primary
-7.  docker compose down in primary
 8.  Copy db from Primary to secondary(in the same directory: httpWebServer). Also check that the file permissions are atleast "rw-r--r--" for asll db files.
-9.  Turn on react in secondary
 10. Turn on the container web_authenticator in secondary
 11. Turn on nginx in secondary 
 12. Turn on cloudflare in secondary 
+7.  docker compose down in primary
 
 
 else(the non-auth node):
@@ -20,4 +20,5 @@ else(the non-auth node):
 4. Docker compose up all the containers in the secondary
 5. Up the downed web_servers in step 3
 6. Gracefully shutdown primary kafka broker and wait for the leader re-election for all the relevant partitions
+7. Turn off nginx in primary
 7. docker compose down the primary 
